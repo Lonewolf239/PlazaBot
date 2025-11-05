@@ -1,4 +1,4 @@
-from aiogram import Bot, types
+from aiogram import types
 from typing import Any
 from bot_app.keyboards import KeyboardManager
 
@@ -26,7 +26,7 @@ class HandlersManager:
     @staticmethod
     async def settings(bot, chat_id: int, user_data: dict[str, Any]):
         text = str(await bot.get_text(chat_id, "SETTINGS"))
-        text = text.replace("semga05@mail.ru", "None")
+        text = text.replace("semga05@mail.ru", await bot.get_text(chat_id, "NO_EMAIL"))
         await bot.send_message(chat_id, text,
                                reply_markup=KeyboardManager.get_settings_keyboard(user_data.get("language", "en")))
 
@@ -108,6 +108,12 @@ class HandlersManager:
         await bot.send_message(chat_id, text,
                                reply_markup=KeyboardManager.get_logs_keyboard(
                                    user_data.get("language", "en"), page, add_next_page))
+
+    @staticmethod
+    async def admin_show_bd(bot, chat_id: int):
+        bd = await bot.database_interface.display_db()
+        for chunk in bd:
+            await bot.send_message(chat_id, chunk)
 
     @staticmethod
     async def admin_user(bot, chat_id: int, command: str):

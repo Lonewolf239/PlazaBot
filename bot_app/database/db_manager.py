@@ -1,6 +1,7 @@
 import logging
 import aiosqlite
 from typing import Optional, List, Dict, Any, Tuple
+from bot_app.utils import Hacher
 
 
 class DatabaseInterface:
@@ -19,7 +20,7 @@ class DatabaseInterface:
         self.db_path = db_path
         self.logger = logger
 
-    async def _execute(self, query: str, params: tuple = ()) -> None:
+    async def execute(self, query: str, params: tuple = ()) -> None:
         """
         Внутренний асинхронный метод для выполнения SQL-запросов, которые не возвращают данных
         (например, INSERT, UPDATE, DELETE, CREATE TABLE).
@@ -35,7 +36,7 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при выполнении запроса '{query}' с параметрами {params}: {e}")
             raise
 
-    async def _fetch_one(self, query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
+    async def fetch_one(self, query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
         """
         Внутренний асинхронный метод для выполнения SQL-запроса и получения одной строки результата.
         Настраивает `row_factory` для возврата строк в виде словарей.
@@ -53,7 +54,7 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при выполнении запроса '{query}' с параметрами {params} (fetch one): {e}")
             raise
 
-    async def _fetch_all(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    async def fetch_all(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
         """
         Внутренний асинхронный метод для выполнения SQL-запроса и получения всех строк результата.
         Настраивает `row_factory` для возврата строк в виде словарей.
@@ -73,28 +74,28 @@ class DatabaseInterface:
             raise
 
     async def log_info(self, message: str, exc_info=None):
-        await self._execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "info"))
+        await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "info"))
         self.logger.info(message, exc_info=exc_info)
 
     async def log_debug(self, message: str, exc_info=None):
-        await self._execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "debug"))
+        await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "debug"))
         self.logger.info(message, exc_info=exc_info)
 
     async def log_error(self, message: str, exc_info=None):
-        await self._execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "error"))
+        await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "error"))
         self.logger.error(message, exc_info=exc_info)
 
     async def log_warning(self, message: str, exc_info=None):
-        await self._execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "warning"))
+        await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "warning"))
         self.logger.warning(message, exc_info=exc_info)
 
     async def get_logs(self) -> Optional[List[Dict[str, Any]]]:
-        return await self._fetch_all("SELECT * FROM logs ORDER BY log_id")
+        return await self.fetch_all("SELECT * FROM logs ORDER BY log_id")
 
     async def get_needed(self) -> Tuple[int, int, float, int, int]:
-        row_sum = await self._fetch_one("SELECT SUM(balance) AS total_balance FROM users;")
+        row_sum = await self.fetch_one("SELECT SUM(balance) AS total_balance FROM users;")
         needed = row_sum.get("total_balance", 0) or 0
-        row_stats = await self._fetch_one(
+        row_stats = await self.fetch_one(
             "SELECT COUNT(*) AS count, AVG(balance) AS avg_balance, MAX(balance) AS max_balance, MIN(balance) "
             "AS min_balance FROM users;"
         )
@@ -118,6 +119,7 @@ class DatabaseInterface:
                         balance REAL DEFAULT 0.0,
                         winnings REAL DEFAULT 0.0,
                         username TEXT,
+                        hashed_username TEXT,
                         email TEXT,
                         email_code TEXT,
                         email_verified BOOLEAN,
@@ -126,6 +128,7 @@ class DatabaseInterface:
                         input_type INTEGER DEFAULT 0,
                         block_input BOOLEAN DEFAULT 0,
                         language TEXT,
+                        ref_code TEXT UNIQUE,
                         registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
@@ -168,6 +171,58 @@ class DatabaseInterface:
                     )
                 """)
 
+                await db.execute("""
+                CREATE TABLE IF NOT EXISTS bot_instances (
+                    bot_id TEXT PRIMARY KEY,
+                    parent_bot_id TEXT,
+                    creator_user_id INTEGER,
+                    token TEXT UNIQUE,
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (creator_user_id) REFERENCES users (user_id)
+                )
+                """)
+
+                await db.execute("""
+                CREATE TABLE IF NOT EXISTS referrals (
+                    referral_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    referrer_user_id INTEGER,
+                    referred_user_id INTEGER,
+                    referred_bot_id TEXT,
+                    reward_given BOOLEAN DEFAULT 0,
+                    total_earned REAL DEFAULT 0.0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (referrer_user_id) REFERENCES users (user_id),
+                    FOREIGN KEY (referred_user_id) REFERENCES users (user_id),
+                    FOREIGN KEY (referred_bot_id) REFERENCES bot_instances (bot_id)
+                )
+                """)
+
+                await db.execute("""
+                CREATE TABLE IF NOT EXISTS clone_bot_instances (
+                    bot_id TEXT PRIMARY KEY,
+                    creator_user_id INTEGER NOT NULL,
+                    is_clone_bot BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (creator_user_id) REFERENCES users (user_id)
+                )
+                """)
+
+                await db.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_referrals_referrer 
+                    ON referrals(referrer_user_id)
+                """)
+
+                await db.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_referrals_referred 
+                    ON referrals(referred_user_id)
+                """)
+
+                await db.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_users_ref_code 
+                    ON users(ref_code)
+                """)
+
                 await db.commit()
                 await self.log_info(f"База данных успешно инициализирована: {self.db_path}")
         except Exception as e:
@@ -190,8 +245,9 @@ class DatabaseInterface:
             return False
 
         try:
-            await self._execute("INSERT INTO users (user_id, username, language, email) VALUES (?, ?, ?, ?)",
-                                (user_id, username, language, "semga05@mail.ru"))
+            await self.execute("INSERT INTO users (user_id, username, hashed_username, language, email) "
+                                "VALUES (?, ?, ?, ?, ?)",
+                                (user_id, username, Hacher.hash(username), language, "semga05@mail.ru"))
 
             await self.log_info(f"Пользователь {user_id} ({username}) успешно зарегистрирован с балансом 0.0 RUB.")
             return True
@@ -205,13 +261,16 @@ class DatabaseInterface:
         :param user_id: ID пользователя Telegram.
         :return: Словарь с данными пользователя или None, если пользователь не найден.
         """
-        return await self._fetch_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
+        return await self.fetch_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
 
     async def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
-        return await self._fetch_one("SELECT * FROM users WHERE username = ?", (username,))
+        return await self.fetch_one("SELECT * FROM users WHERE username = ?", (username,))
+
+    async def get_user_by_hashed_username(self, hashed_username: str) -> Optional[Dict[str, Any]]:
+        return await self.fetch_one("SELECT * FROM users WHERE hashed_username = ?", (hashed_username,))
 
     async def get_users(self) -> Optional[List[Dict[str, Any]]]:
-        return await self._fetch_all("SELECT * FROM users ORDER BY registered_at")
+        return await self.fetch_all("SELECT * FROM users ORDER BY registered_at")
 
     async def get_user_data(self, user_id: int, data_name: str, default=None) -> Optional[Any]:
         user_data = await self.get_user(user_id)
@@ -253,10 +312,10 @@ class DatabaseInterface:
         return bool(await self.get_user_data(user_id, "block_input"))
 
     async def block_input(self, user_id: int):
-        await self._execute("UPDATE users SET block_input = 1 WHERE user_id = ?", (user_id,))
+        await self.execute("UPDATE users SET block_input = 1 WHERE user_id = ?", (user_id,))
 
     async def unblock_input(self, user_id: int):
-        await self._execute("UPDATE users SET block_input = 0 WHERE user_id = ?", (user_id,))
+        await self.execute("UPDATE users SET block_input = 0 WHERE user_id = ?", (user_id,))
 
     async def update_user(self,
                           user_id: int,
@@ -308,12 +367,42 @@ class DatabaseInterface:
         query = f"UPDATE users SET {', '.join(fields)} WHERE user_id = ?"
 
         try:
-            await self._execute(query, tuple(params))
+            await self.execute(query, tuple(params))
             await self.log_info(f"Пользователь {user_id} успешно обновлен. Обновлены поля: {', '.join(fields)}")
             return True
         except Exception as e:
             await self.log_error(f"Ошибка при обновлении пользователя {user_id}: {e}")
             return False
+
+    async def is_clone_bot(self, bot_id: str) -> bool:
+        """Проверяет, является ли бот клоном"""
+        result = await self.fetch_one(
+            "SELECT is_clone_bot FROM clone_bot_instances WHERE bot_id = ?",
+            (bot_id,)
+        )
+        return result.get("is_clone_bot", False) if result else False
+
+    async def register_clone_bot(self, bot_id: str, creator_user_id: int) -> bool:
+        """Регистрирует бот как клон в специальной таблице"""
+        try:
+            await self.execute(
+                """INSERT OR REPLACE INTO clone_bot_instances 
+                   (bot_id, creator_user_id, is_clone_bot) 
+                   VALUES (?, ?, 1)""",
+                (bot_id, creator_user_id)
+            )
+            return True
+        except Exception as e:
+            await self.log_error(f"Ошибка при регистрации клон-бота: {e}")
+            return False
+
+    async def get_clone_bot_creator(self, bot_id: str) -> Optional[int]:
+        """Получает creator_user_id из таблицы clone_bot_instances"""
+        result = await self.fetch_one(
+            "SELECT creator_user_id FROM clone_bot_instances WHERE bot_id = ?",
+            (bot_id,)
+        )
+        return result.get("creator_user_id") if result else None
 
     async def get_selected_game(self, user_id: int) -> Optional[int]:
         return int(await self.get_user_data(user_id, "selected_game", 0))
@@ -451,11 +540,11 @@ class DatabaseInterface:
         if show_all:
             query = ("SELECT amount, type, description, timestamp FROM transactions WHERE user_id = ? "
                      "ORDER BY timestamp ASC")
-            return await self._fetch_all(query, (user_id,))
+            return await self.fetch_all(query, (user_id,))
 
         query = ("SELECT amount, type, description, timestamp FROM transactions WHERE user_id = ? "
                  "ORDER BY timestamp DESC LIMIT ?")
-        return await self._fetch_all(query, (user_id, limit))
+        return await self.fetch_all(query, (user_id, limit))
 
     async def get_transaction_by_id(self, internal_transaction_id: int) -> Optional[Dict[str, Any]]:
         """
@@ -464,7 +553,7 @@ class DatabaseInterface:
         :param internal_transaction_id: Уникальный числовой ID транзакции в таблице `transactions`.
         :return: Словарь с данными транзакции или None, если транзакция не найдена.
         """
-        return await self._fetch_one("SELECT * FROM transactions WHERE transaction_id = ?", (internal_transaction_id,))
+        return await self.fetch_one("SELECT * FROM transactions WHERE transaction_id = ?", (internal_transaction_id,))
 
     async def create_transaction(self, transaction_id: str, user_id: int, provider_name: str,
                                  transaction_type: str, amount: float, currency: str, status: str,
@@ -490,7 +579,7 @@ class DatabaseInterface:
             transaction_id, user_id, provider_name, transaction_type, amount,
             currency, status, description
         )
-        await self._execute(query, params)
+        await self.execute(query, params)
         await self.log_debug(f"Создана новая провайдер-транзакция: {transaction_id} для пользователя {user_id}.")
 
     async def update_transaction_status(self, transaction_id: str, status: str,
@@ -511,7 +600,7 @@ class DatabaseInterface:
             WHERE transaction_id = ?
         """
         params = (status, message, transaction_id)
-        await self._execute(query, params)
+        await self.execute(query, params)
         await self.log_debug(f"Обновлен статус провайдер-транзакции {transaction_id} до '{status}'.")
 
     async def get_provider_transaction(self, transaction_id: str) -> Optional[Dict[str, Any]]:
@@ -520,4 +609,78 @@ class DatabaseInterface:
         :param transaction_id: Уникальный внутренний ID транзакции (UUID).
         :return: Словарь с данными транзакции из `provider_transactions` или None, если не найдена.
         """
-        return await self._fetch_one("SELECT * FROM provider_transactions WHERE transaction_id = ?", (transaction_id,))
+        return await self.fetch_one("SELECT * FROM provider_transactions WHERE transaction_id = ?", (transaction_id,))
+
+    async def display_db(self) -> List[str]:
+        """
+        Возвращает список строк со всеми таблицами БД в полном составе с красивым форматированием.
+        Автоматически разбивает содержимое на куски.
+        """
+        result = []
+        try:
+            # Получаем список всех таблиц
+            tables = await self.fetch_all(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            )
+
+            if not tables:
+                return ["❌ Таблицы не найдены."]
+
+            # Начинаем с заголовка
+            output = "📊 <b>ПОЛНЫЙ СОСТАВ БД</b>\n\n"
+            max_chunk_size = 4000  # Безопасный размер (лимит Telegram - 4096)
+
+            for table_info in tables:
+                table_name = table_info.get('name')
+
+                # Получаем количество строк
+                row_count_result = await self.fetch_one(
+                    f"SELECT COUNT(*) as count FROM {table_name}"
+                )
+                row_count = row_count_result.get('count', 0) if row_count_result else 0
+
+                # Получаем информацию о столбцах
+                columns_info = await self.fetch_all(f"PRAGMA table_info({table_name})")
+                column_names = [col.get('name') for col in columns_info]
+
+                table_header = f"<b>📋 Таблица: {table_name}</b> (строк: {row_count})\n"
+                table_header += f"<code>Столбцы: {', '.join(column_names)}</code>\n"
+
+                # Получаем данные из таблицы
+                rows = await self.fetch_all(f"SELECT * FROM {table_name}")
+
+                table_data = ""
+                if rows:
+                    table_data += f"<b>Данные:</b>\n"
+                    for idx, row in enumerate(rows, 1):
+                        row_text = f"  <b>Запись {idx}:</b> <code>"
+                        row_data = ", ".join([f"{k}: {v}" for k, v in row.items()])
+                        row_text += row_data + "</code>\n"
+                        table_data += row_text
+                else:
+                    table_data += "ℹ️ <i>Таблица пуста</i>\n"
+
+                table_data += "\n"
+
+                # Проверяем, поместится ли вся таблица в текущий чанк
+                if len(output) + len(table_header) + len(table_data) > max_chunk_size:
+                    # Если не поместится, сохраняем текущий чанк и начинаем новый
+                    if len(output) > len("📊 <b>ПОЛНЫЙ СОСТАВ БД</b>\n\n"):
+                        result.append(output)
+                    output = table_header + table_data
+                else:
+                    # Иначе добавляем таблицу к текущему чанку
+                    output += table_header + table_data
+
+            # Сохраняем последний чанк
+            if len(output) > len("📊 <b>ПОЛНЫЙ СОСТАВ БД</b>\n\n"):
+                result.append(output)
+
+            await self.log_info("Данные БД успешно подготовлены для отображения.")
+            return result if result else ["ℹ️ Нет данных для отображения."]
+
+        except Exception as e:
+            error_msg = f"❌ Ошибка при выводе БД: {e}"
+            await self.log_error(f"Ошибка в методе display_db: {e}")
+            return [error_msg]
+

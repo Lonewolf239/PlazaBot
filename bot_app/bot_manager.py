@@ -1,3 +1,4 @@
+import logging
 from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
@@ -5,6 +6,8 @@ from bot_app.keyboards import KeyboardManager
 from bot_app.games import CasinoSlot
 from bot_app.database import DatabaseInterface
 from bot_app.payments import PaymentGateway
+from bot_app.referral import ReferralManager
+from bot_app.handlers import ReferralHandler
 from bot_app.utils import Messages
 from bot_app.utils import Email, Language
 from bot_app.handlers import HandlersManager
@@ -15,14 +18,22 @@ PAGE_LIMIT = 16
 class BotInterface:
     CasinoGames = [CasinoSlot(), ]
 
-    def __init__(self, db_interface: DatabaseInterface, token: str, admins_id: list):
+    def __init__(self, db_interface: DatabaseInterface, token: str, admins_id: list, logger: logging.Logger):
         self.database_interface = db_interface
+        self.token = token
         self.bot = Bot(token)
         self.payment_gateway: Optional[PaymentGateway] = None
         self.admins_id = admins_id
+        self.referral_manager: Optional[ReferralManager] = None
+        self.logger = logger
 
     def initialize(self, payment_gateway: PaymentGateway):
         self.payment_gateway = payment_gateway
+        self.referral_manager = ReferralManager(
+            self.database_interface,
+            self.token,
+            self.logger
+        )
 
     def get_bot(self):
         return self.bot
@@ -30,14 +41,18 @@ class BotInterface:
     async def get_game(self, chat_id: int):
         return await self.database_interface.get_selected_game(chat_id)
 
-    async def get_text(self, chat_id: int, tag: str, user_data: Dict[str, Any] = None) -> str:
+    async def get_text(self, chat_id: int, tag: str, user_data: Dict[str, Any] = None,
+                       custom_data: Dict[str, Any] = None) -> str:
         if user_data is None:
             user_data = await self.database_interface.get_user(chat_id)
         language = user_data["language"]
         text_template = Messages.TEXT[tag].get(language, tag)
         text_template = text_template.replace("{selected_game}",
                                               f"{self.CasinoGames[user_data["selected_game"]].icon} "
-                                              f"{self.CasinoGames[user_data["selected_game"]].name[user_data["language"]]}")
+                                              f"{self.CasinoGames[user_data["selected_game"]].
+                                              name[user_data["language"]]}")
+        if custom_data:
+            return text_template.format(**custom_data)
         return text_template.format(**user_data)
 
     @staticmethod
@@ -101,32 +116,64 @@ class BotInterface:
                 return
             await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_ERROR_CODE"))
 
-    async def on_command(self, message: types.Message):
+    async def _process_referral_reward(self, user_id: int, amount: float,
+                                       action_type: str, bot_username: str = None):
+        """
+        НОВОЕ: Обрабатывает реферальные начисления
+        """
+        if not bot_username:
+            bot_info = await self.bot.get_me()
+            bot_username = bot_info.username
+
+        await self.referral_manager.process_user_action(
+            user_id=user_id,
+            bot_id=bot_username,
+            action_type=action_type,
+            amount=abs(amount)
+        )
+
+    async def on_start_command(self, message: types.Message):
         command = message.text[1:]
         chat_id = message.chat.id
+
+        bot_info = await self.bot.get_me()
+        current_bot_id = bot_info.username
+
+        is_clone = await self.database_interface.is_clone_bot(current_bot_id)
+
+        if is_clone:
+            referrer_id = await self.database_interface.get_clone_bot_creator(current_bot_id)
+            if referrer_id and referrer_id != chat_id:
+                existing = await self.database_interface.fetch_one(
+                    """SELECT * FROM referrals
+                    WHERE referred_user_id = ? AND referrer_user_id = ?""",
+                    (chat_id, referrer_id)
+                )
+                if not existing:
+                    await self.database_interface.execute(
+                        """INSERT INTO referrals
+                        (referrer_user_id, referred_user_id, referred_bot_id)
+                        VALUES (?, ?, ?)""",
+                        (referrer_id, chat_id, current_bot_id)
+                    )
+                    self.logger.info(f"✅ Создана реферальная связь: {referrer_id} -> {chat_id} (бот: {current_bot_id})")
+
         await self.registration_menu(message)
 
         block_input = await self.database_interface.get_block_input(chat_id)
         if block_input:
             return
 
-        if command == "start":
-            await self.main_menu(chat_id)
-        elif command == "help":
-            await self.send_message(
-                chat_id,
-                "Список доступных команд:\n/start - начать\n/help - помощь\n/other_command - другая команда"
-            )
-        elif command == "other_command":
-            await self.send_message(
-                chat_id,
-                "Вы вызвали другую команду."
-            )
-        else:
-            await self.send_message(
-                chat_id,
-                f"Неизвестная команда: /{command}. Введите /help для списка команд."
-            )
+        parts = command.split(maxsplit=1)
+        if len(parts) > 1:
+            start_param = parts[1]
+            if start_param.startswith("user_"):
+                start_param = parts[1][5:] if parts[1].startswith("user_") else parts[1]
+                user_data = await self.database_interface.get_user_by_hashed_username(start_param)
+                if user_data:
+                    await self.send_userinfo(chat_id, user_data, chat_id in self.admins_id)
+
+        await self.main_menu(chat_id)
 
     async def on_text(self, message: types.Message):
         chat_id = message.chat.id
@@ -142,6 +189,10 @@ class BotInterface:
             await self.registration_menu(message, 1)
         elif input_type == 2:
             await self.registration_menu(message, 2)
+
+        elif input_type == 10:
+            from bot_app.handlers.referral_handler import ReferralHandler
+            await ReferralHandler.process_token_input(self, chat_id, input_text)
 
     async def on_inline_button(self, callback_query: types.CallbackQuery):
         command = callback_query.data
@@ -168,7 +219,7 @@ class BotInterface:
 
         # ════════════════ Регистрация ════════════════
         elif command == "register_back":
-            await HandlerManager.register_back(self, callback_query)
+            await HandlersManager.register_back(self, callback_query)
 
         elif command == "games-start":
             await HandlersManager.games_start(self, chat_id)
@@ -194,6 +245,8 @@ class BotInterface:
             await HandlersManager.balance_withdraw(self, chat_id)
 
         # ════════════════ Пользователь ═══════════════
+        elif command == "profile":
+            await HandlersManager.user(self, chat_id, f"user:{chat_id}")
         elif command.startswith("user"):
             await HandlersManager.user(self, chat_id, command)
 
@@ -208,6 +261,16 @@ class BotInterface:
             await HandlersManager.admin_show_logs(self, chat_id, command, user_data)
         elif command.startswith("admin-user"):
             await HandlersManager.admin_user(self, chat_id, command)
+        elif command == "admin-show-bd":
+            await HandlersManager.admin_show_bd(self, chat_id)
+
+        # ═════════════════ Рефералка ═════════════════
+        elif command == "referral-menu":
+            await ReferralHandler.referral_menu(self, chat_id, user_data)
+        elif command == "referral-create":
+            await ReferralHandler.create_clone_bot(self, chat_id, user_data)
+        elif command == "referral-stats":
+            await ReferralHandler.my_referrals(self, chat_id, user_data)
 
         # ═══════════════════ Прочее ══════════════════
         elif command == "rules":
@@ -272,12 +335,15 @@ class BotInterface:
         if user_data is None:
             user_data = await self.database_interface.get_user(chat_id)
         userinfo = await self.get_text(chat_id, "USERINFO_ADMIN" if for_admin else "USERINFO", user_data)
+        userinfo = userinfo.replace("username",
+                                    f"<a href='https://t.me/{(await self.bot.get_me()).username}?start=user_{user_data['hashed_username']}'>"
+                                    f"{user_data['username']}</a>")
         userinfo += "\n" + await self.format_games_statistics(chat_id, user_data, for_admin)
         await self.send_message(chat_id, userinfo, reply_markup=KeyboardManager.get_delete_keyboard())
 
-    async def send_message(self, chat_id: int, text: str, parse_mode: str = None,
+    async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML",
                            reply_markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardRemove]] = None,
-                           disable_web_page_preview: Optional[bool] = None):
+                           disable_web_page_preview: Optional[bool] = True):
         """
         Отправляет текстовое сообщение с опциональными параметрами parse_mode,
         клавиатурой и отключением предпросмотра ссылок.
