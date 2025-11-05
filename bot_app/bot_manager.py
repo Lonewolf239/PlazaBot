@@ -94,10 +94,10 @@ class BotInterface:
                                         user_data.get("language", "en")))
         elif registration_type == 1:
             input_text = message.text.strip()
-            if not Email.is_valid_email(input_text):
+            if not Email.validate_email_address(input_text):
                 await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_ERROR_EMAIL"))
                 return
-            email_code = Email.get_email_code()
+            email_code = Email.generate_verification_code()
             await self.database_interface.update_user(chat_id,
                                                       email=input_text,
                                                       email_code=email_code,
@@ -106,7 +106,7 @@ class BotInterface:
                                     reply_markup=KeyboardManager.get_back_keyboard(
                                         user_data.get("language", "en"),
                                         callback_data="register_back"))
-            Email.send_email(input_text, email_code, Language.RUSSIAN if
+            Email.send_verification_email(input_text, email_code, Language.RUSSIAN if
             user_data.get("language", "en") == "ru" else Language.ENGLISH)
         else:
             email_code = message.text.strip()
