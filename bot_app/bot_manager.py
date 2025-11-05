@@ -170,6 +170,9 @@ class BotInterface:
         elif command == "register_back":
             await HandlerManager.register_back(self, callback_query)
 
+        elif command == "games-start":
+            await HandlersManager.games_start(self, chat_id)
+
         # ═════════════════ Настройки ═════════════════
         elif command == "settings":
             await HandlersManager.settings(self, chat_id, user_data)
@@ -236,10 +239,41 @@ class BotInterface:
         text = f"Логи [{page}/{last_page}]:\n\n" + "\n\n".join(lines)
         return text, add_next_page
 
-    async def send_userinfo(self, chat_id: int, user_data: Dict[str, Any], for_admin: bool = False):
-        await self.send_message(chat_id,
-                                await self.get_text(chat_id, "USERINFO_ADMIN" if for_admin else "USERINFO", user_data),
-                                reply_markup=KeyboardManager.get_delete_keyboard())
+    async def format_games_statistics(self, chat_id: int, user_data: Dict[str, Any], for_admin: bool) -> str:
+        """
+        Возвращает форматированный текст со статистикой игр пользователя:
+        - Любимая игра
+        - Всего игр и количество сыгранных раз по каждой
+        """
+        games_dict = await self.database_interface.get_games_played(chat_id)
+        if not games_dict:
+            return await self.get_text(chat_id, "USERINFO_NO_GAMES", user_data)
+        favorite_game_id = max(games_dict, key=games_dict.get)
+        favorite_game_name = (f"{self.CasinoGames[favorite_game_id].icon} "
+                              f"{self.CasinoGames[favorite_game_id].name[user_data.get("language", "en")]}")
+        favorite_play_times = games_dict[favorite_game_id]
+        games_list = []
+        for game_id, count in games_dict.items():
+            game_name = (f"{self.CasinoGames[game_id].icon} "
+                         f"{self.CasinoGames[game_id].name[user_data.get("language", "en")]}")
+            game_text = await self.get_text(chat_id, "USERINFO_GAMES_LIST", user_data)
+            game_text = game_text.replace("game_name", game_name).replace("count", str(count))
+            games_list.append(game_text)
+        response_text = await self.get_text(chat_id, "USERINFO_FOFAVORITE_GAME", user_data)
+        response_text = (response_text.replace("favorite_game_name", favorite_game_name).
+                         replace("favorite_play_times", str(favorite_play_times)))
+        if for_admin:
+            response_text += (f"\n{await self.get_text(chat_id, "USERINFO_GAMES_LIST_TITLE", user_data)}:\n"
+                              + "\n".join(games_list))
+
+        return response_text
+
+    async def send_userinfo(self, chat_id: int, user_data: Dict[str, Any] = None, for_admin: bool = False):
+        if user_data is None:
+            user_data = await self.database_interface.get_user(chat_id)
+        userinfo = await self.get_text(chat_id, "USERINFO_ADMIN" if for_admin else "USERINFO", user_data)
+        userinfo += "\n" + await self.format_games_statistics(chat_id, user_data, for_admin)
+        await self.send_message(chat_id, userinfo, reply_markup=KeyboardManager.get_delete_keyboard())
 
     async def send_message(self, chat_id: int, text: str, parse_mode: str = None,
                            reply_markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardRemove]] = None,

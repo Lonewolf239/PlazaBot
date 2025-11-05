@@ -122,6 +122,7 @@ class DatabaseInterface:
                         email_code TEXT,
                         email_verified BOOLEAN,
                         selected_game INTEGER DEFAULT 0,
+                        games_played TEXT,
                         input_type INTEGER DEFAULT 0,
                         block_input BOOLEAN DEFAULT 0,
                         language TEXT,
@@ -317,6 +318,33 @@ class DatabaseInterface:
     async def get_selected_game(self, user_id: int) -> Optional[int]:
         return int(await self.get_user_data(user_id, "selected_game", 0))
 
+    async def get_games_played(self, user_id: int) -> Optional[dict]:
+        """
+        Возвращает словарь с количеством сыгранных игр по каждому game_id для указанного пользователя.
+
+        :param user_id: Идентификатор пользователя Telegram.
+        :return: Словарь формата {game_id: play_times}, где ключ — идентификатор игры (int),
+                 а значение — количество сыгранных партий (int). Если данных нет, возвращает пустой словарь.
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT games_played FROM users WHERE user_id = ?",
+                (user_id,))
+            row = await cursor.fetchone()
+            games_played_data = row[0] if row else None
+            if not games_played_data or games_played_data.strip() == "":
+                return {}
+            games_dict = {}
+            for entry in games_played_data.split('|'):
+                if not entry:
+                    continue
+                try:
+                    game_id, play_times = entry.split(':')
+                    games_dict[int(game_id)] = int(play_times)
+                except ValueError:
+                    continue
+            return games_dict
+
     async def get_language(self, user_id: int) -> Optional[str]:
         return await self.get_user_data(user_id, "language", "en")
 
@@ -356,10 +384,40 @@ class DatabaseInterface:
             async with aiosqlite.connect(self.db_path) as db:
                 async with db.execute("BEGIN"):
                     try:
-                        await db.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+                        await db.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?",
+                                         (amount, user_id))
                         if transaction_type == "win":
                             await db.execute("UPDATE users SET winnings = winnings + ? WHERE user_id = ?",
                                              (amount, user_id))
+                        if transaction_type == "bet":
+                            cursor = await db.execute("SELECT selected_game FROM users WHERE user_id = ?",
+                                                      (user_id,))
+                            row = await cursor.fetchone()
+                            selected_game = int(row[0]) if row else None
+                            if selected_game is not None:
+                                cursor = await db.execute("SELECT games_played FROM users WHERE user_id = ?",
+                                                          (user_id,))
+                                row = await cursor.fetchone()
+                                games_played_data = row[0] if row else None
+                                if not games_played_data or games_played_data.strip() == "":
+                                    games_played_data = f"{selected_game}:0|"
+                                games_list = [g for g in games_played_data.split('|') if g]
+                                game_found = False
+                                for i in range(len(games_list)):
+                                    try:
+                                        game_id, times = games_list[i].split(':')
+                                        if int(game_id) == selected_game:
+                                            times = int(times) + 1
+                                            games_list[i] = f"{game_id}:{times}"
+                                            game_found = True
+                                            break
+                                    except (ValueError, IndexError):
+                                        continue
+                                if not game_found:
+                                    games_list.append(f"{selected_game}:1")
+                                updated_games = "|".join(games_list) + "|"
+                                await db.execute("UPDATE users SET games_played = ? WHERE user_id = ?",
+                                                 (updated_games, user_id))
                         await db.execute(
                             "INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
                             (user_id, amount, transaction_type, description)

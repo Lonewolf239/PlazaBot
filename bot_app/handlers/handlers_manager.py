@@ -17,6 +17,11 @@ class HandlersManager:
     async def register_back(bot, callback_query: types.CallbackQuery):
         await bot.registration_menu(callback_query.message)
 
+    @staticmethod
+    async def games_start(bot, chat_id: int):
+        await bot.database_interface.update_balance(chat_id, 100, 'deposit')
+        await bot.database_interface.update_balance(chat_id, -100, 'bet')
+
     # ═════════════════ Настройки ═════════════════
     @staticmethod
     async def settings(bot, chat_id: int, user_data: dict[str, Any]):

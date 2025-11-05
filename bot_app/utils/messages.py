@@ -81,6 +81,22 @@ class Messages:
                 "Registration date: {registered_at}"
             )
         },
+        "USERINFO_NO_GAMES": {
+            "ru": "Данных об играх пока нет.",
+            "en": "There is no data on games yet."
+        },
+        "USERINFO_FOFAVORITE_GAME": {
+            "ru": "Любимая игра: favorite_game_name, [favorite_play_times]",
+            "en": "Favorite game: favorite_game_name, [favorite_play_times]"
+        },
+        "USERINFO_GAMES_LIST": {
+            "ru": "game_name, [count]",
+            "en": "game_name, [count]"
+        },
+        "USERINFO_GAMES_LIST_TITLE": {
+            "ru": "Всего игр",
+            "en": "Total games"
+        },
 
         # ════════════════════ Баланс ═══════════════════
         "BALANCE": {
