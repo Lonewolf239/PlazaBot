@@ -61,6 +61,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# TODO: Сделать рабочие вебхуки
 @app.post("https://njui7w-195-128-153-209.ru.tuna.am/payment/yookassa/webhook")
 async def yookassa_webhook(request: Request):
     body = await request.body()
