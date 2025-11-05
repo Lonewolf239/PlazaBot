@@ -3,14 +3,12 @@ import logging
 import asyncio
 from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
-
 import config
-from bot_app.database.db_manager import DatabaseInterface
-from bot_app.bot_manager import BotInterface
-from bot_app.payments.payment_gateway import PaymentGateway
+from bot_app.database import DatabaseInterface
+from bot_app import BotInterface
+from bot_app.payments import PaymentGateway
 from aiogram import Dispatcher, types, F
 from aiogram.filters import CommandStart
-
 from bot_app.referral import ReferralManager
 
 logger = logging.getLogger(__name__)

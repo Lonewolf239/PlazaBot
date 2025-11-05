@@ -86,7 +86,7 @@ class ReferralHandler:
                     bot.logger.error(f"Ошибка при закрытии test_bot в finally: {e}")
 
     @staticmethod
-    async def my_referrals(bot, chat_id: int, user_data: dict):
+    async def my_referrals(bot, chat_id: int, language_code: str):
         """Показывает статистику рефералов"""
         stats = await bot.database_interface.fetch_one(
             """SELECT

@@ -10,7 +10,6 @@ class DatabaseInterface:
     Предоставляет методы для создания таблиц, управления пользователями,
     их балансами и транзакциями, включая транзакции с внешними провайдерами.
     """
-
     def __init__(self, logger: logging.Logger, db_path: str = 'casino.db'):
         """
         Инициализирует DatabaseInterface.
@@ -611,76 +610,55 @@ class DatabaseInterface:
         """
         return await self.fetch_one("SELECT * FROM provider_transactions WHERE transaction_id = ?", (transaction_id,))
 
-    async def display_db(self) -> List[str]:
-        """
-        Возвращает список строк со всеми таблицами БД в полном составе с красивым форматированием.
-        Автоматически разбивает содержимое на куски.
-        """
+    async def get_tables(self):
+        tables = await self.fetch_all("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+        if not tables:
+            return False, ["❌ Таблицы не найдены."]
+        return True, [table.get('name') for table in tables]
+
+    async def display_table(self, table_name: str) -> List[str]:
         result = []
         try:
-            # Получаем список всех таблиц
-            tables = await self.fetch_all(
-                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-            )
-
-            if not tables:
-                return ["❌ Таблицы не найдены."]
-
-            # Начинаем с заголовка
-            output = "📊 <b>ПОЛНЫЙ СОСТАВ БД</b>\n\n"
-            max_chunk_size = 4000  # Безопасный размер (лимит Telegram - 4096)
-
-            for table_info in tables:
-                table_name = table_info.get('name')
-
-                # Получаем количество строк
-                row_count_result = await self.fetch_one(
-                    f"SELECT COUNT(*) as count FROM {table_name}"
-                )
-                row_count = row_count_result.get('count', 0) if row_count_result else 0
-
-                # Получаем информацию о столбцах
-                columns_info = await self.fetch_all(f"PRAGMA table_info({table_name})")
-                column_names = [col.get('name') for col in columns_info]
-
-                table_header = f"<b>📋 Таблица: {table_name}</b> (строк: {row_count})\n"
-                table_header += f"<code>Столбцы: {', '.join(column_names)}</code>\n"
-
-                # Получаем данные из таблицы
-                rows = await self.fetch_all(f"SELECT * FROM {table_name}")
-
-                table_data = ""
-                if rows:
-                    table_data += f"<b>Данные:</b>\n"
-                    for idx, row in enumerate(rows, 1):
-                        row_text = f"  <b>Запись {idx}:</b> <code>"
-                        row_data = ", ".join([f"{k}: {v}" for k, v in row.items()])
-                        row_text += row_data + "</code>\n"
-                        table_data += row_text
+            max_chunk_size = 4000
+            current_chunk = "📊 <b>╔═══ ПОЛНЫЙ СОСТАВ БД ═══╗</b>\n\n"
+            row_count_result = await self.fetch_one(f"SELECT COUNT(*) as count FROM {table_name}")
+            row_count = row_count_result.get('count', 0) if row_count_result else 0
+            columns_info = await self.fetch_all(f"PRAGMA table_info({table_name})")
+            column_names = [col.get('name') for col in columns_info]
+            table_header = f"\n<b>📋 {table_name.upper()}</b>\n"
+            table_header += f"<code>├─ Строк: {row_count}</code>\n"
+            table_header += f"<code>└─ Колонки: {', '.join(column_names)}</code>\n"
+            table_header += "─" * 40 + "\n"
+            rows = await self.fetch_all(f"SELECT * FROM {table_name}")
+            if len(current_chunk) + len(table_header) > max_chunk_size:
+                if len(current_chunk) > len("📊 <b>╔═══ ПОЛНЫЙ СОСТАВ БД ═══╗</b>\n\n"):
+                    result.append(current_chunk)
+                    current_chunk = table_header
                 else:
-                    table_data += "ℹ️ <i>Таблица пуста</i>\n"
-
-                table_data += "\n"
-
-                # Проверяем, поместится ли вся таблица в текущий чанк
-                if len(output) + len(table_header) + len(table_data) > max_chunk_size:
-                    # Если не поместится, сохраняем текущий чанк и начинаем новый
-                    if len(output) > len("📊 <b>ПОЛНЫЙ СОСТАВ БД</b>\n\n"):
-                        result.append(output)
-                    output = table_header + table_data
-                else:
-                    # Иначе добавляем таблицу к текущему чанку
-                    output += table_header + table_data
-
-            # Сохраняем последний чанк
-            if len(output) > len("📊 <b>ПОЛНЫЙ СОСТАВ БД</b>\n\n"):
-                result.append(output)
-
+                    current_chunk += table_header
+            else:
+                current_chunk += table_header
+            if rows:
+                for idx, row in enumerate(rows, 1):
+                    row_items = [f"<b>{k}:</b> <code>{v}</code>" for k, v in row.items()]
+                    row_text = f"<b>#{idx}</b> │ " + " │ ".join(row_items) + "\n"
+                    if len(current_chunk) + len(row_text) > max_chunk_size:
+                        if len(current_chunk) > len("📊 <b>╔═══ ПОЛНЫЙ СОСТАВ БД ═══╗</b>\n\n"):
+                            result.append(current_chunk)
+                            current_chunk = row_text
+                        else:
+                            current_chunk += row_text
+                    else:
+                        current_chunk += row_text
+                current_chunk += "\n"
+            else:
+                current_chunk += "<i>ℹ️ Таблица пуста</i>\n\n"
+            if len(current_chunk) > len("📊 <b>╔═══ ПОЛНЫЙ СОСТАВ БД ═══╗</b>\n\n"):
+                current_chunk += "\n<b>╚═══════════════════════╝</b>"
+                result.append(current_chunk)
             await self.log_info("Данные БД успешно подготовлены для отображения.")
             return result if result else ["ℹ️ Нет данных для отображения."]
-
         except Exception as e:
             error_msg = f"❌ Ошибка при выводе БД: {e}"
             await self.log_error(f"Ошибка в методе display_db: {e}")
             return [error_msg]
-

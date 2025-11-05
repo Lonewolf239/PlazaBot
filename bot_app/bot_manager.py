@@ -103,8 +103,9 @@ class BotInterface:
                                                       email_code=email_code,
                                                       input_type=2)
             await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_STEP_TWO"),
-                                    reply_markup=KeyboardManager.get_register_back_keyboard(
-                                        user_data.get("language", "en")))
+                                    reply_markup=KeyboardManager.get_back_keyboard(
+                                        user_data.get("language", "en"),
+                                        callback_data="register_back"))
             Email.send_email(input_text, email_code, Language.RUSSIAN if
             user_data.get("language", "en") == "ru" else Language.ENGLISH)
         else:
@@ -124,7 +125,6 @@ class BotInterface:
         if not bot_username:
             bot_info = await self.bot.get_me()
             bot_username = bot_info.username
-
         await self.referral_manager.process_user_action(
             user_id=user_id,
             bot_id=bot_username,
@@ -135,12 +135,9 @@ class BotInterface:
     async def on_start_command(self, message: types.Message):
         command = message.text[1:]
         chat_id = message.chat.id
-
         bot_info = await self.bot.get_me()
         current_bot_id = bot_info.username
-
         is_clone = await self.database_interface.is_clone_bot(current_bot_id)
-
         if is_clone:
             referrer_id = await self.database_interface.get_clone_bot_creator(current_bot_id)
             if referrer_id and referrer_id != chat_id:
@@ -156,14 +153,12 @@ class BotInterface:
                         VALUES (?, ?, ?)""",
                         (referrer_id, chat_id, current_bot_id)
                     )
-                    self.logger.info(f"✅ Создана реферальная связь: {referrer_id} -> {chat_id} (бот: {current_bot_id})")
-
+                    self.logger.info(f"✅ Создана реферальная связь: {referrer_id} -> "
+                                     f"{chat_id} (бот: {current_bot_id})")
         await self.registration_menu(message)
-
         block_input = await self.database_interface.get_block_input(chat_id)
         if block_input:
             return
-
         parts = command.split(maxsplit=1)
         if len(parts) > 1:
             start_param = parts[1]
@@ -210,6 +205,7 @@ class BotInterface:
 
         if command == "register_cancel":
             await HandlersManager.register_cancel(self, chat_id)
+            return
 
         if block_input:
             return
@@ -260,9 +256,12 @@ class BotInterface:
         elif command.startswith("admin-show-logs"):
             await HandlersManager.admin_show_logs(self, chat_id, command, user_data)
         elif command.startswith("admin-user"):
-            await HandlersManager.admin_user(self, chat_id, command)
-        elif command == "admin-show-bd":
-            await HandlersManager.admin_show_bd(self, chat_id)
+            await HandlersManager.admin_user(self, chat_id, command, user_data)
+        elif command == "admin-show-tables":
+            await HandlersManager.admin_show_tables(self, chat_id, user_data.get("language", "en"))
+        elif command.startswith("admin-tables"):
+            table = command.split(':')[1]
+            await HandlersManager.admin_show_table(self, chat_id, table, user_data)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":
@@ -270,7 +269,7 @@ class BotInterface:
         elif command == "referral-create":
             await ReferralHandler.create_clone_bot(self, chat_id, user_data)
         elif command == "referral-stats":
-            await ReferralHandler.my_referrals(self, chat_id, user_data)
+            await ReferralHandler.my_referrals(self, chat_id, user_data.get("language", "en"))
 
         # ═══════════════════ Прочее ══════════════════
         elif command == "rules":
@@ -331,10 +330,16 @@ class BotInterface:
 
         return response_text
 
-    async def send_userinfo(self, chat_id: int, user_data: Dict[str, Any] = None, for_admin: bool = False):
+    async def send_userinfo(self, chat_id: int, user_data: Dict[str, Any] = None,
+                            for_admin: bool = False, profile: bool = False):
         if user_data is None:
             user_data = await self.database_interface.get_user(chat_id)
-        userinfo = await self.get_text(chat_id, "USERINFO_ADMIN" if for_admin else "USERINFO", user_data)
+        tag = "USERINFO"
+        if profile:
+            tag = "PROFILE"
+        elif for_admin:
+            tag = "USERINFO_ADMIN"
+        userinfo = await self.get_text(chat_id, tag, user_data)
         userinfo = userinfo.replace("username",
                                     f"<a href='https://t.me/{(await self.bot.get_me()).username}?start=user_{user_data['hashed_username']}'>"
                                     f"{user_data['username']}</a>")
@@ -348,6 +353,8 @@ class BotInterface:
         Отправляет текстовое сообщение с опциональными параметрами parse_mode,
         клавиатурой и отключением предпросмотра ссылок.
         """
+        if reply_markup is None:
+            reply_markup = KeyboardManager.get_delete_keyboard()
         return await self.bot.send_message(
             chat_id=chat_id,
             text=text,

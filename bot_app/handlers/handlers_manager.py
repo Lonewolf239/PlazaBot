@@ -1,5 +1,6 @@
 from aiogram import types
 from typing import Any
+
 from bot_app.keyboards import KeyboardManager
 
 
@@ -68,7 +69,7 @@ class HandlersManager:
     async def user(bot, chat_id: int, command: str):
         username = command[len("user:"):]
         user = await bot.database_interface.get_user_by_username(username)
-        await bot.send_userinfo(chat_id, user)
+        await bot.send_userinfo(chat_id, user, profile=True)
         await bot.main_menu(chat_id)
 
     # ════════════════ Админ-панель ═══════════════
@@ -83,15 +84,16 @@ class HandlersManager:
     async def admin_summary(bot, chat_id: int, user_data: dict[str, Any]):
         needed, count, avg_bal, max_bal, min_bal = await bot.database_interface.get_needed()
         text = (
-            f"👥 {await bot.get_text(chat_id, "ADMIN_SUMMARY_COUNT")}: {count}\n"
-            f"💰 {await bot.get_text(chat_id, "ADMIN_SUMMARY_NEEDED")}: {int(needed)} руб\n"
-            f"📈 {await bot.get_text(chat_id, "ADMIN_SUMMARY_AVG_BALANCE")}: {int(avg_bal)} руб\n"
-            f"🔼 {await bot.get_text(chat_id, "ADMIN_SUMMARY_MAX_BALANCE")}: {max_bal}\n"
-            f"🔽 {await bot.get_text(chat_id, "ADMIN_SUMMARY_MIN_BALANCE")}: {min_bal}"
+            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_COUNT")}: {count}\n"
+            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_NEEDED")}: {int(needed)} руб\n"
+            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_AVG_BALANCE")}: {int(avg_bal)} руб\n"
+            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_MAX_BALANCE")}: {max_bal}\n"
+            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_MIN_BALANCE")}: {min_bal}"
         )
         await bot.send_message(chat_id, text,
-                               reply_markup=KeyboardManager.get_back_admin_keyboard(
-                                   user_data.get("language", "en")))
+                               reply_markup=KeyboardManager.get_back_keyboard(
+                                   user_data.get("language", "en"),
+                                   callback_data="admin-panel"))
 
     @staticmethod
     async def admin_list_players(bot, chat_id: int, command: str, user_data: dict[str, Any]):
@@ -110,16 +112,29 @@ class HandlersManager:
                                    user_data.get("language", "en"), page, add_next_page))
 
     @staticmethod
-    async def admin_show_bd(bot, chat_id: int):
-        bd = await bot.database_interface.display_db()
-        for chunk in bd:
-            await bot.send_message(chat_id, chunk)
+    async def admin_show_tables(bot, chat_id: int, language_code: str):
+        ok, tables = await bot.database_interface.get_tables()
+        if not ok:
+            await bot.send_message(chat_id, tables[0],
+                                   reply_markup=KeyboardManager.get_back_keyboard(
+                                       language_code,
+                                       callback_data="admin-panel"))
+            return
+        await bot.send_message(chat_id, "Таблицы:",
+                               reply_markup=KeyboardManager.get_tables_keyboard(tables, language_code))
 
     @staticmethod
-    async def admin_user(bot, chat_id: int, command: str):
+    async def admin_show_table(bot, chat_id: int, table: str, user_data: dict[str, Any]):
+        bd = await bot.database_interface.display_table(table)
+        for row in bd:
+            await bot.send_message(chat_id, row)
+        await HandlersManager.admin_panel(bot, chat_id, user_data)
+
+    @staticmethod
+    async def admin_user(bot, chat_id: int, command: str, user_data: dict[str, Any]):
         username = command[len("admin-user:"):]
         await bot.send_userinfo(chat_id, await bot.database_interface.get_user_by_username(username), True)
-        await bot.main_menu(chat_id)
+        await HandlersManager.admin_panel(bot, chat_id, user_data)
 
     @staticmethod
     async def rules(bot, chat_id: int, user_data: dict[str, Any]):

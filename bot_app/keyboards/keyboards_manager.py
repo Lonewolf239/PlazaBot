@@ -1,3 +1,4 @@
+from typing import List
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -25,11 +26,12 @@ class Messages:
         "ADMIN": {
             "summary": {"ru": "Сводка по балансу", "en": "Balance Summary"},
             "players": {"ru": "Список игроков", "en": "Player List"},
-            "logs": {"ru": "Логи событий", "en": "Event Logs"}
+            "logs": {"ru": "Логи событий", "en": "Event Logs"},
+            "database": {"ru": "Показать БД", "en": "Show Database"}
         },
         "REFERRAL": {
-            "create": {"ru": "Создать рефералку", "en": ""},
-            "stats": {"ru": "Статистика рефералки", "en": ""},
+            "create": {"ru": "Создать рефералку", "en": "Create Referral"},
+            "stats": {"ru": "Статистика рефералки", "en": "Referral Stats"},
         },
         "OTHERS": {
             "cancel": {"ru": "Отмена", "en": "Cancel"},
@@ -60,7 +62,8 @@ class Messages:
         "ADMIN": {
             "summary": "📊",
             "players": "👥",
-            "logs": "🗒️"
+            "logs": "🗒️",
+            "database": "🗄️"
         },
         "REFERRAL": {
             "create": "➕",
@@ -80,10 +83,9 @@ class Messages:
 class KeyboardManager:
 
     @staticmethod
-    def get_back_keyboard(language_code) -> InlineKeyboardMarkup:
+    def get_back_keyboard(language_code, callback_data: str = "back") -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
-                  callback_data="back")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code), callback_data=callback_data)
         kb.adjust(1)
         return kb.as_markup()
 
@@ -120,14 +122,6 @@ class KeyboardManager:
         kb = InlineKeyboardBuilder()
         kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
                   callback_data="register_cancel")
-        kb.adjust(1)
-        return kb.as_markup()
-
-    @staticmethod
-    def get_register_back_keyboard(language_code: str) -> InlineKeyboardMarkup:
-        kb = InlineKeyboardBuilder()
-        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
-                  callback_data="register_back")
         kb.adjust(1)
         return kb.as_markup()
 
@@ -172,17 +166,10 @@ class KeyboardManager:
                   callback_data="admin-list-players")
         kb.button(text=Messages.get_text("ADMIN", "logs", language_code),
                   callback_data="admin-show-logs")
-        kb.button(text="Показать бд", callback_data="admin-show-bd")
+        kb.button(text=Messages.get_text("ADMIN", "database", language_code),
+                  callback_data="admin-show-tables")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
-        kb.adjust(1)
-        return kb.as_markup()
-
-    @staticmethod
-    def get_back_admin_keyboard(language_code) -> InlineKeyboardMarkup:
-        kb = InlineKeyboardBuilder()
-        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
-                  callback_data="admin-panel")
         kb.adjust(1)
         return kb.as_markup()
 
@@ -213,6 +200,16 @@ class KeyboardManager:
         if add_next_page:
             nav_buttons.append(InlineKeyboardButton(text="▶️", callback_data=f"admin-list-players:{page + 1}"))
         kb.row(*nav_buttons)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_tables_keyboard(tables: List[str], language_code) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        for table in tables:
+            kb.button(text=table, callback_data=f"admin-tables:{table}")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="admin-panel")
+        kb.adjust(1)
         return kb.as_markup()
 
     @staticmethod
