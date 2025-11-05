@@ -59,10 +59,12 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
+
 app = FastAPI(lifespan=lifespan)
 
+
 # TODO: Сделать рабочие вебхуки
-@app.post("https://njui7w-195-128-153-209.ru.tuna.am/payment/yookassa/webhook")
+@app.post("/payment/yookassa/webhook")
 async def yookassa_webhook(request: Request):
     body = await request.body()
     headers = dict(request.headers)
@@ -72,7 +74,8 @@ async def yookassa_webhook(request: Request):
     )
     return result
 
-@app.post("https://njui7w-195-128-153-209.ru.tuna.am/payment/cryptomus/webhook")
+
+@app.post("/payment/cryptomus/webhook")
 async def cryptomus_webhook(request: Request):
     body = await request.body()
     headers = dict(request.headers)
@@ -81,6 +84,7 @@ async def cryptomus_webhook(request: Request):
         request_headers=headers
     )
     return result
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

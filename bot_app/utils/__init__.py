@@ -1,3 +1,3 @@
 from .messages import Messages
 from .transaction_statuses import TransactionStatus
-from .smtp import Email
+from .smtp import Email, Language

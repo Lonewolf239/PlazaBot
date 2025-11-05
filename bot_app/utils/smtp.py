@@ -106,10 +106,13 @@ class Email:
         }}
     </style>
 </head>
-<body style="margin: 0; padding: 0; background: linear-gradient(135deg, {EmailConfig.BACKGROUND_COLOR} 0%, #0f1229 100%); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; min-height: 100vh;">
+<body style="margin: 0; padding: 0; background: linear-gradient(135deg, {EmailConfig.BACKGROUND_COLOR} 0%, #0f1229 
+100%); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; min-height: 
+100vh;">
 
     <!-- Main Container -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, {EmailConfig.BACKGROUND_COLOR} 0%, #0f1229 100%); padding: 60px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, 
+{EmailConfig.BACKGROUND_COLOR} 0%, #0f1229 100%); padding: 60px 20px;">
         <tr>
             <td align="center">
                 <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
@@ -117,7 +120,8 @@ class Email:
                     <!-- Logo/Header Section -->
                     <tr>
                         <td style="padding-bottom: 30px; text-align: center;">
-                            <div style="font-size: 24px; font-weight: 700; color: {EmailConfig.ACCENT_COLOR}; letter-spacing: 2px;">
+                            <div style="font-size: 24px; font-weight: 700; color: 
+{EmailConfig.ACCENT_COLOR}; letter-spacing: 2px;">
                                 PLAZA
                             </div>
                         </td>
@@ -125,30 +129,43 @@ class Email:
 
                     <!-- Main Card with Border -->
                     <tr>
-                        <td style="background-color: {EmailConfig.CARD_BACKGROUND}; border: 1px solid {EmailConfig.CARD_BORDER}; border-radius: 24px; padding: 70px 50px; text-align: center; box-shadow: 0 20px 60px rgba(0, 217, 255, 0.05);" class="card-padding">
+                        <td style="background-color: {EmailConfig.CARD_BACKGROUND}; border: 1px solid 
+{EmailConfig.CARD_BORDER}; border-radius: 24px; padding: 70px 50px; text-align: center; 
+box-shadow: 0 20px 60px rgba(0, 217, 255, 0.05);" class="card-padding">
 
                             <!-- Welcome Message -->
                             <div style="margin-bottom: 50px;">
-                                <div style="font-size: 16px; color: {EmailConfig.TEXT_COLOR}; font-weight: 600; margin-bottom: 12px;">
+                                <div style="font-size: 16px; color: 
+{EmailConfig.TEXT_COLOR}; font-weight: 600; margin-bottom: 12px;">
                                     {texts['verification_code']}
                                 </div>
                             </div>
 
                             <!-- Code Display with Accent Background -->
-                            <div style="background: rgba(0, 217, 255, 0.08); border: 2px solid rgba(0, 217, 255, 0.2); border-radius: 16px; padding: 40px; margin-bottom: 50px;">
-                                <div style="font-size: 14px; color: {EmailConfig.SECONDARY_TEXT_COLOR}; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 2px; font-weight: 500;">
+                            <div style="background: rgba(0, 217, 255, 0.08); 
+                            border: 2px solid rgba(0, 217, 255, 0.2); border-radius: 16px; 
+                            padding: 40px; margin-bottom: 50px;">
+                                <div style="font-size: 14px; color: {EmailConfig.SECONDARY_TEXT_COLOR}; 
+                                margin-bottom: 16px; text-transform: uppercase; letter-spacing: 2px; 
+                                font-weight: 500;">
                                     {texts['verification_code']}
                                 </div>
-                                <div style="font-size: 52px; font-weight: 800; letter-spacing: 14px; color: {EmailConfig.ACCENT_COLOR}; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; word-break: break-all; line-height: 1.2;" class="code-display">
+                                <div style="font-size: 52px; font-weight: 800; letter-spacing: 14px; 
+                                color: {EmailConfig.ACCENT_COLOR}; 
+                                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 
+                                monospace; word-break: break-all; line-height: 1.2;" class="code-display">
                                     {code}
                                 </div>
                             </div>
 
                             <!-- Divider -->
-                            <div style="height: 1px; background: linear-gradient(90deg, transparent, {EmailConfig.CARD_BORDER}, transparent); margin: 40px 0;"></div>
+                            <div style="height: 1px; 
+                            background: linear-gradient(90deg, transparent, {EmailConfig.CARD_BORDER}, transparent);
+                             margin: 40px 0;"></div>
 
                             <!-- Message -->
-                            <div style="color: {EmailConfig.SECONDARY_TEXT_COLOR}; font-size: 15px; line-height: 1.7; margin-bottom: 50px;">
+                            <div style="color: {EmailConfig.SECONDARY_TEXT_COLOR}; font-size: 15px; line-height: 1.7;
+                             margin-bottom: 50px;">
                                 {texts['enter_code']}
                             </div>
 
@@ -158,8 +175,12 @@ class Email:
                                     <td align="center">
                                         <table cellpadding="0" cellspacing="0">
                                             <tr>
-                                                <td style="background: linear-gradient(135deg, {EmailConfig.ACCENT_COLOR} 0%, {EmailConfig.ACCENT_DARK} 100%); border-radius: 12px; padding: 16px 48px; box-shadow: 0 10px 30px rgba(0, 217, 255, 0.2);">
-                                                    <a href="https://t.me/{EmailConfig.BOT_USERNAME}" style="color: {EmailConfig.BACKGROUND_COLOR}; text-decoration: none; font-weight: 700; font-size: 15px; display: block; letter-spacing: 0.5px;">
+                                                <td style="background: linear-gradient(135deg, 
+{EmailConfig.ACCENT_COLOR} 0%, {EmailConfig.ACCENT_DARK} 100%); border-radius: 12px; 
+padding: 16px 48px; box-shadow: 0 10px 30px rgba(0, 217, 255, 0.2);">
+                                                    <a href="https://t.me/{EmailConfig.BOT_USERNAME}" style="color: 
+{EmailConfig.BACKGROUND_COLOR}; text-decoration: none; font-weight: 700; font-size: 15px; display: block;
+ letter-spacing: 0.5px;">
                                                         → {texts['open_bot']}
                                                     </a>
                                                 </td>
@@ -177,7 +198,8 @@ class Email:
                         <td style="padding-top: 40px; text-align: center;">
                             <div style="font-size: 12px; color: {EmailConfig.SECONDARY_TEXT_COLOR}; line-height: 1.6;">
                                 <p style="margin: 0 0 8px 0;">© 2025 Plaza. All rights reserved.</p>
-                                <p style="margin: 0; opacity: 0.6;">This is an automated message. Please don't reply to this email.</p>
+                                <p style="margin: 0; opacity: 0.6;">This is an automated message. 
+                                Please don't reply to this email.</p>
                             </div>
                         </td>
                     </tr>

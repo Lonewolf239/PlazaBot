@@ -1,17 +1,20 @@
 from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
-from bot_app.keyboards.keyboards_manager import KeyboardManager
+from bot_app.keyboards import KeyboardManager
 from bot_app.games import CasinoSlot
-from bot_app.database.db_manager import DatabaseInterface
+from bot_app.database import DatabaseInterface
 from bot_app.payments import PaymentGateway
-from bot_app.utils.messages import Messages
-from bot_app.utils.smtp import Email, Language
+from bot_app.utils import Messages
+from bot_app.utils import Email, Language
+from bot_app.handlers import HandlersManager
 
-CasinoGames = [CasinoSlot(),]
 PAGE_LIMIT = 16
 
+
 class BotInterface:
+    CasinoGames = [CasinoSlot(), ]
+
     def __init__(self, db_interface: DatabaseInterface, token: str, admins_id: list):
         self.database_interface = db_interface
         self.bot = Bot(token)
@@ -33,8 +36,8 @@ class BotInterface:
         language = user_data["language"]
         text_template = Messages.TEXT[tag].get(language, tag)
         text_template = text_template.replace("{selected_game}",
-                                              f"{CasinoGames[user_data["selected_game"]].icon} "
-                                              f"{CasinoGames[user_data["selected_game"]].name[user_data["language"]]}")
+                                              f"{self.CasinoGames[user_data["selected_game"]].icon} "
+                                              f"{self.CasinoGames[user_data["selected_game"]].name[user_data["language"]]}")
         return text_template.format(**user_data)
 
     @staticmethod
@@ -53,13 +56,13 @@ class BotInterface:
             chat_id,
             await self.get_text(chat_id, "MAIN_MENU"),
             parse_mode="HTML",
-            reply_markup=KeyboardManager.get_main_keyboard(CasinoGames[selected_game].icon,
+            reply_markup=KeyboardManager.get_main_keyboard(self.CasinoGames[selected_game].icon,
                                                            chat_id in self.admins_id,
                                                            await self.database_interface.get_language(chat_id))
         )
 
-    async def registration_menu(self, message: types.Message, registration_type = 0, first_message = "REGISTRATION",
-                                ignore_db = False):
+    async def registration_menu(self, message: types.Message, registration_type=0, first_message="REGISTRATION",
+                                ignore_db=False):
         chat_id = message.chat.id
         user_data = await self.database_interface.get_user(chat_id)
         if not user_data:
@@ -72,7 +75,8 @@ class BotInterface:
         if registration_type == 0:
             await self.database_interface.update_user(chat_id, email_verified=False, block_input=True, input_type=1)
             await self.send_message(chat_id, await self.get_text(chat_id, first_message),
-                                    reply_markup=KeyboardManager.get_register_cancel_keyboard(user_data.get("language", "en")))
+                                    reply_markup=KeyboardManager.get_register_cancel_keyboard(
+                                        user_data.get("language", "en")))
         elif registration_type == 1:
             input_text = message.text.strip()
             if not Email.is_valid_email(input_text):
@@ -84,7 +88,8 @@ class BotInterface:
                                                       email_code=email_code,
                                                       input_type=2)
             await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_STEP_TWO"),
-                                    reply_markup=KeyboardManager.get_register_back_keyboard(user_data.get("language", "en")))
+                                    reply_markup=KeyboardManager.get_register_back_keyboard(
+                                        user_data.get("language", "en")))
             Email.send_email(input_text, email_code, Language.RUSSIAN if
             user_data.get("language", "en") == "ru" else Language.ENGLISH)
         else:
@@ -140,7 +145,6 @@ class BotInterface:
 
     async def on_inline_button(self, callback_query: types.CallbackQuery):
         command = callback_query.data
-
         if not command:
             return
 
@@ -154,100 +158,57 @@ class BotInterface:
         block_input = user_data.get("block_input", False)
 
         if command == "register_cancel":
-            await self.database_interface.update_user(chat_id,
-                                                      input_type=0,
-                                                      email_verified=True,
-                                                      block_input=False)
-            await self.main_menu(chat_id)
+            await HandlersManager.register_cancel(self, chat_id)
 
         if block_input:
             return
+
         if command == "back":
             await self.main_menu(chat_id)
 
         # ════════════════ Регистрация ════════════════
         elif command == "register_back":
-            await self.registration_menu(callback_query.message)
+            await HandlerManager.register_back(self, callback_query)
 
         # ═════════════════ Настройки ═════════════════
         elif command == "settings":
-            text = str(await self.get_text(chat_id, "SETTINGS"))
-            text = text.replace("semga05@mail.ru", "None")
-            await self.send_message(chat_id, text,
-                                    reply_markup=KeyboardManager.get_settings_keyboard(user_data.get("language", "en")))
+            await HandlersManager.settings(self, chat_id, user_data)
         elif command == "change-game":
             pass
         elif command == "change-language":
-            await self.send_message(chat_id, await self.get_text(chat_id, "CHANGE_LANGUAGE"),
-                                    reply_markup=KeyboardManager.get_language_keyboard())
+            await HandlersManager.change_language(self, chat_id)
         elif command == "change-email":
-            await self.registration_menu(callback_query.message, first_message="CHANGE_EMAIL", ignore_db=True)
+            await HandlersManager.change_email(self, callback_query)
         elif command.startswith("language"):
-            language_code = command[len("language:"):]
-            await self.database_interface.update_user(chat_id, language=language_code)
-            await self.main_menu(chat_id)
+            await HandlersManager.language(self, chat_id, command)
 
         # ═══════════════════ Баланс ══════════════════
         elif command == "balance":
-            await self.send_message(chat_id, await self.get_text(chat_id, "BALANCE"),
-                                    reply_markup=KeyboardManager.get_balance_keyboard(user_data.get("language", "en")))
+            await HandlersManager.balance(self, chat_id, user_data)
         elif command == "balance-deposit":
-            providers = self.payment_gateway.get_providers("deposit")
-            text = "\n".join([p.get_provider_name() for p in providers])
-            await self.send_message(chat_id, text)
-            deposit = await self.payment_gateway.initiate_deposit(chat_id, 100, providers[0].get_provider_name(), "RUB")
-            await self.send_message(chat_id, deposit.get("payment_url"))
+            await HandlersManager.balance_deposit(self, chat_id)
         elif command == "balance-withdraw":
-            providers = self.payment_gateway.get_providers("withdraw")
-
+            await HandlersManager.balance_withdraw(self, chat_id)
 
         # ════════════════ Пользователь ═══════════════
         elif command.startswith("user"):
-            username = command[len("user:"):]
-            user = await self.database_interface.get_user_by_username(username)
-            await self.send_userinfo(chat_id, user)
-            await self.main_menu(chat_id)
+            await HandlersManager.user(self, chat_id, command)
 
         # ════════════════ Админ-панель ═══════════════
         elif command == "admin-panel":
-            if chat_id not in self.admins_id:
-                return
-            await self.send_message(chat_id, await self.get_text(chat_id, "ADMIN_PANEL"),
-                                    reply_markup=KeyboardManager.get_admin_keyboard(user_data.get("language", "en")))
+            await HandlersManager.admin_panel(self, chat_id, user_data)
         elif command == "admin-summary":
-            needed, count, avg_bal, max_bal, min_bal = await self.database_interface.get_needed()
-            text = (
-                f"👥 {await self.get_text(chat_id, "ADMIN_SUMMARY_COUNT")}: {count}\n"
-                f"💰 {await self.get_text(chat_id, "ADMIN_SUMMARY_NEEDED")}: {int(needed)} руб\n"
-                f"📈 {await self.get_text(chat_id, "ADMIN_SUMMARY_AVG_BALANCE")}: {int(avg_bal)} руб\n"
-                f"🔼 {await self.get_text(chat_id, "ADMIN_SUMMARY_MAX_BALANCE")}: {max_bal}\n"
-                f"🔽 {await self.get_text(chat_id, "ADMIN_SUMMARY_MIN_BALANCE")}: {min_bal}"
-            )
-            await self.send_message(chat_id, text,
-                                    reply_markup=KeyboardManager.get_admin_keyboard(user_data.get("language", "en")))
+            await HandlersManager.admin_summary(self, chat_id, user_data)
         elif command.startswith("admin-list-players"):
-            page = int(command.split(':')[1]) if ':' in command else 1
-            text, lines, add_next_page = await self.get_users_page(page)
-            await self.send_message(chat_id, text,
-                                    reply_markup=KeyboardManager.get_users_keyboard(
-                                        user_data.get("language", "en"), lines, page, add_next_page))
-            pass
+            await HandlersManager.admin_list_players(self, chat_id, command, user_data)
         elif command.startswith("admin-show-logs"):
-            page = int(command.split(':')[1]) if ':' in command else 1
-            text, add_next_page = await self.get_logs_page(page)
-            await self.send_message(chat_id, text,
-                                    reply_markup=KeyboardManager.get_logs_keyboard(
-                                        user_data.get("language", "en"), page, add_next_page))
+            await HandlersManager.admin_show_logs(self, chat_id, command, user_data)
         elif command.startswith("admin-user"):
-            username = command[len("admin-user:"):]
-            await self.send_userinfo(chat_id, await self.database_interface.get_user_by_username(username), True)
-            await self.main_menu(chat_id)
+            await HandlersManager.admin_user(self, chat_id, command)
 
         # ═══════════════════ Прочее ══════════════════
         elif command == "rules":
-            await self.send_message(chat_id,
-                                    CasinoGames[user_data.get("selected_game", 0)].rules(user_data.get("language", "en")),
-                                    reply_markup=KeyboardManager.get_back_keyboard(user_data.get("language", "en")))
+            await HandlersManager.rules(self, chat_id, user_data)
         else:
             await self.send_message(chat_id, command)
 
@@ -276,7 +237,8 @@ class BotInterface:
         return text, add_next_page
 
     async def send_userinfo(self, chat_id: int, user_data: Dict[str, Any], for_admin: bool = False):
-        await self.send_message(chat_id, await self.get_text(chat_id, "USERINFO_ADMIN" if for_admin else "USERINFO", user_data),
+        await self.send_message(chat_id,
+                                await self.get_text(chat_id, "USERINFO_ADMIN" if for_admin else "USERINFO", user_data),
                                 reply_markup=KeyboardManager.get_delete_keyboard())
 
     async def send_message(self, chat_id: int, text: str, parse_mode: str = None,

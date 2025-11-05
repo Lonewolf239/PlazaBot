@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+
 class Messages:
     TEXT = {
         "MAIN_MENU": {
@@ -63,6 +64,7 @@ class Messages:
     @staticmethod
     def get_text(tag, button, language):
         return f"{Messages.ICONS[tag][button]} {Messages.TEXT[tag][button][language]}"
+
 
 class KeyboardManager:
     @staticmethod
@@ -156,6 +158,14 @@ class KeyboardManager:
         kb.button(text=Messages.get_text("ADMIN", "logs", language_code),
                   callback_data="admin-show-logs")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="back")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_back_admin_keyboard(language_code):
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="admin-panel")
         kb.adjust(1)
         return kb.as_markup()
@@ -187,4 +197,3 @@ class KeyboardManager:
             nav_buttons.append(InlineKeyboardButton(text="▶️", callback_data=f"admin-list-players:{page + 1}"))
         kb.row(*nav_buttons)
         return kb.as_markup()
-

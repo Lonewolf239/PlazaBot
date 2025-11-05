@@ -94,9 +94,10 @@ class PaymentGateway:
             description=description
         )
 
-        await self._database_interface.log_info(f"RECORD TRANSACTION: TxID: {internal_transaction_id}, User: {user_id}, "
-                                                 f"Provider: {provider_name}, Type: {transaction_type}, Amount: {amount} {currency}, "
-                                                 f"Status: {status}")
+        await self._database_interface.log_info(
+            f"RECORD TRANSACTION: TxID: {internal_transaction_id}, User: {user_id}, "
+            f"Provider: {provider_name}, Type: {transaction_type}, Amount: {amount} {currency}, "
+            f"Status: {status}")
         return internal_transaction_id
 
     async def _update_transaction_status(self, internal_transaction_id: str, status: str, message: str = ""):
@@ -107,8 +108,9 @@ class PaymentGateway:
             message=message
         )
 
-        await self._database_interface.log_info(f"UPDATE TRANSACTION STATUS: TxID: {internal_transaction_id}, New Status: {status}, "
-                                                f"Message: {message}")
+        await self._database_interface.log_info(
+            f"UPDATE TRANSACTION STATUS: TxID: {internal_transaction_id}, New Status: {status}, "
+            f"Message: {message}")
 
     def get_providers(self, provider_type: str) -> list[IProvider]:
         """
@@ -191,7 +193,8 @@ class PaymentGateway:
         """Перенаправляет уведомление о пополнении соответствующему провайдеру."""
         provider = self._provider_factory.get_provider(provider_name)
         if not provider:
-            await self._database_interface.log_error(f"PaymentGateway: Provider '{provider_name}' not found for notification handling.")
+            await self._database_interface.log_error(
+                f"PaymentGateway: Provider '{provider_name}' not found for notification handling.")
             return {"status": "failed", "message": "Provider not found"}
 
         try:
@@ -244,11 +247,13 @@ class PaymentGateway:
                 await self._update_transaction_status(
                     internal_transaction_id=internal_transaction_id,
                     status=TransactionStatus.PENDING_WITHDRAWAL_REVIEW,
-                    message=f"Withdrawal initiated, awaiting review. {provider_message}. Provider TxID: {provider_tx_id}"
+                    message=f"Withdrawal initiated, awaiting review. {provider_message}. "
+                            f"Provider TxID: {provider_tx_id}"
                 )
 
                 await self._database_interface.update_balance(user_id, -amount, transaction_type="withdrawal",
-                                                              description=f"Withdrawal initiated: {internal_transaction_id}")
+                                                              description=f"Withdrawal initiated: "
+                                                                          f"{internal_transaction_id}")
 
                 await self._bot.send_message(user_id, f"Your withdrawal request of {amount:.2f} "
                                                       f"{currency} has been submitted and is awaiting review.")
@@ -267,7 +272,8 @@ class PaymentGateway:
                 )
 
                 await self._database_interface.update_balance(user_id, -amount, transaction_type="withdrawal",
-                                                              description=f"Withdrawal succeeded: {internal_transaction_id}")
+                                                              description=f"Withdrawal succeeded: "
+                                                                          f"{internal_transaction_id}")
 
                 await self._bot.send_message(user_id, f"Your withdrawal of {amount:.2f} "
                                                       f"{currency} has been successfully processed.")
@@ -319,7 +325,8 @@ class PaymentGateway:
         """
         transaction = await self._database_interface.get_provider_transaction(internal_transaction_id)
         if not transaction:
-            await self._database_interface.log_error(f"PaymentGateway: Transaction {internal_transaction_id} not found.")
+            await self._database_interface.log_error(
+                f"PaymentGateway: Transaction {internal_transaction_id} not found.")
             return {"status": "failed", "message": "Transaction not found."}
 
         provider_name = transaction.get("provider_name")

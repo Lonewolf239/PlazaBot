@@ -41,7 +41,8 @@ class YookassaProvider(IProvider):
         :param logger: Экземпляр логгера.
         :param bot: Экземпляр бота (для отправки сообщений пользователям).
         :param database_interface: Интерфейс для работы с базой данных.
-        :param yookassa_config: Словарь с конфигурацией Yookassa (account_id, secret_key, return_url, webhook_url, receipt_vat_code).
+        :param yookassa_config: Словарь с конфигурацией Yookassa (account_id, secret_key, return_url,
+        webhook_url, receipt_vat_code).
         """
         super().__init__()
         self.has_deposit = True
@@ -104,7 +105,8 @@ class YookassaProvider(IProvider):
         :return: Словарь с результатом операции (status, url, provider_transaction_id, transaction_id).
         """
         self.logger.info(
-            f"YookassaProvider: Initiating deposit for user {user_id}, amount {amount:.2f} {currency}, TxID: {internal_transaction_id}")
+            f"YookassaProvider: Initiating deposit for user {user_id}, amount {amount:.2f} {currency}, "
+            f"TxID: {internal_transaction_id}")
 
         user_email = await self.database_interface.get_email(user_id)
 
@@ -184,7 +186,8 @@ class YookassaProvider(IProvider):
 
             if not payment.metadata or not payment.metadata.get("transaction_id"):
                 logger.error(
-                    f"YookassaProvider: Missing 'transaction_id' in metadata for payment {payment_id}. Notification data: {notification_data}")
+                    f"YookassaProvider: Missing 'transaction_id' in metadata for payment {payment_id}. "
+                    f"Notification data: {notification_data}")
                 return {"status": "failed", "message": "Missing transaction ID in metadata."}
 
             internal_transaction_id = payment.metadata.get("transaction_id")
@@ -192,7 +195,8 @@ class YookassaProvider(IProvider):
             transaction_record = await db_interface.get_provider_transaction(internal_transaction_id)
             if not transaction_record:
                 logger.error(
-                    f"YookassaProvider: Internal transaction {internal_transaction_id} not found for payment {payment_id}.")
+                    f"YookassaProvider: Internal transaction {internal_transaction_id} not found for "
+                    f"payment {payment_id}.")
                 return {"status": "failed", "message": "Internal transaction not found."}
 
             user_id = transaction_record.get("user_id")
@@ -205,7 +209,8 @@ class YookassaProvider(IProvider):
                                         TransactionStatus.DEPOSIT_FAILED,
                                         TransactionStatus.PAYMENT_CANCELED]:
                 logger.info(
-                    f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) already processed with status {current_status_in_db}. Skipping notification.")
+                    f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) "
+                    f"already processed with status {current_status_in_db}. Skipping notification.")
                 return {
                     "status": "already_processed",
                     "message": f"Payment already processed with status: {current_status_in_db}"
@@ -222,7 +227,8 @@ class YookassaProvider(IProvider):
                     )
                     if not success:
                         logger.error(
-                            f"YookassaProvider: Failed to update balance for user {user_id} after payment {payment_id}.")
+                            f"YookassaProvider: Failed to update balance for user {user_id} "
+                            f"after payment {payment_id}.")
                         await db_interface.update_transaction_status(
                             transaction_id=internal_transaction_id,
                             status=TransactionStatus.INTERNAL_ERROR,
@@ -235,11 +241,13 @@ class YookassaProvider(IProvider):
                     )
                     await bot.send_message(user_id, f"Ваш баланс успешно пополнен на {amount:.2f} {currency}.")
                     logger.info(
-                        f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) succeeded. User {user_id} balance updated by {amount:.2f} {currency}.")
+                        f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) "
+                        f"succeeded. User {user_id} balance updated by {amount:.2f} {currency}.")
                     return {"status": "succeeded", "message": "Deposit successfully processed."}
                 else:
                     logger.warning(
-                        f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) succeeded, but internal status is '{current_status_in_db}'. Ignoring.")
+                        f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) "
+                        f"succeeded, but internal status is '{current_status_in_db}'. Ignoring.")
                     return {"status": "skipped", "message": "Payment succeeded, but internal status did not match."}
 
             elif event == "payment.canceled":
@@ -251,21 +259,25 @@ class YookassaProvider(IProvider):
                     )
                     await bot.send_message(user_id, "Оплата была отменена.")
                     logger.info(
-                        f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) canceled by user {user_id}.")
+                        f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) "
+                        f"canceled by user {user_id}.")
                     return {"status": "canceled", "message": "Deposit canceled."}
                 else:
                     logger.warning(
-                        f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) canceled, but internal status is '{current_status_in_db}'. Ignoring.")
+                        f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) "
+                        f"canceled, but internal status is '{current_status_in_db}'. Ignoring.")
                     return {"status": "skipped", "message": "Payment canceled, but internal status did not match."}
 
             elif event == "payment.waiting_for_refund":
                 logger.warning(
-                    f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) is waiting for refund. Current status: {current_status_in_db}")
+                    f"YookassaProvider: Payment {payment_id} (TxID: {internal_transaction_id}) is "
+                    f"waiting for refund. Current status: {current_status_in_db}")
                 return {"status": "refund_pending", "message": "Payment is waiting for refund."}
 
             elif event == "refund.succeeded":
                 logger.info(
-                    f"YookassaProvider: Refund succeeded for payment {payment_id} (TxID: {internal_transaction_id}). Current status: {current_status_in_db}")
+                    f"YookassaProvider: Refund succeeded for payment {payment_id} "
+                    f"(TxID: {internal_transaction_id}). Current status: {current_status_in_db}")
 
                 if current_status_in_db == TransactionStatus.DEPOSIT_SUCCEEDED:
                     success = await db_interface.update_balance(
@@ -275,7 +287,8 @@ class YookassaProvider(IProvider):
 
                     if not success:
                         logger.error(
-                            f"YookassaProvider: Failed to update balance (refund) for user {user_id} after payment {payment_id}.")
+                            f"YookassaProvider: Failed to update balance (refund) for user {user_id} "
+                            f"after payment {payment_id}.")
                         await db_interface.update_transaction_status(
                             transaction_id=internal_transaction_id,
                             status=TransactionStatus.INTERNAL_ERROR,
@@ -351,10 +364,12 @@ class YookassaProvider(IProvider):
         :return: Словарь с результатом обработки.
         """
         self.logger.warning(
-            f"YookassaProvider: handle_withdrawal_callback called for TxID {transaction_id}. Status: {status}. Details: {details}")
+            f"YookassaProvider: handle_withdrawal_callback called for TxID {transaction_id}. "
+            f"Status: {status}. Details: {details}")
 
         message = details.get('message',
-                              'Withdrawal status callback received.') if details else 'Withdrawal status callback received.'
+                              'Withdrawal status callback received.') \
+            if details else 'Withdrawal status callback received.'
 
         if status == "failed" and details and "reason" in details:
             message = f"Withdrawal failed: {details['reason']}"

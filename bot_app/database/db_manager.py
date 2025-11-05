@@ -59,7 +59,8 @@ class DatabaseInterface:
         Настраивает `row_factory` для возврата строк в виде словарей.
         :param query: SQL-запрос для выполнения.
         :param params: Кортеж параметров для подстановки в запрос.
-        :return: Список словарей, каждый из которых представляет строку результата. Возвращает пустой список, если строк не найдено.
+        :return: Список словарей, каждый из которых представляет строку результата. Возвращает пустой список,
+        если строк не найдено.
         """
         try:
             async with aiosqlite.connect(self.db_path) as db:
@@ -71,19 +72,19 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при выполнении запроса '{query}' с параметрами {params} (fetch all): {e}")
             raise
 
-    async def log_info(self, message: str, exc_info = None):
+    async def log_info(self, message: str, exc_info=None):
         await self._execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "info"))
         self.logger.info(message, exc_info=exc_info)
 
-    async def log_debug(self, message: str, exc_info = None):
+    async def log_debug(self, message: str, exc_info=None):
         await self._execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "debug"))
         self.logger.info(message, exc_info=exc_info)
 
-    async def log_error(self, message: str, exc_info = None):
+    async def log_error(self, message: str, exc_info=None):
         await self._execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "error"))
         self.logger.error(message, exc_info=exc_info)
 
-    async def log_warning(self, message: str, exc_info = None):
+    async def log_warning(self, message: str, exc_info=None):
         await self._execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "warning"))
         self.logger.warning(message, exc_info=exc_info)
 
@@ -94,7 +95,8 @@ class DatabaseInterface:
         row_sum = await self._fetch_one("SELECT SUM(balance) AS total_balance FROM users;")
         needed = row_sum.get("total_balance", 0) or 0
         row_stats = await self._fetch_one(
-            "SELECT COUNT(*) AS count, AVG(balance) AS avg_balance, MAX(balance) AS max_balance, MIN(balance) AS min_balance FROM users;"
+            "SELECT COUNT(*) AS count, AVG(balance) AS avg_balance, MAX(balance) AS max_balance, MIN(balance) "
+            "AS min_balance FROM users;"
         )
         count = row_stats.get("count", 0) or 0
         avg_bal = row_stats.get("avg_balance", 0.0) or 0.0
@@ -210,7 +212,7 @@ class DatabaseInterface:
     async def get_users(self) -> Optional[List[Dict[str, Any]]]:
         return await self._fetch_all("SELECT * FROM users ORDER BY registered_at")
 
-    async def get_user_data(self, user_id: int, data_name: str, default = None) -> Optional[Any]:
+    async def get_user_data(self, user_id: int, data_name: str, default=None) -> Optional[Any]:
         user_data = await self.get_user(user_id)
         return user_data.get(data_name, default) if user_data else default
 
@@ -343,7 +345,8 @@ class DatabaseInterface:
         отрицательное для списания/ставки.
         :param transaction_type: Тип транзакции (например, 'deposit', 'withdrawal', 'bet', 'win', 'bonus', 'misc').
         :param description: Опциональное текстовое описание транзакции.
-        :return: True, если баланс и транзакция успешно обновлены, False в случае ошибки или если пользователь не найден.
+        :return: True, если баланс и транзакция успешно обновлены, False в случае ошибки или если
+        пользователь не найден.
         """
         if not await self.user_exists(user_id):
             await self.log_error(f"Ошибка: Пользователь {user_id} не найден. Невозможно обновить баланс.")
@@ -355,7 +358,8 @@ class DatabaseInterface:
                     try:
                         await db.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
                         if transaction_type == "win":
-                            await db.execute("UPDATE users SET winnings = winnings + ? WHERE user_id = ?", (amount, user_id))
+                            await db.execute("UPDATE users SET winnings = winnings + ? WHERE user_id = ?",
+                                             (amount, user_id))
                         await db.execute(
                             "INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
                             (user_id, amount, transaction_type, description)
@@ -367,7 +371,8 @@ class DatabaseInterface:
 
             current_balance = await self.get_balance(user_id)
             await self.log_info(f"Баланс пользователя {user_id} обновлен на {amount:.2f} RUB. "
-                             f"Новый баланс: {current_balance:.2f} RUB. (Тип: {transaction_type}, Описание: {description})")
+                                f"Новый баланс: {current_balance:.2f} RUB. (Тип: {transaction_type}, "
+                                f"Описание: {description})")
             return True
         except Exception as e:
             await self.log_error(
