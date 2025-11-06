@@ -1,2 +1,4 @@
-TOKEN = "8243069708:AAGmPbJmJzNOVMx1CdX98bzPMGAiIQzek0Q"
-ADMINS_ID = [1314141010, 1411566065]
+import os
+
+TOKEN = os.getenv("BOT_TOKEN")
+ADMINS_ID = list(map(int, os.getenv("ADMIN_IDS", "").split(",")))

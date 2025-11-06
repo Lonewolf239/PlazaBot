@@ -1,8 +1,10 @@
-RETURN_URL = "https://t.me/PlazaCasinoBOT"
+import os
 
-YOOKASSA_SHOP_ID = "423276"
-YOOKASSA_SECRET_KEY = "live_0UTHY-O3nKsspMU0weMF7go_XpBpcp9xa8exJ2PPBC0"
-YOOKASSA_WEBHOOK_URL = "https://njui7w-195-128-153-209.ru.tuna.am/payment/yookassa/webhook"
+RETURN_URL = os.getenv("RETURN_URL")
+
+YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
+YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
+YOOKASSA_WEBHOOK_URL =  os.getenv("YOOKASSA_WEBHOOK_URL")
 
 CONFIG = {
     "yookassa": {
