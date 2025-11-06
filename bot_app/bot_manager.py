@@ -16,7 +16,7 @@ PAGE_LIMIT = 16
 
 
 class BotInterface:
-    CasinoGames = [CasinoSlot(), ]
+    CasinoGames = [CasinoSlot(),]
 
     def __init__(self, db_interface: DatabaseInterface, token: str, admins_id: list, logger: logging.Logger):
         self.database_interface = db_interface
@@ -50,7 +50,7 @@ class BotInterface:
         text_template = text_template.replace("{selected_game}",
                                               f"{self.CasinoGames[user_data["selected_game"]].icon} "
                                               f"{self.CasinoGames[user_data["selected_game"]].
-                                              name[user_data["language"]]}")
+                                              name(user_data["language"])}")
         if custom_data:
             return text_template.format(**custom_data)
         return text_template.format(**user_data)
@@ -88,7 +88,8 @@ class BotInterface:
             if bool(user_data.get("email_verified", False)):
                 return
         if registration_type == 0:
-            await self.database_interface.update_user(chat_id, email_verified=False, block_input=True, input_type=1)
+            await self.database_interface.update_user(chat_id, in_registration=True,
+                                                      email_verified=False, block_input=True, input_type=1)
             await self.send_message(chat_id, await self.get_text(chat_id, first_message),
                                     reply_markup=KeyboardManager.get_register_cancel_keyboard(
                                         user_data.get("language", "en")))
@@ -99,6 +100,7 @@ class BotInterface:
                 return
             email_code = Email.generate_verification_code()
             await self.database_interface.update_user(chat_id,
+                                                      in_registration=False,
                                                       email=input_text,
                                                       email_code=email_code,
                                                       input_type=2)
@@ -111,7 +113,8 @@ class BotInterface:
         else:
             email_code = message.text.strip()
             if await self.database_interface.verify_email(chat_id, email_code):
-                await self.database_interface.update_user(chat_id, block_input=False, input_type=0)
+                await self.database_interface.update_user(chat_id, in_registration=False,
+                                                          block_input=False, input_type=0)
                 await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_COMPLETED"))
                 await self.main_menu(chat_id)
                 return
@@ -204,7 +207,13 @@ class BotInterface:
         block_input = user_data.get("block_input", False)
 
         if command == "register_cancel":
+            if not user_data.get("in_registration", False):
+                return
             await HandlersManager.register_cancel(self, chat_id)
+            return
+
+        if command == "referral-cancel":
+            await ReferralHandler.referral_cancel(self, chat_id)
             return
 
         if block_input:
@@ -215,6 +224,8 @@ class BotInterface:
 
         # ════════════════ Регистрация ════════════════
         elif command == "register_back":
+            if not user_data.get("in_registration", False):
+                return
             await HandlersManager.register_back(self, callback_query)
 
         elif command == "games-start":
@@ -224,7 +235,9 @@ class BotInterface:
         elif command == "settings":
             await HandlersManager.settings(self, chat_id, user_data)
         elif command == "change-game":
-            pass
+            await HandlersManager.change_game(self, chat_id, user_data)
+        elif command.startswith("set-game"):
+            await HandlersManager.set_game(self, chat_id, command)
         elif command == "change-language":
             await HandlersManager.change_language(self, chat_id)
         elif command == "change-email":
@@ -312,12 +325,12 @@ class BotInterface:
             return await self.get_text(chat_id, "USERINFO_NO_GAMES", user_data)
         favorite_game_id = max(games_dict, key=games_dict.get)
         favorite_game_name = (f"{self.CasinoGames[favorite_game_id].icon} "
-                              f"{self.CasinoGames[favorite_game_id].name[user_data.get("language", "en")]}")
+                              f"{self.CasinoGames[favorite_game_id].name(user_data["language"])}")
         favorite_play_times = games_dict[favorite_game_id]
         games_list = []
         for game_id, count in games_dict.items():
             game_name = (f"{self.CasinoGames[game_id].icon} "
-                         f"{self.CasinoGames[game_id].name[user_data.get("language", "en")]}")
+                         f"{self.CasinoGames[game_id].name(user_data["language"])}")
             game_text = await self.get_text(chat_id, "USERINFO_GAMES_LIST", user_data)
             game_text = game_text.replace("game_name", game_name).replace("count", str(count))
             games_list.append(game_text)

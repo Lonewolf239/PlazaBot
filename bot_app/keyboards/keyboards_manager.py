@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -31,7 +31,7 @@ class Messages:
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
-            "stats": {"ru": "Статистика рефералки", "en": "Referral Stats"},
+            "stats": {"ru": "Статистика рефералки", "en": "Referral Stats"}
         },
         "OTHERS": {
             "cancel": {"ru": "Отмена", "en": "Cancel"},
@@ -81,7 +81,6 @@ class Messages:
 
 
 class KeyboardManager:
-
     @staticmethod
     def get_back_keyboard(language_code, callback_data: str = "back") -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
@@ -136,6 +135,14 @@ class KeyboardManager:
                   callback_data="change-email")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_change_game_keyboard(games: List[Any], language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        for i, game in enumerate(games):
+            kb.button(text=f"{game.icon} {game.name(language_code)}", callback_data=f"set-game:{i}")
         kb.adjust(1)
         return kb.as_markup()
 
@@ -219,5 +226,13 @@ class KeyboardManager:
         kb.button(text=Messages.get_text("REFERRAL", "stats", language_code), callback_data="referral-stats")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_referral_cancel_keyboard(language_code) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
+                  callback_data="referral-cancel")
         kb.adjust(1)
         return kb.as_markup()

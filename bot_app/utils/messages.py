@@ -35,6 +35,10 @@ class Messages:
             "ru": "⚙️ Ваши настройки\n\nВыбранная игра: {selected_game}\n📧 Почта: {email}",
             "en": "⚙️ Your Settings\n\nSelected game: {selected_game}\n📧 Email: {email}"
         },
+        "CHANGE_GAME": {
+            "ru": "🎮 Выберите игру:",
+            "en": "🎮 Select a game:"
+        },
         "CHANGE_LANGUAGE": {
             "ru": "🌐 Выбор языка\n\nПожалуйста, выберите предпочитаемый язык интерфейса:",
             "en": "🌐 Language Selection\n\nPlease choose your preferred interface language:"
@@ -109,12 +113,12 @@ class Messages:
             "en": "📊 No game history yet."
         },
         "USERINFO_FOFAVORITE_GAME": {
-            "ru": "⭐ Любимая игра: {favorite_game_name}, {favorite_play_times} раз(а)",
-            "en": "⭐ Favorite game: {favorite_game_name}, {favorite_play_times} time(s)"
+            "ru": "⭐ Любимая игра: favorite_game_name, favorite_play_times раз(а)",
+            "en": "⭐ Favorite game: favorite_game_name, favorite_play_times time(s)"
         },
         "USERINFO_GAMES_LIST": {
-            "ru": "🎮 {game_name}: {count} раз(а)",
-            "en": "🎮 {game_name}: {count} time(s)"
+            "ru": "game_name: count раз(а)",
+            "en": "game_name: count time(s)"
         },
         "USERINFO_GAMES_LIST_TITLE": {
             "ru": "📈 Всего игр сыграно",
@@ -133,25 +137,25 @@ class Messages:
         "REFERRAL_MENU": {
             "ru": (
                 "💰 <b>Реферальная программа</b>\n\n"
-                "Приглашайте друзей через свой уникальный бот-клон и получайте щедрые награды!\n\n"
+                "Зовите друзей в своего бота — получайте щедрые награды за каждого приглашённого!\n\n"
                 "📊 <b>Как это работает:</b>\n"
                 "1️⃣ Создайте своего персонального бота через @BotFather\n"
                 "2️⃣ Отправьте токен нашему боту\n"
                 "3️⃣ Получите личную реферальную ссылку\n"
                 "4️⃣ Делитесь ссылкой с друзьями и знакомыми\n"
                 "5️⃣ Зарабатывайте награды за каждого нового пользователя\n\n"
-                "<i>✨ Каждый ваш бот работает полностью независимо 24/7</i>"
+                "<i>✨ Ваш бот работает автономно 24/7</i>"
             ),
             "en": (
                 "💰 <b>Referral Program</b>\n\n"
-                "Invite friends through your personal bot clone and earn generous rewards!\n\n"
+                "Invite your friends to your bot — earn generous rewards for each one!\n\n"
                 "📊 <b>How it works:</b>\n"
                 "1️⃣ Create your personal bot in @BotFather\n"
                 "2️⃣ Send the token to our bot\n"
                 "3️⃣ Get your personal referral link\n"
                 "4️⃣ Share the link with friends\n"
                 "5️⃣ Earn rewards for each new user\n\n"
-                "<i>✨ Each of your bots works independently 24/7</i>"
+                "<i>✨ Your bot works autonomously 24/7</i>"
             )
         },
         "REFERRAL_CLONE_BOT_STEP1": {
@@ -163,7 +167,8 @@ class Messages:
                 "<b>Шаг 3:</b> Дайте боту название (например, <code>Casino_YourName</code>)\n"
                 "<b>Шаг 4:</b> Дайте боту юзернейм (должен заканчиваться на <code>_bot</code>)\n"
                 "<b>Шаг 5:</b> BotFather отправит вам токен доступа\n"
-                "<b>Шаг 6:</b> Скопируйте токен и отправьте его сюда\n\n"
+                "<b>Шаг 6:</b> Скопируйте токен (пример токена: <code>123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11</code>) "
+                "и отправьте его сюда\n\n"
                 "⚠️ <i>Важно: Никогда не делитесь токеном с другими людьми!</i>"
             ),
             "en": (
@@ -174,7 +179,8 @@ class Messages:
                 "<b>Step 3:</b> Give your bot a name (for example, <code>Casino_YourName</code>)\n"
                 "<b>Step 4:</b> Give your bot a username (must end with <code>_bot</code>)\n"
                 "<b>Step 5:</b> BotFather will send you an access token\n"
-                "<b>Step 6:</b> Copy the token and send it here\n\n"
+                "<b>Step 6:</b> Copy the token (token example: <code>123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11</code>) "
+                "and send it here\n\n"
                 "⚠️ <i>Important: Never share your token with others!</i>"
             )
         },
@@ -189,8 +195,7 @@ class Messages:
                 "📊 <b>Как вы зарабатываете:</b>\n"
                 "💰 <code>5%</code> от каждой ставки ваших рефералов\n"
                 "💎 <code>10%</code> от каждого пополнения баланса\n"
-                "🏆 <code>2%</code> от каждого выигрыша\n\n"
-                "<i>🔄 Ваш бот работает автоматически и привлекает пользователей круглосуточно</i>"
+                "🏆 <code>2%</code> от каждого выигрыша"
             ),
             "en": (
                 "✅ <b>Perfect! Your bot has been created successfully!</b>\n\n"
@@ -198,8 +203,7 @@ class Messages:
                 "📊 <b>Your earnings:</b>\n"
                 "💰 <code>5%</code> from each bet of your referrals\n"
                 "💎 <code>10%</code> from each deposit\n"
-                "🏆 <code>2%</code> from each win\n\n"
-                "<i>🔄 Your bot works automatically and attracts users 24/7</i>"
+                "🏆 <code>2%</code> from each win"
             )
         },
         "REFERRAL_INVALID_TOKEN": {

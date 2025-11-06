@@ -37,6 +37,19 @@ class HandlersManager:
                                reply_markup=KeyboardManager.get_language_keyboard())
 
     @staticmethod
+    async def change_game(bot, chat_id: int, user_data: dict[str, Any]):
+        await bot.send_message(chat_id, await bot.get_text(chat_id, "CHANGE_GAME", user_data),
+                               reply_markup=KeyboardManager.get_change_game_keyboard(
+                                   bot.CasinoGames,
+                                   user_data.get("language", "ru")))
+
+    @staticmethod
+    async def set_game(bot, chat_id: int, command: str):
+        game_id = int(command[len("set-game:"):])
+        await bot.database_interface.update_user(chat_id, selected_game=game_id)
+        await bot.main_menu(chat_id)
+
+    @staticmethod
     async def change_email(bot, callback_query: types.CallbackQuery):
         await bot.registration_menu(callback_query.message, first_message="CHANGE_EMAIL", ignore_db=True)
 

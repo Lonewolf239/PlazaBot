@@ -119,6 +119,7 @@ class DatabaseInterface:
                         winnings REAL DEFAULT 0.0,
                         username TEXT,
                         hashed_username TEXT,
+                        in_registration BOOLEAN DEFAULT 1,
                         email TEXT,
                         email_code TEXT,
                         email_verified BOOLEAN,
@@ -319,6 +320,7 @@ class DatabaseInterface:
     async def update_user(self,
                           user_id: int,
                           username: str = None,
+                          in_registration: bool = None,
                           email: str = None,
                           email_code: str = None,
                           email_verified: bool = None,
@@ -336,6 +338,9 @@ class DatabaseInterface:
         if username is not None:
             fields.append("username = ?")
             params.append(username)
+        if in_registration is not None:
+            fields.append("in_registration = ?")
+            params.append(in_registration)
         if email is not None:
             fields.append("email = ?")
             params.append(email)

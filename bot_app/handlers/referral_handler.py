@@ -15,11 +15,18 @@ class ReferralHandler:
         )
 
     @staticmethod
+    async def referral_cancel(bot, chat_id: int):
+        await bot.database_interface.update_user(chat_id, block_input=False, input_type=0)
+        await bot.main_menu(chat_id)
+
+    @staticmethod
     async def create_clone_bot(bot, chat_id: int, user_data: dict):
         """Начинает процесс создания клон-бота"""
         text = await bot.get_text(chat_id, "REFERRAL_CLONE_BOT_STEP1", user_data)
-        await bot.database_interface.update_user(chat_id, input_type=10)
-        await bot.send_message(chat_id, text)
+        await bot.database_interface.update_user(chat_id, block_input=True, input_type=10)
+        await bot.send_message(chat_id, text,
+                               reply_markup=KeyboardManager.get_referral_cancel_keyboard(
+                                   user_data.get("language", "en")))
 
     @staticmethod
     async def process_token_input(bot, chat_id: int, token: str):
