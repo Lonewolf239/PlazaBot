@@ -165,6 +165,81 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
+    def get_currency_type_keyboard(language_code: str, operation_type: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text="Crypt", callback_data=f"balance-crypt:{operation_type}")
+        kb.button(text="Fiat", callback_data=f"balance-fiat:{operation_type}")
+        kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
+                  callback_data="back")
+        kb.adjust(2, 1)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_currency_keyboard(language_code: str, currency_list: tuple,
+                              operation_type: str, size: int = 2) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        for currency_code in currency_list:
+            kb.button(text=currency_code, callback_data=f"{operation_type}-select-currency:{currency_code}")
+        kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
+                  callback_data="back")
+        kb.adjust(size)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_amount_keyboard(language_code: str, currency: str, operation_type: str) -> InlineKeyboardMarkup:
+        usd_amounts = [0.1, 0.25, 0.5, 1, 2, 5, 10, 50, 100, 200, 500]
+        crypto_rates = {"USDT": 1.0, "TON": 7.5, "BTC": 95000,
+                        "ETH": 3500, "LTC": 120, "BNB": 600,
+                        "TRX": 0.3, "USDC": 1.0}
+        fiat_rates = {"USD": 1.0, "EUR": 1.08, "RUB": 0.01, "BYN": 0.31, "UAH": 0.025,
+                      "GBP": 1.27, "CNY": 0.14, "KZT": 0.002, "UZS": 0.000077, "GEL": 0.38,
+                      "TRY": 0.03, "AMD": 0.0025, "THB": 0.028, "INR": 0.012, "BRL": 0.18,
+                      "IDR": 0.000062, "AZN": 0.59, "AED": 0.27, "PLN": 0.25, "ILS": 0.27}
+        if currency in crypto_rates:
+            rate = crypto_rates[currency]
+        elif currency in fiat_rates:
+            rate = fiat_rates[currency]
+        else:
+            return InlineKeyboardMarkup(inline_keyboard=[[]])
+        amounts = []
+        for usd_amount in usd_amounts:
+            converted = usd_amount / rate
+            if currency in ["BTC", "ETH", "TON"]:
+                converted = round(converted, 8)
+            elif currency in fiat_rates:
+                converted = round(converted, 2) if rate > 0.01 else int(converted)
+            else:
+                converted = round(converted, 6)
+            amounts.append(converted)
+        kb = InlineKeyboardBuilder()
+
+        for amount in amounts:
+            if isinstance(amount, float) and amount < 1:
+                display_text = f"{amount:.8f}".rstrip('0').rstrip('.')
+            elif isinstance(amount, float):
+                display_text = f"{amount:.2f}".rstrip('0').rstrip('.')
+            else:
+                display_text = str(amount)
+            kb.button(
+                text=f"{display_text}",
+                callback_data=f"do-{operation_type}:{currency}:{amount}"
+            )
+        kb.button(
+            text=Messages.get_text("OTHERS", "cancel", language_code),
+            callback_data="back"
+        )
+        kb.adjust(3)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_pay_keyboard(deposit: dict[str, Any]):
+        kb = InlineKeyboardBuilder()
+        kb.button(text='Оплатить', url=deposit['payment_url'])
+        kb.button(text="Отменить платёж", callback_data=f"cancel-deposit:{deposit['internal_tx_id']}")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
     def get_admin_keyboard(language_code) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=Messages.get_text("ADMIN", "summary", language_code),

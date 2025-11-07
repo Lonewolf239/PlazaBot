@@ -5,7 +5,7 @@ from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
 from bot_app.keyboards import KeyboardManager
 from bot_app.games import CasinoSlot
 from bot_app.database import DatabaseInterface
-from bot_app.payments import PaymentGateway
+from bot_app.payments import CryptoPay
 from bot_app.referral import ReferralManager
 from bot_app.handlers import ReferralHandler
 from bot_app.utils import Messages
@@ -18,17 +18,17 @@ PAGE_LIMIT = 16
 class BotInterface:
     CasinoGames = [CasinoSlot(),]
 
-    def __init__(self, db_interface: DatabaseInterface, token: str, admins_id: list, logger: logging.Logger):
+    def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list, logger: logging.Logger):
         self.database_interface = db_interface
         self.token = token
         self.bot = Bot(token)
-        self.payment_gateway: Optional[PaymentGateway] = None
-        self.admins_id = admins_id
+        self.crypto_pay: Optional[CryptoPay] = None
+        self.admin_ids = admin_ids
         self.referral_manager: Optional[ReferralManager] = None
         self.logger = logger
 
-    def initialize(self, payment_gateway: PaymentGateway):
-        self.payment_gateway = payment_gateway
+    def initialize(self, crypto_pay: CryptoPay):
+        self.crypto_pay = crypto_pay
         self.referral_manager = ReferralManager(
             self.database_interface,
             self.token,
@@ -72,7 +72,7 @@ class BotInterface:
             await self.get_text(chat_id, "MAIN_MENU"),
             parse_mode="HTML",
             reply_markup=KeyboardManager.get_main_keyboard(self.CasinoGames[selected_game].icon,
-                                                           chat_id in self.admins_id,
+                                                           chat_id in self.admin_ids,
                                                            await self.database_interface.get_language(chat_id))
         )
 
@@ -169,7 +169,7 @@ class BotInterface:
                 start_param = parts[1][5:] if parts[1].startswith("user_") else parts[1]
                 user_data = await self.database_interface.get_user_by_hashed_username(start_param)
                 if user_data:
-                    await self.send_userinfo(chat_id, user_data, chat_id in self.admins_id)
+                    await self.send_userinfo(chat_id, user_data, chat_id in self.admin_ids)
 
         await self.main_menu(chat_id)
 
@@ -249,9 +249,33 @@ class BotInterface:
         elif command == "balance":
             await HandlersManager.balance(self, chat_id, user_data)
         elif command == "balance-deposit":
-            await HandlersManager.balance_deposit(self, chat_id)
+            await HandlersManager.balance_deposit(self, chat_id, user_data)
         elif command == "balance-withdraw":
-            await HandlersManager.balance_withdraw(self, chat_id)
+            await HandlersManager.balance_withdraw(self, chat_id, user_data)
+        elif command == "balance-withdraw":
+            await HandlersManager.balance_withdraw(self, chat_id, user_data)
+        elif command.startswith("balance-crypt"):
+            operation_type = command.split(':')[1]
+            await HandlersManager.get_currency(self, chat_id, user_data, operation_type, "crypt")
+        elif command.startswith("balance-fiat"):
+            operation_type = command.split(':')[1]
+            await HandlersManager.get_currency(self, chat_id, user_data, operation_type, "fiat")
+        elif command.startswith("deposit-select-currency"):
+            currency = command.split(':')[1]
+            await HandlersManager.get_amount(self, chat_id, user_data, currency, "deposit")
+        elif command.startswith("withdraw-select-currency"):
+            currency = command.split(':')[1]
+            await HandlersManager.get_amount(self, chat_id, user_data, currency, "withdraw")
+        elif command.startswith("do-deposit"):
+            currency = command.split(':')[1]
+            amount = float(command.split(':')[2])
+            await HandlersManager.do_deposit(self, chat_id, user_data, currency, amount)
+        elif command.startswith("do-withdraw"):
+            currency = command.split(':')[1]
+            amount = float(command.split(':')[2])
+        elif command.startswith("cancel-deposit"):
+            internal_tx_id = command.split(':')[1]
+            await HandlersManager.cancel_deposit(self, chat_id, user_data, internal_tx_id)
 
         # ════════════════ Пользователь ═══════════════
         elif command == "profile":
@@ -354,8 +378,8 @@ class BotInterface:
             tag = "USERINFO_ADMIN"
         userinfo = await self.get_text(chat_id, tag, user_data)
         userinfo = userinfo.replace("username",
-                                    f"<a href='https://t.me/{(await self.bot.get_me()).username}?start=user_{user_data['hashed_username']}'>"
-                                    f"{user_data['username']}</a>")
+                                    f"<a href='https://t.me/{(await self.bot.get_me()).username}?"
+                                    f"start=user_{user_data['hashed_username']}'>{user_data['username']}</a>")
         userinfo += "\n" + await self.format_games_statistics(chat_id, user_data, for_admin)
         await self.send_message(chat_id, userinfo, reply_markup=KeyboardManager.get_delete_keyboard())
 

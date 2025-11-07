@@ -1,19 +1,14 @@
 import os
 
-RETURN_URL = os.getenv("RETURN_URL")
+# TODO: fix
+# RETURN_URL = os.getenv("RETURN_URL")
 
-YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
-YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
-YOOKASSA_WEBHOOK_URL =  os.getenv("YOOKASSA_WEBHOOK_URL")
+# CRYPTOPAY_API_TOKEN = os.getenv("CRYPTOPAY_API_TOKEN")
 
-CONFIG = {
-    "yookassa": {
-        "enabled": True,
-        "account_id": YOOKASSA_SHOP_ID,
-        "secret_key": YOOKASSA_SECRET_KEY,
-        "return_url": RETURN_URL,
-        "webhook_url": YOOKASSA_WEBHOOK_URL,
-        "receipt_vat_code": 1
-    },
-    # TODO: Добавить конфигурацию для других провайдеров
-}
+# CRYPTOPAY_WEBHOOK = os.getenv("CRYPTOPAY_WEBHOOK")
+
+RETURN_URL = "https://t.me/PlazaCasinoBOT"
+
+CRYPTOPAY_API_TOKEN = "484140:AACr4PuFCF8lNX5RLSOAhexLQeFOtKT1soT"
+
+CRYPTOPAY_WEBHOOK = "AACr4PuFCF8lNX5RLSOAhexLQeFOtKT1soT"

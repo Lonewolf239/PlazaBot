@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+
 import aiosqlite
 from typing import Optional, List, Dict, Any, Tuple
 from bot_app.utils import Hacher
@@ -72,21 +74,21 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при выполнении запроса '{query}' с параметрами {params} (fetch all): {e}")
             raise
 
-    async def log_info(self, message: str, exc_info=None):
+    async def log_info(self, message: str, exc_info = None, extra = None):
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "info"))
-        self.logger.info(message, exc_info=exc_info)
+        self.logger.info(message, exc_info=exc_info, extra=extra)
 
-    async def log_debug(self, message: str, exc_info=None):
+    async def log_debug(self, message: str, exc_info = None, extra = None):
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "debug"))
-        self.logger.info(message, exc_info=exc_info)
+        self.logger.info(message, exc_info=exc_info, extra=extra)
 
-    async def log_error(self, message: str, exc_info=None):
+    async def log_error(self, message: str, exc_info = None, extra = None):
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "error"))
-        self.logger.error(message, exc_info=exc_info)
+        self.logger.error(message, exc_info=exc_info, extra=extra)
 
-    async def log_warning(self, message: str, exc_info=None):
+    async def log_warning(self, message: str, exc_info = None, extra = None):
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "warning"))
-        self.logger.warning(message, exc_info=exc_info)
+        self.logger.warning(message, exc_info=exc_info, extra=extra)
 
     async def get_logs(self) -> Optional[List[Dict[str, Any]]]:
         return await self.fetch_all("SELECT * FROM logs ORDER BY log_id")
@@ -148,18 +150,35 @@ class DatabaseInterface:
                 await db.execute("""
                     CREATE TABLE IF NOT EXISTS provider_transactions (
                         transaction_id TEXT PRIMARY KEY,
-                        user_id INTEGER,
-                        provider_name TEXT NOT NULL,
+                        user_id INTEGER NOT NULL,
                         transaction_type TEXT NOT NULL,
                         amount REAL NOT NULL,
                         currency TEXT NOT NULL,
                         status TEXT NOT NULL,
                         description TEXT,
                         message TEXT,
+                        crypto_id INTEGER,
+                        crypto_data TEXT,
+                        payload TEXT,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
                     )
+                """)
+
+                await db.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_provider_tx_user_id 
+                    ON provider_transactions(user_id)
+                """)
+
+                await db.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_provider_tx_status 
+                    ON provider_transactions(status)
+                """)
+
+                await db.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_provider_tx_created_at 
+                    ON provider_transactions(created_at)
                 """)
 
                 await db.execute("""
@@ -559,53 +578,133 @@ class DatabaseInterface:
         """
         return await self.fetch_one("SELECT * FROM transactions WHERE transaction_id = ?", (internal_transaction_id,))
 
-    async def create_transaction(self, transaction_id: str, user_id: int, provider_name: str,
+    async def create_transaction(self, transaction_id: str, user_id: int,
                                  transaction_type: str, amount: float, currency: str, status: str,
-                                 description: Optional[str] = None) -> None:
+                                 description: Optional[str] = None, crypto_id: Optional[int] = None,
+                                 crypto_data: Optional[Dict[str, Any]] = None,
+                                 payload: Optional[str] = None,
+                                 created_at: Optional[datetime] = None,
+                                 updated_at: Optional[datetime] = None) -> None:
         """
         Создает новую запись о транзакции с внешним провайдером в таблице `provider_transactions`.
-        `transaction_id` здесь - это уникальный внутренний ID (UUID), сгенерированный вызывающим кодом.
+
         :param transaction_id: Уникальный внутренний ID транзакции (UUID).
         :param user_id: ID пользователя, к которому относится транзакция.
-        :param provider_name: Название провайдера платежей (например, 'yookassa', 'cryptomus').
         :param transaction_type: Тип транзакции ('deposit' или 'withdrawal').
         :param amount: Сумма транзакции.
-        :param currency: Валюта транзакции (например, 'RUB', 'USD', 'BTC').
+        :param currency: Валюта транзакции (например, 'TON', 'BTC', 'USD').
         :param status: Текущий статус транзакции (из TransactionStatus).
         :param description: Опциональное описание транзакции.
+        :param crypto_id: ID счёта/перевода в Crypto Pay API (например, invoice_id, transfer_id).
+        :param crypto_data: Дополнительные данные из Crypto Pay (JSON-сериализуемый dict).
+        :param payload: Дополнительные данные для отслеживания (например, spend_id).
+        :param created_at: Время создания транзакции (если None, используется CURRENT_TIMESTAMP).
+        :param updated_at: Время последнего обновления (если None, используется CURRENT_TIMESTAMP).
         """
+        import json
+        crypto_data_json = None
+        if crypto_data:
+            try:
+                crypto_data_json = json.dumps(crypto_data)
+            except Exception as e:
+                await self.log_error(f"Ошибка сериализации crypto_data: {e}")
+                crypto_data_json = None
+        now = datetime.now()
+        ct = created_at or now
+        ut = updated_at or now
+
         query = """
             INSERT INTO provider_transactions
-            (transaction_id, user_id, provider_name, transaction_type, amount, currency, status, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (transaction_id, user_id, transaction_type, amount, currency, status, 
+             description, crypto_id, crypto_data, payload, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            transaction_id, user_id, provider_name, transaction_type, amount,
-            currency, status, description
+            transaction_id, user_id, transaction_type, amount,
+            currency, status, description, crypto_id,
+            crypto_data_json, payload, ct, ut
         )
-        await self.execute(query, params)
-        await self.log_debug(f"Создана новая провайдер-транзакция: {transaction_id} для пользователя {user_id}.")
+        try:
+            await self.execute(query, params)
+            await self.log_debug(
+                f"✓ Создана провайдер-транзакция: TxID={transaction_id}, "
+                f"User={user_id}, Type={transaction_type}, Amount={amount} {currency}, Status={status}"
+            )
+        except Exception as e:
+            await self.log_error(f"✗ Ошибка при создании транзакции {transaction_id}: {e}")
+            raise
 
     async def update_transaction_status(self, transaction_id: str, status: str,
-                                        message: Optional[str] = None) -> None:
+                                        message: Optional[str] = None,
+                                        updated_at: Optional[datetime] = None,
+                                        crypto_data: Optional[Dict[str, Any]] = None) -> None:
         """
         Обновляет статус существующей транзакции в таблице `provider_transactions`.
-        Также может добавить `message`.
-        Поле `updated_at` автоматически обновится.
-        :param transaction_id: Уникальный внутренний ID транзакции (UUID), которую нужно обновить.
+
+        :param transaction_id: Уникальный внутренний ID транзакции (UUID).
         :param status: Новый статус транзакции (из TransactionStatus).
-        :param message: Опциональное сообщение, связанное с обновлением статуса.
+        :param message: Опциональное сообщение/ошибка, связанное с обновлением статуса.
+        :param updated_at: Время обновления (если None, используется CURRENT_TIMESTAMP).
+        :param crypto_data: Дополнительные данные из Crypto Pay (будут объединены с существующими).
         """
-        query = """
+        import json
+
+        # Если передана crypto_data, нужно обновить её и объединить с существующей
+        update_parts = ["status = ?"]
+        params = [status]
+
+        if message is not None:
+            update_parts.append("message = ?")
+            params.append(message)
+
+        if updated_at:
+            update_parts.append("updated_at = ?")
+            params.append(str(updated_at))
+        else:
+            update_parts.append("updated_at = CURRENT_TIMESTAMP")
+
+        # Если есть crypto_data, обновляем или добавляем данные
+        if crypto_data:
+            # Сначала получаем существующие данные
+            existing = await self.fetch_one(
+                "SELECT crypto_data FROM provider_transactions WHERE transaction_id = ?",
+                (transaction_id,)
+            )
+
+            merged_data = {}
+            if existing and existing["crypto_data"]:
+                try:
+                    merged_data = json.loads(existing["crypto_data"])
+                except json.JSONDecodeError:
+                    merged_data = {}
+
+            # Объединяем с новыми данными
+            merged_data.update(crypto_data)
+
+            try:
+                crypto_data_json = json.dumps(merged_data)
+                update_parts.append("crypto_data = ?")
+                params.append(crypto_data_json)
+            except Exception as e:
+                await self.log_error(f"Ошибка сериализации crypto_data при обновлении: {e}")
+
+        params.append(transaction_id)
+
+        query = f"""
             UPDATE provider_transactions
-            SET status = ?,
-                message = COALESCE(?, message),
-                updated_at = CURRENT_TIMESTAMP
+            SET {', '.join(update_parts)}
             WHERE transaction_id = ?
         """
-        params = (status, message, transaction_id)
-        await self.execute(query, params)
-        await self.log_debug(f"Обновлен статус провайдер-транзакции {transaction_id} до '{status}'.")
+
+        try:
+            await self.execute(query, tuple(params))
+            await self.log_debug(
+                f"✓ Обновлён статус транзакции {transaction_id} -> {status}"
+                f"{(' | Message: ' + message) if message else ''}"
+            )
+        except Exception as e:
+            await self.log_error(f"✗ Ошибка при обновлении статуса {transaction_id}: {e}")
+            raise
 
     async def get_provider_transaction(self, transaction_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -667,3 +766,86 @@ class DatabaseInterface:
             error_msg = f"❌ Ошибка при выводе БД: {e}"
             await self.log_error(f"Ошибка в методе display_db: {e}")
             return [error_msg]
+
+    async def get_transaction(self, transaction_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Получает данные транзакции по её ID.
+
+        :param transaction_id: Внутренний ID транзакции
+        :return: Словарь с данными транзакции или None если не найдена
+        """
+        try:
+            query = """
+                SELECT 
+                    transaction_id,
+                    user_id,
+                    transaction_type,
+                    amount,
+                    currency,
+                    status,
+                    description,
+                    crypto_id,
+                    payload,
+                    message,
+                    crypto_data,
+                    created_at,
+                    updated_at
+                FROM provider_transactions
+                WHERE transaction_id = ?
+                LIMIT 1
+            """
+            result = await self.fetch_one(query, (transaction_id,))
+            if not result:
+                return None
+            return dict(result)
+        except Exception as e:
+            await self.log_error(
+                f"Failed to get transaction: {e}",
+                extra={"transaction_id": transaction_id}
+            )
+            raise
+
+    async def get_user_transactions(self, user_id: int, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        Получает историю всех транзакций пользователя.
+        :param user_id: Telegram ID пользователя
+        :param limit: Максимальное количество записей (по умолчанию 50)
+        :param offset: Смещение для пагинации (по умолчанию 0)
+        :return: Список словарей с данными транзакций
+        """
+        try:
+            query = """
+                SELECT 
+                    transaction_id,
+                    user_id,
+                    transaction_type,
+                    amount,
+                    currency,
+                    status,
+                    description,
+                    crypto_id,
+                    payload,
+                    message,
+                    crypto_data,
+                    created_at,
+                    updated_at
+                FROM provider_transactions
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """
+            results = await self.fetch_all(query, (user_id, limit, offset))
+            if not results:
+                return []
+            transactions = [dict(row) for row in results]
+            await self.log_debug(
+                f"Retrieved {len(transactions)} transactions for user",
+                extra={"user_id": user_id, "limit": limit, "offset": offset}
+            )
+            return transactions
+        except Exception as e:
+            await self.log_error(
+                f"Failed to get user transactions: {e}",
+                extra={"user_id": user_id, "limit": limit, "offset": offset}
+            )
+            raise

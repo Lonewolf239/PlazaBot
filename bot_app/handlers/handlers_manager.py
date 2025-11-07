@@ -66,16 +66,51 @@ class HandlersManager:
                                reply_markup=KeyboardManager.get_balance_keyboard(user_data.get("language", "en")))
 
     @staticmethod
-    async def balance_deposit(bot, chat_id: int):
-        providers = bot.payment_gateway.get_providers("deposit")
-        text = "\n".join([p.get_provider_name() for p in providers])
-        await bot.send_message(chat_id, text)
-        deposit = await bot.payment_gateway.initiate_deposit(chat_id, 100, providers[0].get_provider_name(), "RUB")
-        await bot.send_message(chat_id, deposit.get("payment_url"))
+    async def balance_deposit(bot, chat_id: int, user_data: dict[str, Any]):
+        await bot.send_message(chat_id, "Type",
+                               reply_markup=KeyboardManager.get_currency_type_keyboard(
+                                   user_data.get("language", "en"), "deposit"))
 
     @staticmethod
-    async def balance_withdraw(bot, chat_id: int):
-        providers = bot.payment_gateway.get_providers("withdraw")
+    async def balance_withdraw(bot, chat_id: int, user_data: dict[str, Any]):
+        await bot.send_message(chat_id, "Type",
+                               reply_markup=KeyboardManager.get_currency_type_keyboard(
+                                   user_data.get("language", "en"), "withdraw"))
+
+    @staticmethod
+    async def get_currency(bot, chat_id: int, user_data: dict[str, Any], operation_type: str, currency_type: str):
+        if currency_type == "crypt":
+            await bot.send_message(chat_id, "Currency",
+                                   reply_markup=KeyboardManager.get_currency_keyboard(
+                                       user_data.get("language", "en"),
+                                       bot.crypto_pay.SUPPORTED_ASSETS, operation_type))
+        else:
+            await bot.send_message(chat_id, "Currency",
+                                   reply_markup=KeyboardManager.get_currency_keyboard(
+                                       user_data.get("language", "en"),
+                                       bot.crypto_pay.SUPPORTED_FIATS, operation_type, 3))
+
+    @staticmethod
+    async def get_amount(bot, chat_id: int, user_data: dict[str, Any], currency: str, operation_type: str):
+        await bot.send_message(chat_id, "AMOUNT",
+                               reply_markup=KeyboardManager.get_amount_keyboard(
+                                   user_data.get("language", "en"), currency, operation_type))
+    @staticmethod
+    async def do_deposit(bot, chat_id: int, user_data: dict[str, Any], currency: str, amount: float):
+        if not bot.crypto_pay.is_fiat(currency):
+            deposit = await bot.crypto_pay.initiate_deposit(chat_id, amount, currency)
+        else:
+            deposit = await bot.crypto_pay.create_fiat_deposit(chat_id, amount, currency)
+        if deposit["status"] == "payment_pending":
+            await bot.send_message(chat_id, "DEPOSIT", reply_markup=KeyboardManager.get_pay_keyboard(deposit))
+
+    @staticmethod
+    async def cancel_deposit(bot, chat_id: int, user_data: dict[str, Any], internal_tx_id: str):
+        if await bot.crypto_pay.cancel_deposit(internal_tx_id):
+            await bot.send_message(chat_id, "OK")
+        else:
+            await bot.send_message(chat_id, "NOT OK")
+
 
     # ════════════════ Пользователь ═══════════════
     @staticmethod
