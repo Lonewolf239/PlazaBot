@@ -95,6 +95,7 @@ class HandlersManager:
         await bot.send_message(chat_id, "AMOUNT",
                                reply_markup=KeyboardManager.get_amount_keyboard(
                                    user_data.get("language", "en"), currency, operation_type))
+
     @staticmethod
     async def do_deposit(bot, chat_id: int, user_data: dict[str, Any], currency: str, amount: float):
         if not bot.crypto_pay.is_fiat(currency):
@@ -110,7 +111,6 @@ class HandlersManager:
             await bot.send_message(chat_id, "OK")
         else:
             await bot.send_message(chat_id, "NOT OK")
-
 
     # ════════════════ Пользователь ═══════════════
     @staticmethod

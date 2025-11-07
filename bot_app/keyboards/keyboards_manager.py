@@ -2,6 +2,7 @@ from typing import List, Any
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+
 class Messages:
     TEXT = {
         "MAIN_MENU": {
@@ -186,21 +187,11 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    def get_amount_keyboard(language_code: str, currency: str, operation_type: str) -> InlineKeyboardMarkup:
+    def get_amount_keyboard(language_code: str, currency: str,
+                            operation_type: str, rates: float) -> InlineKeyboardMarkup:
         usd_amounts = [0.1, 0.25, 0.5, 1, 2, 5, 10, 50, 100, 200, 500]
-        crypto_rates = {"USDT": 1.0, "TON": 7.5, "BTC": 95000,
-                        "ETH": 3500, "LTC": 120, "BNB": 600,
-                        "TRX": 0.3, "USDC": 1.0}
-        fiat_rates = {"USD": 1.0, "EUR": 1.08, "RUB": 0.01, "BYN": 0.31, "UAH": 0.025,
-                      "GBP": 1.27, "CNY": 0.14, "KZT": 0.002, "UZS": 0.000077, "GEL": 0.38,
-                      "TRY": 0.03, "AMD": 0.0025, "THB": 0.028, "INR": 0.012, "BRL": 0.18,
-                      "IDR": 0.000062, "AZN": 0.59, "AED": 0.27, "PLN": 0.25, "ILS": 0.27}
-        if currency in crypto_rates:
+        if currency in rates:
             rate = crypto_rates[currency]
-        elif currency in fiat_rates:
-            rate = fiat_rates[currency]
-        else:
-            return InlineKeyboardMarkup(inline_keyboard=[[]])
         amounts = []
         for usd_amount in usd_amounts:
             converted = usd_amount / rate
@@ -269,7 +260,7 @@ class KeyboardManager:
 
     @staticmethod
     def get_users_keyboard(language_code, lines: list, page: int = 1,
-                          add_next_page: bool = True) -> InlineKeyboardMarkup:
+                           add_next_page: bool = True) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         for line in lines:
             kb.row(InlineKeyboardButton(text=line, callback_data=f"admin-user:{line}"))

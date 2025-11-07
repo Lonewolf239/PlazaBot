@@ -51,7 +51,7 @@ class CryptoPay:
     MAX_INVOICE_TTL = 2678400
 
     def __init__(self, token: str, bot, database_interface: DatabaseInterface,
-                 network: Networks = Networks.TEST_NET, logger: Optional[logging.Logger] = None):
+                 network: Networks = Networks.MAIN_NET, logger: Optional[logging.Logger] = None):
         """
         Инициализация CryptoPay.
         :param token: API токен от @CryptoBot
@@ -155,6 +155,16 @@ class CryptoPay:
         except Exception as e:
             self._logger.error(f"Failed to get exchange rates: {e}")
             raise
+
+    async def get_exchange_rate(self, source: str, target: str):
+        rates = await self.get_exchange_rates()
+        for rate in rates:
+            if rate.source == source and rate.target == target:
+                return rate.rate
+
+    async def get_exchange_amount(self, amount: float, source: str, target: str):
+        rate = await self.get_exchange_rate(source, target)
+        return amount * rate
 
     async def get_balance(self) -> Dict[str, Any]:
         """
