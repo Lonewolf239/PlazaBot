@@ -7,7 +7,7 @@ from bot_app.games import CasinoSlot
 from bot_app.database import DatabaseInterface
 from bot_app.payments import CryptoPay
 from bot_app.referral import ReferralManager
-from bot_app.handlers import ReferralHandler
+from bot_app.handlers import ReferralHandler, GameManager
 from bot_app.utils import Messages
 from bot_app.utils import Email, Language
 from bot_app.handlers import HandlersManager
@@ -16,16 +16,29 @@ PAGE_LIMIT = 16
 
 
 class BotInterface:
-    CasinoGames = [CasinoSlot(),]
+    CasinoGames = {
+        0: CasinoSlot,
+    }
+    GameConfigs = {
+        0: ["honest", "aggressive", "generous"]
+    }
 
-    def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list, logger: logging.Logger):
+    def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list,
+                 channel_username: str, channel_id: int, logger: logging.Logger):
         self.database_interface = db_interface
         self.token = token
         self.bot = Bot(token)
         self.crypto_pay: Optional[CryptoPay] = None
         self.admin_ids = admin_ids
+        self.channel_username = channel_username
+        self.channel_id = channel_id
         self.referral_manager: Optional[ReferralManager] = None
         self.logger = logger
+        self.game_manager = GameManager(db_interface, logger)
+        self.game_manager.register_games(self.CasinoGames)
+        self.game_manager.on_game_start(self.on_game_started)
+        self.game_manager.on_game_end(self.on_game_finished)
+        self.game_manager.on_game_error(self.on_game_error)
 
     def initialize(self, crypto_pay: CryptoPay):
         self.crypto_pay = crypto_pay
@@ -34,6 +47,15 @@ class BotInterface:
             self.token,
             self.logger
         )
+
+    async def on_game_started(self, session):
+        await HandlersManager.on_game_started(self, session)
+
+    async def on_game_finished(self, result, session):
+        await HandlersManager.on_game_finished(self, result, session)
+
+    async def on_game_error(self, error, session):
+        self.logger.error(str(error), str(session))
 
     def get_bot(self):
         return self.bot
@@ -47,10 +69,9 @@ class BotInterface:
             user_data = await self.database_interface.get_user(chat_id)
         language = user_data["language"]
         text_template = Messages.TEXT[tag].get(language, tag)
+        game = await self.game_manager.get_game(int(user_data.get("selected_game", 0)))
         text_template = text_template.replace("{selected_game}",
-                                              f"{self.CasinoGames[user_data["selected_game"]].icon} "
-                                              f"{self.CasinoGames[user_data["selected_game"]].
-                                              name(user_data["language"])}")
+                                              f"{game.icon} {game.name(user_data.get("language", "en"))}")
         if custom_data:
             return text_template.format(**custom_data)
         return text_template.format(**user_data)
@@ -67,11 +88,12 @@ class BotInterface:
 
     async def main_menu(self, chat_id: int):
         selected_game = await self.get_game(chat_id)
+        game = await self.game_manager.get_game(selected_game)
         await self.send_message(
             chat_id,
             await self.get_text(chat_id, "MAIN_MENU"),
             parse_mode="HTML",
-            reply_markup=KeyboardManager.get_main_keyboard(self.CasinoGames[selected_game].icon,
+            reply_markup=KeyboardManager.get_main_keyboard(game.icon,
                                                            chat_id in self.admin_ids,
                                                            await self.database_interface.get_language(chat_id))
         )
@@ -87,6 +109,7 @@ class BotInterface:
         if not ignore_db:
             if bool(user_data.get("email_verified", False)):
                 return
+        return
         if registration_type == 0:
             await self.database_interface.update_user(chat_id, in_registration=True,
                                                       email_verified=False, block_input=True, input_type=1)
@@ -108,8 +131,8 @@ class BotInterface:
                                     reply_markup=KeyboardManager.get_back_keyboard(
                                         user_data.get("language", "en"),
                                         callback_data="register_back"))
-            Email.send_verification_email(input_text, email_code, Language.RUSSIAN if
-            user_data.get("language", "en") == "ru" else Language.ENGLISH)
+            Email.send_verification_email(input_text, email_code, Language.RUSSIAN if user_data.get(
+                "language", "en") == "ru" else Language.ENGLISH)
         else:
             email_code = message.text.strip()
             if await self.database_interface.verify_email(chat_id, email_code):
@@ -159,6 +182,7 @@ class BotInterface:
                     self.logger.info(f"✅ Создана реферальная связь: {referrer_id} -> "
                                      f"{chat_id} (бот: {current_bot_id})")
         await self.registration_menu(message)
+        user_data = await self.database_interface.get_user(chat_id)
         block_input = await self.database_interface.get_block_input(chat_id)
         if block_input:
             return
@@ -170,7 +194,12 @@ class BotInterface:
                 user_data = await self.database_interface.get_user_by_hashed_username(start_param)
                 if user_data:
                     await self.send_userinfo(chat_id, user_data, chat_id in self.admin_ids)
-
+            elif start_param == "deb":
+                await HandlersManager.select_bet(self, chat_id, user_data)
+                return
+        if not bool(user_data.get("subscribed", False)):
+            await HandlersManager.check_subscription(self, chat_id, message.from_user.first_name)
+            return
         await self.main_menu(chat_id)
 
     async def on_text(self, message: types.Message):
@@ -182,7 +211,6 @@ class BotInterface:
         if input_type == 0:
             return
 
-        # Register
         elif input_type == 1:
             await self.registration_menu(message, 1)
         elif input_type == 2:
@@ -198,12 +226,44 @@ class BotInterface:
             return
 
         chat_id = callback_query.message.chat.id
+        user_data = await self.database_interface.get_user(chat_id)
+
+        if command == "check_subscription":
+            await HandlersManager.check_subscription(self, chat_id, user_data["username"])
+            await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            return
+
+        # TODO: удалить после реализации вебхуков
+        if command.startswith("check-deposit"):
+            internal_tx_id = command.split(':')[1]
+            if await HandlersManager.check_deposit(self, chat_id, user_data, internal_tx_id):
+                await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            await callback_query.answer()
+            return
+
+        if command.startswith("cancel-deposit"):
+            parts = command.split(':')
+            tx_id = parts[1]
+            message_id = parts[2] if len(parts) > 2 else ""
+            confirm = parts[3] if len(parts) > 3 else ""
+            if not confirm:
+                await HandlersManager.cancel_deposit_confirm(self, chat_id, user_data,
+                                                             tx_id, callback_query.message.message_id)
+                await callback_query.answer()
+                return
+            await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            if confirm == "yes":
+                await HandlersManager.cancel_deposit(self, chat_id, user_data, tx_id)
+                await self.bot.delete_message(chat_id, message_id)
+            else:
+                await self.main_menu(chat_id)
+            return
+
         await self.bot.delete_message(chat_id, callback_query.message.message_id)
 
         if command == "delete":
             return
 
-        user_data = await self.database_interface.get_user(chat_id)
         block_input = user_data.get("block_input", False)
 
         if command == "register_cancel":
@@ -228,8 +288,12 @@ class BotInterface:
                 return
             await HandlersManager.register_back(self, callback_query)
 
-        elif command == "games-start":
-            await HandlersManager.games_start(self, chat_id)
+        # ════════════════════ Игры ═══════════════════
+        elif command == "select-bet":
+            await HandlersManager.select_bet(self, chat_id, user_data)
+        elif command.startswith("start-game"):
+            bet = float(command.split(':')[1])
+            await HandlersManager.start_game(self, chat_id, user_data, bet)
 
         # ═════════════════ Настройки ═════════════════
         elif command == "settings":
@@ -249,17 +313,10 @@ class BotInterface:
         elif command == "balance":
             await HandlersManager.balance(self, chat_id, user_data)
         elif command == "balance-deposit":
-            await HandlersManager.balance_deposit(self, chat_id, user_data)
+            await HandlersManager.get_currency(self, chat_id, user_data, "deposit", self.crypto_pay.supported_codes)
         elif command == "balance-withdraw":
-            await HandlersManager.balance_withdraw(self, chat_id, user_data)
-        elif command == "balance-withdraw":
-            await HandlersManager.balance_withdraw(self, chat_id, user_data)
-        elif command.startswith("balance-crypt"):
-            operation_type = command.split(':')[1]
-            await HandlersManager.get_currency(self, chat_id, user_data, operation_type, "crypt")
-        elif command.startswith("balance-fiat"):
-            operation_type = command.split(':')[1]
-            await HandlersManager.get_currency(self, chat_id, user_data, operation_type, "fiat")
+            await HandlersManager.get_currency(self, chat_id, user_data, "withdraw",
+                                               await self.crypto_pay.get_currencies_with_balance())
         elif command.startswith("deposit-select-currency"):
             currency = command.split(':')[1]
             await HandlersManager.get_amount(self, chat_id, user_data, currency, "deposit")
@@ -273,9 +330,7 @@ class BotInterface:
         elif command.startswith("do-withdraw"):
             currency = command.split(':')[1]
             amount = float(command.split(':')[2])
-        elif command.startswith("cancel-deposit"):
-            internal_tx_id = command.split(':')[1]
-            await HandlersManager.cancel_deposit(self, chat_id, user_data, internal_tx_id)
+            await HandlersManager.do_withdraw(self, chat_id, user_data, currency, amount)
 
         # ════════════════ Пользователь ═══════════════
         elif command == "profile":
@@ -295,10 +350,20 @@ class BotInterface:
         elif command.startswith("admin-user"):
             await HandlersManager.admin_user(self, chat_id, command, user_data)
         elif command == "admin-show-tables":
-            await HandlersManager.admin_show_tables(self, chat_id, user_data.get("language", "en"))
+            await HandlersManager.admin_show_tables(self, chat_id, user_data)
         elif command.startswith("admin-tables"):
             table = command.split(':')[1]
             await HandlersManager.admin_show_table(self, chat_id, table, user_data)
+        elif command == "admin-issue-balance":
+            await HandlersManager.admin_issue_balance(self, chat_id, user_data)
+        elif command == "admin-reset-balance":
+            await HandlersManager.admin_reset_balance(self, chat_id, user_data)
+        elif command == "admin-get-balance":
+            await HandlersManager.admin_get_balance(self, chat_id, user_data)
+        elif command.startswith("admin-game-settings"):
+            await HandlersManager.admin_game_settings_handler(self, chat_id, user_data, command)
+        elif command.startswith("admin-game-config"):
+            await HandlersManager.admin_game_config_handler(self, chat_id, user_data, command)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":
@@ -306,7 +371,7 @@ class BotInterface:
         elif command == "referral-create":
             await ReferralHandler.create_clone_bot(self, chat_id, user_data)
         elif command == "referral-stats":
-            await ReferralHandler.my_referrals(self, chat_id, user_data.get("language", "en"))
+            await ReferralHandler.my_referrals(self, chat_id, user_data)
 
         # ═══════════════════ Прочее ══════════════════
         elif command == "rules":
@@ -348,13 +413,13 @@ class BotInterface:
         if not games_dict:
             return await self.get_text(chat_id, "USERINFO_NO_GAMES", user_data)
         favorite_game_id = max(games_dict, key=games_dict.get)
-        favorite_game_name = (f"{self.CasinoGames[favorite_game_id].icon} "
-                              f"{self.CasinoGames[favorite_game_id].name(user_data["language"])}")
+        favorite_game = await self.game_manager.get_game(favorite_game_id)
+        favorite_game_name = f"{favorite_game.icon} {favorite_game.name(user_data.get("language", "en"))}"
         favorite_play_times = games_dict[favorite_game_id]
         games_list = []
         for game_id, count in games_dict.items():
-            game_name = (f"{self.CasinoGames[game_id].icon} "
-                         f"{self.CasinoGames[game_id].name(user_data["language"])}")
+            game = await self.game_manager.get_game(game_id)
+            game_name = f"{game.icon} {game.name(user_data.get("language", "en"))}"
             game_text = await self.get_text(chat_id, "USERINFO_GAMES_LIST", user_data)
             game_text = game_text.replace("game_name", game_name).replace("count", str(count))
             games_list.append(game_text)

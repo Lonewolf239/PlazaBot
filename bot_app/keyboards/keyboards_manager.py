@@ -1,6 +1,7 @@
-from typing import List, Any
+from typing import List, Any, Type, Dict
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from bot_app.games import BaseGame
 
 
 class Messages:
@@ -13,7 +14,7 @@ class Messages:
             "rules": {"ru": "Правила игры", "en": "Rules"},
             "help": {"ru": "Поддержка", "en": "Help"},
             "referral": {"ru": "Рефералка", "en": "Referral"},
-            "admin": {"ru": "Админ-панель", "en": "Admin Panel"},
+            "admin": {"ru": "Админ-панель", "en": "Admin Panel"}
         },
         "SETTINGS": {
             "game": {"ru": "Сменить игру", "en": "Change Game"},
@@ -28,7 +29,12 @@ class Messages:
             "summary": {"ru": "Сводка по балансу", "en": "Balance Summary"},
             "players": {"ru": "Список игроков", "en": "Player List"},
             "logs": {"ru": "Логи событий", "en": "Event Logs"},
-            "database": {"ru": "Показать БД", "en": "Show Database"}
+            "database": {"ru": "Показать БД", "en": "Show Database"},
+            "issue_balance": {"ru": "Выдать 1000$", "en": "Give out $1000"},
+            "reset_balance": {"ru": "Обнулить баланс", "en": "Reset balance"},
+            "get_balance": {"ru": "Получить баланс", "en": "Get balance"},
+            "game_settings": {"ru": "Настройки игры", "en": "Game Settings"},
+            "game_config": {"ru": "Конфиг игры", "en": "Game Config"}
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
@@ -36,7 +42,16 @@ class Messages:
         },
         "OTHERS": {
             "cancel": {"ru": "Отмена", "en": "Cancel"},
-            "back": {"ru": "Назад", "en": "Back"}
+            "back": {"ru": "Назад", "en": "Back"},
+            "confirm_yes": {"ru": "Да", "en": "Yes"},
+            "confirm_no": {"ru": "Нет", "en": "No"},
+            "try_again": {"ru": "Попробовать снова", "en": "Try again"},
+            "pay": {"ru": "Оплатить", "en": "Pay"},
+            "check": {"ru": "Проверить", "en": "Check"},
+            "cancel_payment": {"ru": "Отменить платёж", "en": "Cancel Payment"},
+            "prev_page": {"ru": "", "en": ""},
+            "next_page": {"ru": "", "en": ""},
+            "did_deb": {"en": "Играй сейчас/Play Now"}
         }
     }
 
@@ -64,7 +79,12 @@ class Messages:
             "summary": "📊",
             "players": "👥",
             "logs": "🗒️",
-            "database": "🗄️"
+            "database": "🗄️",
+            "issue_balance": "💰",
+            "reset_balance": "♻️",
+            "get_balance": "🏦",
+            "game_settings": "🛠️",
+            "game_config": "🧩"
         },
         "REFERRAL": {
             "create": "➕",
@@ -72,18 +92,24 @@ class Messages:
         },
         "OTHERS": {
             "cancel": "❌",
-            "back": "◀️"
+            "back": "◀️",
+            "confirm_yes": "✅",
+            "confirm_no": "❌",
+            "try_again": "🔄",
+            "prev_page": "◀️",
+            "next_page": "▶️",
+            "did_deb": "🎮"
         }
     }
 
     @staticmethod
-    def get_text(tag, button, language):
+    def get_text(tag, button, language) -> str:
         return f"{Messages.ICONS[tag][button]} {Messages.TEXT[tag][button][language]}"
 
 
 class KeyboardManager:
     @staticmethod
-    def get_back_keyboard(language_code, callback_data: str = "back") -> InlineKeyboardMarkup:
+    def get_back_keyboard(language_code: str, callback_data: str = "back") -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=Messages.get_text("OTHERS", "back", language_code), callback_data=callback_data)
         kb.adjust(1)
@@ -100,7 +126,7 @@ class KeyboardManager:
     def get_main_keyboard(game_icon: str, admin: bool, language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=f"{game_icon}{Messages.get_text('MAIN_MENU', 'games', language_code)}",
-                  callback_data="games-start")
+                  callback_data="select-bet")
         kb.button(text=Messages.get_text("MAIN_MENU", "profile", language_code),
                   callback_data="profile")
         kb.button(text=Messages.get_text("MAIN_MENU", "settings", language_code),
@@ -132,18 +158,22 @@ class KeyboardManager:
                   callback_data="change-game")
         kb.button(text=Messages.get_text("SETTINGS", "language", language_code),
                   callback_data="change-language")
-        kb.button(text=Messages.get_text("SETTINGS", "email", language_code),
-                  callback_data="change-email")
+        # kb.button(text=Messages.get_text("SETTINGS", "email", language_code),
+        #           callback_data="change-email")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(1)
         return kb.as_markup()
 
     @staticmethod
-    def get_change_game_keyboard(games: List[Any], language_code: str) -> InlineKeyboardMarkup:
+    def get_change_game_keyboard(games: Dict[str, Type[BaseGame]], language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        for i, game in enumerate(games):
-            kb.button(text=f"{game.icon} {game.name(language_code)}", callback_data=f"set-game:{i}")
+        for game_id, game_class in games.items():
+            game_instance = game_class()
+            kb.button(
+                text=f"{game_instance.icon} {game_instance.name(language_code)}",
+                callback_data=f"set-game:{game_id}"
+            )
         kb.adjust(1)
         return kb.as_markup()
 
@@ -166,72 +196,107 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    def get_currency_type_keyboard(language_code: str, operation_type: str) -> InlineKeyboardMarkup:
-        kb = InlineKeyboardBuilder()
-        kb.button(text="Crypt", callback_data=f"balance-crypt:{operation_type}")
-        kb.button(text="Fiat", callback_data=f"balance-fiat:{operation_type}")
-        kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
-                  callback_data="back")
-        kb.adjust(2, 1)
-        return kb.as_markup()
-
-    @staticmethod
     def get_currency_keyboard(language_code: str, currency_list: tuple,
                               operation_type: str, size: int = 2) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        for currency_code in currency_list:
-            kb.button(text=currency_code, callback_data=f"{operation_type}-select-currency:{currency_code}")
+        for currency in currency_list:
+            kb.button(text=f"{currency["name"]} [{currency["code"]}]",
+                      callback_data=f"{operation_type}-select-currency:{currency["code"]}")
         kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
                   callback_data="back")
         kb.adjust(size)
         return kb.as_markup()
 
     @staticmethod
-    def get_amount_keyboard(language_code: str, currency: str,
-                            operation_type: str, rates: float) -> InlineKeyboardMarkup:
+    def build_deposit_amount(currency: str, language_code: str) -> InlineKeyboardMarkup:
+        from bot_app.payments import CryptoPay
+        kb = InlineKeyboardBuilder()
         usd_amounts = [0.1, 0.25, 0.5, 1, 2, 5, 10, 50, 100, 200, 500]
-        if currency in rates:
-            rate = crypto_rates[currency]
+        if currency == "JET":
+            rate = 1
+        else:
+            rate = CryptoPay.get_crypto_rate(currency)
+        if rate is None:
+            kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
+                      callback_data="back")
+            kb.adjust(1)
+            return False, kb.as_markup()
         amounts = []
         for usd_amount in usd_amounts:
             converted = usd_amount / rate
-            if currency in ["BTC", "ETH", "TON"]:
-                converted = round(converted, 8)
-            elif currency in fiat_rates:
-                converted = round(converted, 2) if rate > 0.01 else int(converted)
-            else:
-                converted = round(converted, 6)
-            amounts.append(converted)
-        kb = InlineKeyboardBuilder()
-
-        for amount in amounts:
+            amounts.append((converted, usd_amount))
+        for amount, usd_amount in amounts:
             if isinstance(amount, float) and amount < 1:
-                display_text = f"{amount:.8f}".rstrip('0').rstrip('.')
+                crypto_display = f"{amount:.8f}".rstrip('0').rstrip('.')
             elif isinstance(amount, float):
-                display_text = f"{amount:.2f}".rstrip('0').rstrip('.')
+                crypto_display = f"{amount:.2f}".rstrip('0').rstrip('.')
             else:
-                display_text = str(amount)
+                crypto_display = str(amount)
+            display_text = f"{crypto_display} [{usd_amount}$]"
             kb.button(
-                text=f"{display_text}",
-                callback_data=f"do-{operation_type}:{currency}:{amount}"
+                text=display_text,
+                callback_data=f"do-deposit:{currency}:{amount}"
             )
         kb.button(
             text=Messages.get_text("OTHERS", "cancel", language_code),
             callback_data="back"
         )
-        kb.adjust(3)
-        return kb.as_markup()
+        return kb
 
     @staticmethod
-    def get_pay_keyboard(deposit: dict[str, Any]):
+    def build_withdraw_amount(currency: str, language_code: str, balance: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        kb.button(text='Оплатить', url=deposit['payment_url'])
-        kb.button(text="Отменить платёж", callback_data=f"cancel-deposit:{deposit['internal_tx_id']}")
+        percentages = [25, 50, 75, 100]
+        for percentage in percentages:
+            withdraw_amount = (float(balance) * percentage) / 100
+            button_text = f"{percentage}% [{withdraw_amount:.2f}$]"
+            kb.button(
+                text=button_text,
+                callback_data=f"do-withdraw:{currency}:{withdraw_amount}"
+            )
+        kb.button(
+            text=Messages.get_text("OTHERS", "cancel", language_code),
+            callback_data="back"
+        )
+        kb.adjust(2, 2, 1)
+        return kb
+
+    @staticmethod
+    def get_amount_keyboard(language_code: str, currency: str,
+                            operation_type: str, balance: str) -> tuple[bool, InlineKeyboardMarkup]:
+        if operation_type == "deposit":
+            kb = KeyboardManager.build_deposit_amount(currency, language_code)
+        else:
+            kb = KeyboardManager.build_withdraw_amount(currency, language_code, balance)
+        kb.adjust(2)
+        return True, kb.as_markup()
+
+    @staticmethod
+    def get_pay_keyboard(language_code: str, deposit: dict[str, Any], transaction_id: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("OTHERS", "pay", language_code), url=deposit['payment_url'])
+
+        # TODO: удалить после реализации вебхуков
+        kb.button(text=Messages.get_text("OTHERS", "check", language_code),
+                  callback_data=f"check-deposit:{transaction_id}")
+
+        kb.button(text=Messages.get_text("OTHERS", "cancel_payment", language_code),
+                  callback_data=f"cancel-deposit:{transaction_id}")
         kb.adjust(1)
         return kb.as_markup()
 
     @staticmethod
-    def get_admin_keyboard(language_code) -> InlineKeyboardMarkup:
+    def get_confirm_keyboard(callback_data: str, language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("OTHERS", "confirm_yes", language_code),
+                  callback_data=f"{callback_data}:yes")
+        kb.button(text=Messages.get_text("OTHERS", "confirm_no", language_code),
+                  callback_data=f"{callback_data}:no")
+        kb.adjust(2)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_admin_keyboard(language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=Messages.get_text("ADMIN", "summary", language_code),
                   callback_data="admin-summary")
@@ -241,25 +306,37 @@ class KeyboardManager:
                   callback_data="admin-show-logs")
         kb.button(text=Messages.get_text("ADMIN", "database", language_code),
                   callback_data="admin-show-tables")
+        kb.button(text=Messages.get_text("ADMIN", "issue_balance", language_code),
+                  callback_data="admin-issue-balance")
+        kb.button(text=Messages.get_text("ADMIN", "reset_balance", language_code),
+                  callback_data="admin-reset-balance")
+        kb.button(text=Messages.get_text("ADMIN", "get_balance", language_code),
+                  callback_data="admin-get-balance")
+        kb.button(text=Messages.get_text("ADMIN", "game_settings", language_code),
+                  callback_data="admin-game-settings")
+        kb.button(text=Messages.get_text("ADMIN", "game_config", language_code),
+                  callback_data="admin-game-config")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
-        kb.adjust(1)
+        kb.adjust(2)
         return kb.as_markup()
 
     @staticmethod
-    def get_logs_keyboard(language_code, page: int = 1, add_next_page: bool = True) -> InlineKeyboardMarkup:
+    def get_logs_keyboard(language_code: str, page: int = 1, add_next_page: bool = True) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         if page > 1:
-            kb.button(text="◀️", callback_data=f"admin-show-logs:{page - 1}")
+            kb.button(text=Messages.get_text("OTHERS", "prev_page", language_code),
+                      callback_data=f"admin-show-logs:{page - 1}")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="admin-panel")
         if add_next_page:
-            kb.button(text="▶️", callback_data=f"admin-show-logs:{page + 1}")
+            kb.button(text=Messages.get_text("OTHERS", "next_page", language_code),
+                      callback_data=f"admin-show-logs:{page + 1}")
         kb.adjust(3)
         return kb.as_markup()
 
     @staticmethod
-    def get_users_keyboard(language_code, lines: list, page: int = 1,
+    def get_users_keyboard(language_code: str, lines: list, page: int = 1,
                            add_next_page: bool = True) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         for line in lines:
@@ -276,7 +353,7 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    def get_tables_keyboard(tables: List[str], language_code) -> InlineKeyboardMarkup:
+    def get_tables_keyboard(tables: List[str], language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         for table in tables:
             kb.button(text=table, callback_data=f"admin-tables:{table}")
@@ -286,7 +363,70 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    def get_referral_keyboard(language_code) -> InlineKeyboardMarkup:
+    def get_games_keyboard(command: str, games: Dict[str, Type[BaseGame]], language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        for game_id, game_class in games.items():
+            game_instance = game_class()
+            kb.button(
+                text=f"{game_instance.icon} {game_instance.name(language_code)}",
+                callback_data=f"{command}:{game_id}")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="admin-panel")
+        kb.adjust(2)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_game_configs_keyboard(game_id: int, configs: list[str], language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        for config in configs:
+            kb.button(
+                text=config,
+                callback_data=f"admin-game-settings:{game_id}:{config}")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="admin-panel")
+        kb.adjust(2)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_bet_keyboard(game: BaseGame, balance: float, language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        PRESET_BETS = [
+            0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 5, 7.5, 10,
+            15, 20, 25, 50, 75, 100, 250, 500, 1000, 2500, 5000
+        ]
+        bet_values = [v for v in PRESET_BETS if game.min_bet <= v <= game.max_bet]
+        if game.min_bet not in bet_values:
+            bet_values.insert(0, game.min_bet)
+        if game.max_bet not in bet_values:
+            bet_values.append(game.max_bet)
+        for bet in sorted(set(bet_values)):
+            if bet > balance:
+                continue
+            text = f"{int(bet)}$" if bet == int(bet) else f"{bet:.1f}$"
+            kb.button(text=text, callback_data=f"start-game:{bet}")
+        kb.button(text=f"{balance}$", callback_data=f"start-game:{balance}")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code), callback_data="back")
+        kb.adjust(3)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_game_again_keyboard(language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("OTHERS", "try_again", language_code), callback_data="select-bet")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code), callback_data="back")
+        kb.adjust(2)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_channel_announcement_keyboard(bot_username: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("OTHERS", "did_deb", "en"),
+                  url=f"https://t.me/{bot_username}?start=deb")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_referral_keyboard(language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=Messages.get_text("REFERRAL", "create", language_code), callback_data="referral-create")
         kb.button(text=Messages.get_text("REFERRAL", "stats", language_code), callback_data="referral-stats")
@@ -296,9 +436,17 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    def get_referral_cancel_keyboard(language_code) -> InlineKeyboardMarkup:
+    def get_referral_cancel_keyboard(language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
                   callback_data="referral-cancel")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_channel_keyboard(channel_username) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text="📢 Подписаться", url=f"https://t.me/{channel_username}")
+        kb.button(text="✅ Проверить подписку", callback_data="check_subscription")
         kb.adjust(1)
         return kb.as_markup()

@@ -2,11 +2,11 @@ import uuid
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-
 from aiocryptopay import AioCryptoPay, Networks
+from aiocryptopay.models.currencies import Currency
 from aiocryptopay.models.rates import ExchangeRate
 from aiocryptopay.models.update import Update
-
+from pycoingecko import CoinGeckoAPI
 from bot_app.database import DatabaseInterface
 
 
@@ -28,6 +28,33 @@ class TransactionStatus:
     WITHDRAWAL_FAILED = "withdrawal_failed"
 
 
+CRYPTO_CODE_MAP = {
+    'USDT': 'tether',
+    'USDC': 'usd-coin',
+    'BTC': 'bitcoin',
+    'ETH': 'ethereum',
+    'SOL': 'solana',
+    'LTC': 'litecoin',
+    'TON': 'ton',
+    'TRX': 'tron',
+    'GRAM': 'gram',
+    'DOGE': 'dogecoin',
+    'NOT': 'notcoin',
+    'TRUMP': 'official-trump',
+    'PEPE': 'pepe',
+    'WIF': 'dogwifhat',
+    'BONK': 'bonk',
+    'MYI': 'mytonwallet',
+    'MEMHASH': 'memhash',
+    'HMSTR': 'hamster-kombat',
+    'CAT': 'catizen',
+    'BNB': 'binancecoin',
+    'MAJOR': 'major',
+    'DOGS': 'dogs',
+    'MELANIA': 'melania-meme',
+}
+
+
 class CryptoPay:
     """
     Класс для управления пополнениями и выводами через Crypto Pay API.
@@ -39,11 +66,6 @@ class CryptoPay:
     - Обработка вебхуков об оплате
     - Логирование всех операций
     """
-
-    SUPPORTED_ASSETS = ("USDT", "TON", "BTC", "ETH", "LTC", "BNB", "TRX", "USDC")
-    SUPPORTED_FIATS = ("USD", "EUR", "RUB", "BYN", "UAH", "GBP", "CNY", "KZT",
-                       "UZS", "GEL", "TRY", "AMD", "THB", "INR", "BRL", "IDR",
-                       "AZN", "AED", "PLN", "ILS")
 
     # Минимальное время жизни счёта (в секундах)
     MIN_INVOICE_TTL = 60
@@ -61,11 +83,18 @@ class CryptoPay:
         :param logger: Логгер для логирования операций
         """
         self.crypto = AioCryptoPay(token=token, network=network)
+        self.supported_assets: list[Currency] = None
+        self.supported_codes = []
         self._bot = bot
         self._database = database_interface
         self._logger = logger or logging.getLogger(__name__)
         self._token = token
         self._network = network
+
+    async def initialize(self):
+        self.supported_assets = await self.crypto.get_currencies()
+        for asset in self.supported_assets:
+            self.supported_codes.append(asset.code)
 
     @staticmethod
     def _generate_transaction_id() -> str:
@@ -143,28 +172,48 @@ class CryptoPay:
             )
             raise
 
-    async def get_exchange_rates(self) -> list[ExchangeRate]:
+    async def get_exchange_rates(self, source: Optional[str] = None,
+                                 target: Optional[str] = None) -> list[ExchangeRate]:
         """
-        Получает текущие курсы обмена.
-        :return: Словарь с курсами обмена
+        Получает текущие курсы обмена с опциональной фильтрацией.
+
+        :param source: Исходная валюта для фильтрации (опционально)
+        :param target: Целевая валюта для фильтрации (опционально)
+        :return: Список курсов обмена, отфильтрованный по параметрам
+        :raises Exception: Если запрос к API провалился
         """
         try:
             rates = await self.crypto.get_exchange_rates()
-            self._logger.debug(f"Exchange rates fetched: {len(rates)} pairs")
+            if source is not None:
+                rates = [rate for rate in rates if rate.source == source]
+            if target is not None:
+                rates = [rate for rate in rates if rate.target == target]
+            self._logger.debug(
+                f"Exchange rates fetched: {len(rates)} pairs "
+                f"(source: {source}, target: {target})"
+            )
             return rates
         except Exception as e:
-            self._logger.error(f"Failed to get exchange rates: {e}")
+            self._logger.error(
+                f"Failed to get exchange rates (source: {source}, target: {target}): {e}"
+            )
             raise
 
-    async def get_exchange_rate(self, source: str, target: str):
-        rates = await self.get_exchange_rates()
-        for rate in rates:
-            if rate.source == source and rate.target == target:
-                return rate.rate
-
-    async def get_exchange_amount(self, amount: float, source: str, target: str):
-        rate = await self.get_exchange_rate(source, target)
-        return amount * rate
+    @staticmethod
+    def get_crypto_rate(currency_code: str) -> float:
+        """
+        Получает текущий курс криптовалюты к доллару по её коду.
+        :param currency_code: код криптовалюты (например, 'BTC', 'ETH')
+        :return: float: цена в USD
+        """
+        try:
+            cg = CoinGeckoAPI()
+            crypto_id = CRYPTO_CODE_MAP[currency_code]
+            price_data = cg.get_price(ids=crypto_id, vs_currencies='usd')
+            return price_data[crypto_id]['usd']
+        except Exception as e:
+            print(f"Ошибка получения курса: {e}")
+            return None
 
     async def get_balance(self) -> Dict[str, Any]:
         """
@@ -180,6 +229,24 @@ class CryptoPay:
             } for b in balance}
         except Exception as e:
             self._logger.error(f"Failed to get balance: {e}")
+            raise
+
+    async def get_currencies_with_balance(self) -> list[str]:
+        """
+        Получает список кодов валют с ненулевым балансом.
+        :return: Список кодов валют, где есть доступные средства
+        """
+        try:
+            balance = await self.get_balance()
+            currencies = [
+                currency_code
+                for currency_code, balances in balance.items()
+                if balances["available"] > 0
+            ]
+            self._logger.info(f"Found {len(currencies)} currencies with balance: {currencies}")
+            return currencies
+        except Exception as e:
+            self._logger.error(f"Failed to get currencies with balance: {e}")
             raise
 
     async def get_app_stats(self, start_at: Optional[str] = None, end_at: Optional[str] = None) -> Dict[str, Any]:
@@ -226,7 +293,7 @@ class CryptoPay:
                 "status": TransactionStatus.DEPOSIT_FAILED,
                 "message": "Размер пополнения должен быть положительным"
             }
-        if currency not in self.SUPPORTED_ASSETS:
+        if currency not in self.supported_codes:
             self._logger.warning(f"Unsupported currency: {currency}")
             return {
                 "status": TransactionStatus.DEPOSIT_FAILED,
@@ -286,94 +353,19 @@ class CryptoPay:
             )
             raise
 
-    async def create_fiat_deposit(self, user_id: int, amount: float, fiat: str = "USD",
-                                  accepted_assets: Optional[List[str]] = None, description: str = "",
-                                  expires_in: int = 3600) -> Dict[str, Any]:
-        """
-        Создаёт пополнение в фиатной валюте.
-        :param user_id: Telegram ID пользователя
-        :param amount: Размер пополнения в фиате
-        :param fiat: Код фиатной валюты (USD, EUR, RUB и т.д.)
-        :param accepted_assets: Список криптовалют для оплаты
-        :param description: Описание счёта
-        :param expires_in: Время жизни счёта в секундах
-        :return: Словарь с данными о счёте
-        """
-        if amount <= 0:
-            return {
-                "status": TransactionStatus.DEPOSIT_FAILED,
-                "message": "Размер пополнения должен быть положительным"
-            }
-        if fiat not in self.SUPPORTED_FIATS:
-            return {
-                "status": TransactionStatus.DEPOSIT_FAILED,
-                "message": f"Фиатная валюта {fiat} не поддерживается"
-            }
-        if not accepted_assets:
-            accepted_assets = list(self.SUPPORTED_ASSETS[:3])
-        internal_tx_id = await self._record_transaction(
-            user_id=user_id,
-            transaction_type="deposit",
-            amount=amount,
-            currency=fiat,
-            status=TransactionStatus.PENDING_PAYMENT_INIT,
-            description=description or f"Пополнение {amount} {fiat}"
-        )
-        try:
-            invoice = await self.crypto.create_invoice(
-                amount=amount,
-                fiat=fiat,
-                currency_type="fiat",
-                accepted_assets=",".join(accepted_assets),
-                description=description,
-                payload=internal_tx_id,
-                expires_in=expires_in
-            )
-            await self._update_transaction_status(
-                internal_tx_id,
-                TransactionStatus.PAYMENT_PENDING,
-                crypto_data={
-                    "invoice_id": invoice.invoice_id,
-                    "accepted_assets": accepted_assets
-                }
-            )
-            return {
-                "status": TransactionStatus.PAYMENT_PENDING,
-                "internal_tx_id": internal_tx_id,
-                "invoice_id": invoice.invoice_id,
-                "amount": amount,
-                "fiat": fiat,
-                "accepted_assets": accepted_assets,
-                "payment_url": invoice.bot_invoice_url,
-                "expires_at": invoice.expiration_date
-            }
-        except Exception as e:
-            self._logger.error(f"Failed to create fiat invoice: {e}")
-            await self._update_transaction_status(
-                internal_tx_id,
-                TransactionStatus.DEPOSIT_FAILED,
-                message=str(e)
-            )
-            raise
-
-    async def get_deposit_status(self, internal_tx_id: str) -> Dict[str, Any]:
+    async def get_invoice(self, internal_tx_id: str):
         """
         Получает статус пополнения.
         :param internal_tx_id: Внутренний ID транзакции
         :return: Словарь со статусом пополнения
         """
         try:
-            tx = await self._database.get_transaction(internal_tx_id)
-            if not tx:
-                return {"status": "not_found", "message": "Транзакция не найдена"}
-            return {
-                "internal_tx_id": internal_tx_id,
-                "amount": tx.get("amount"),
-                "currency": tx.get("currency"),
-                "status": tx.get("status"),
-                "created_at": tx.get("created_at"),
-                "updated_at": tx.get("updated_at")
-            }
+            crypto_data = await self._database.get_crypto_data(internal_tx_id)
+            if not crypto_data:
+                return None
+            crypto_id = crypto_data.get("invoice_id")
+            invoice = await self.crypto.get_invoices(invoice_ids=[crypto_id])
+            return invoice[0]
         except Exception as e:
             self._logger.error(f"Failed to get deposit status: {e}")
             raise
@@ -385,11 +377,11 @@ class CryptoPay:
         :return: True если успешно отменено
         """
         try:
-            tx = await self._database.get_transaction(internal_tx_id)
-            if not tx:
+            crypto_data = await self._database.get_crypto_data(internal_tx_id)
+            if not crypto_data:
                 self._logger.warning(f"Transaction not found: {internal_tx_id}")
                 return False
-            crypto_id = tx.get("crypto_id")
+            crypto_id = crypto_data.get("invoice_id")
             if not crypto_id:
                 self._logger.warning(f"No invoice ID for transaction: {internal_tx_id}")
                 return False
@@ -426,7 +418,7 @@ class CryptoPay:
                 "status": TransactionStatus.WITHDRAWAL_FAILED,
                 "message": "Размер вывода должен быть положительным"
             }
-        if currency not in self.SUPPORTED_ASSETS:
+        if currency not in self.supported_codes:
             return {
                 "status": TransactionStatus.WITHDRAWAL_FAILED,
                 "message": f"Валюта {currency} не поддерживается"
@@ -445,9 +437,10 @@ class CryptoPay:
                 user_id=user_id,
                 asset=currency,
                 amount=amount,
-                spend_id=spend_id,
-                comment=description or f"Вывод"
+                spend_id=spend_id
             )
+            if transfer is None:
+                return None
             await self._update_transaction_status(
                 internal_tx_id,
                 TransactionStatus.WITHDRAWAL_PROCESSING,
@@ -461,14 +454,7 @@ class CryptoPay:
                 f"TransferID={transfer.transfer_id}, User={user_id}, "
                 f"Amount={amount} {currency}"
             )
-            return {
-                "status": TransactionStatus.WITHDRAWAL_PROCESSING,
-                "internal_tx_id": internal_tx_id,
-                "transfer_id": transfer.transfer_id,
-                "amount": amount,
-                "currency": currency,
-                "completed_at": transfer.completed_at
-            }
+            return transfer
         except Exception as e:
             self._logger.error(f"Failed to create transfer: {e}", exc_info=True)
             await self._update_transaction_status(
@@ -476,7 +462,7 @@ class CryptoPay:
                 TransactionStatus.WITHDRAWAL_FAILED,
                 message=f"Ошибка создания вывода: {str(e)}"
             )
-            raise
+            return None
 
     async def get_withdrawal_status(self, internal_tx_id: str) -> Dict[str, Any]:
         """
@@ -533,6 +519,8 @@ class CryptoPay:
             tx = await self._database.get_transaction(internal_tx_id)
             if tx:
                 user_id = tx.get("user_id")
+                amount = float(invoice.amount) * float(invoice.paid_usd_rate)
+                await self._database.update_balance(user_id, amount, "deposit")
                 await self._send_deposit_notification(
                     user_id=user_id,
                     amount=invoice.paid_amount,
@@ -635,9 +623,6 @@ class CryptoPay:
             self._logger.info("CryptoPay connection closed")
         except Exception as e:
             self._logger.error(f"Failed to close CryptoPay: {e}")
-
-    def is_fiat(self, currency: str) -> bool:
-        return currency.upper() in self.SUPPORTED_FIATS
 
     @staticmethod
     def get_status_display(status: str) -> str:

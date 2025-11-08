@@ -15,10 +15,10 @@ class Language(Enum):
 
 class EmailConfig:
     """Конфигурация для отправки email"""
-    SMTP_SERVER = "connect.smtp.bz"
+    SMTP_SERVER = ""
     SMTP_PORT = 2525
-    FROM_EMAIL = "login@base-escape.ru"
-    PASSWORD = "EXqwFGsx505!-"
+    FROM_EMAIL = ""
+    PASSWORD = ""
 
     PRIMARY_COLOR = "#c41e3a"
     DARK_BG = "#000000"

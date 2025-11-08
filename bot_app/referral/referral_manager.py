@@ -152,7 +152,7 @@ class ReferralManager:
         Обрабатывает действие пользователя и начисляет процент реферёру
         :param user_id: user_id того, кто совершил действие
         :param bot_id: bot_id через который совершено действие
-        :param action_type: тип действия ('bet', 'deposit', 'win')
+        :param action_type: тип действия ('bet', 'win')
         :param amount: сумма действия
         :return: True если успешно
         """
@@ -186,8 +186,6 @@ class ReferralManager:
             reward_percent = 0.0
             if action_type == 'bet':
                 reward_percent = 0.05
-            elif action_type == 'deposit':
-                reward_percent = 0.10
             elif action_type == 'win':
                 reward_percent = 0.02
 

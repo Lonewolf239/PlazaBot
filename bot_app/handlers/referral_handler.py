@@ -1,3 +1,5 @@
+from typing import Any
+
 from bot_app.keyboards import KeyboardManager
 
 
@@ -20,7 +22,7 @@ class ReferralHandler:
         await bot.main_menu(chat_id)
 
     @staticmethod
-    async def create_clone_bot(bot, chat_id: int, user_data: dict):
+    async def create_clone_bot(bot, chat_id: int, user_data: dict[str, Any]):
         """Начинает процесс создания клон-бота"""
         text = await bot.get_text(chat_id, "REFERRAL_CLONE_BOT_STEP1", user_data)
         await bot.database_interface.update_user(chat_id, block_input=True, input_type=10)
@@ -54,19 +56,21 @@ class ReferralHandler:
                     return False
                 ref_link = await bot.referral_manager.get_referral_link(chat_id, bot_id)
                 text = await bot.get_text(chat_id, "REFERRAL_CLONE_BOT_SUCCESS",
-                                      custom_data={'bot_name': f'@{bot_info.username}', 'ref_link': ref_link})
+                                          custom_data={'bot_name': f'@{bot_info.username}', 'ref_link': ref_link})
                 await bot.database_interface.update_user(chat_id, input_type=0)
                 await bot.send_message(chat_id, text)
                 from aiogram import Dispatcher
                 from main import register_bot_handlers
                 clone_dp = Dispatcher()
-                clone_bot_interface = type(bot) (
+                clone_bot_interface = type(bot)(
                     bot.database_interface,
                     token,
-                    bot.admins_id,
+                    bot.admin_ids,
+                    bot.channel_username,
+                    bot.channel_id,
                     bot.logger
                 )
-                clone_bot_interface.initialize(bot.payment_gateway)
+                clone_bot_interface.initialize(bot.crypto_pay)
                 clone_bot_interface.referral_manager = bot.referral_manager
                 register_bot_handlers(clone_dp, clone_bot_interface)
                 await bot.referral_manager.start_clone_bot(bot_id, clone_dp)
@@ -93,7 +97,7 @@ class ReferralHandler:
                     bot.logger.error(f"Ошибка при закрытии test_bot в finally: {e}")
 
     @staticmethod
-    async def my_referrals(bot, chat_id: int, language_code: str):
+    async def my_referrals(bot, chat_id: int, user_data: dict[str, Any]):
         """Показывает статистику рефералов"""
         stats = await bot.database_interface.fetch_one(
             """SELECT
@@ -103,8 +107,6 @@ class ReferralHandler:
             WHERE referrer_user_id = ?""",
             (chat_id,)
         )
-        text = f"👥 Твои рефералы\n\n"
-        text += f"📊 Всего: {stats['total_refs'] or 0}\n"
-        text += f"💰 Вознаграждено: {stats['rewarded'] or 0}\n"
+        text = await bot.get_text(chat_id, "REFERRAL_MY_REFERRALS", user_data, custom_data=stats)
         await bot.send_message(chat_id, text)
         await bot.main_menu(chat_id)

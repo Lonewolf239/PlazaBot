@@ -1,11 +1,16 @@
 class Messages:
     REGISTRATION = {
         "REGISTRATION": {
-            "ru": "📧 Регистрация\n\nПожалуйста, введите вашу электронную почту. На этот адрес мы будем отправлять квитанции о всех ваших операциях.",
-            "en": "📧 Registration\n\nPlease enter your email address. We will send all receipts and transaction confirmations to this address."
+            "ru": "📧 Регистрация\n\n"
+                  "Пожалуйста, введите вашу электронную почту. На этот "
+                  "адрес мы будем отправлять квитанции о всех ваших операциях.",
+            "en": "📧 Registration\n\n"
+                  "Please enter your email address. We will send all "
+                  "receipts and transaction confirmations to this address."
         },
         "CHANGE_EMAIL": {
-            "ru": "✏️ Изменение адреса электронной почты\n\nУкажите новый адрес электронной почты, на который мы будем отправлять ваши квитанции.",
+            "ru": "✏️ Изменение адреса электронной почты\n\n"
+                  "Укажите новый адрес электронной почты, на который мы будем отправлять ваши квитанции.",
             "en": "✏️ Change Email Address\n\nEnter your new email address where we will send your receipts."
         },
         "REGISTRATION_ERROR_EMAIL": {
@@ -17,7 +22,8 @@ class Messages:
             "en": "❌ Verification Error\n\nThe confirmation code is incorrect. Please check the code and try again."
         },
         "REGISTRATION_STEP_TWO": {
-            "ru": "✉️ Подтверждение почты\n\nМы отправили 6-значный код на указанный адрес. Пожалуйста, введите его ниже:",
+            "ru": "✉️ Подтверждение почты\n\n"
+                  "Мы отправили 6-значный код на указанный адрес. Пожалуйста, введите его ниже:",
             "en": "✉️ Email Verification\n\nWe've sent a 6-digit code to your email. Please enter it below:"
         },
         "REGISTRATION_COMPLETED": {
@@ -28,12 +34,16 @@ class Messages:
 
     MAIN_MENU = {
         "MAIN_MENU": {
-            "ru": "👋 Добро пожаловать в наш бот!\n\nЧто вы хотели бы сделать? Выберите нужный раздел из меню ниже.",
-            "en": "👋 Welcome!\n\nWhat would you like to do? Select the section you need from the menu below."
+            "ru": "👋 Добро пожаловать в наш бот!\n\n💰 Баланс: {balance}$\n"
+                  "Что вы хотели бы сделать? Выберите нужный раздел из меню ниже.",
+            "en": "👋 Welcome!\n\n💰 Balance: {balance}$\n"
+                  "What would you like to do? Select the section you need from the menu below."
         },
         "SETTINGS": {
-            "ru": "⚙️ Ваши настройки\n\nВыбранная игра: {selected_game}\n📧 Почта: {email}",
-            "en": "⚙️ Your Settings\n\nSelected game: {selected_game}\n📧 Email: {email}"
+            "ru": "⚙️ Ваши настройки\n\nВыбранная игра: {selected_game}\n",
+                  # "📧 Почта: {email}",
+            "en": "⚙️ Your Settings\n\nSelected game: {selected_game}\n"
+                  # "📧 Email: {email}"
         },
         "CHANGE_GAME": {
             "ru": "🎮 Выберите игру:",
@@ -54,15 +64,15 @@ class Messages:
             "ru": (
                 "👤 Ваш профиль\n\n"
                 "👤 Имя пользователя: username\n"
-                "💰 Баланс: {balance}₽\n"
-                "🏆 Выигрыши: {winnings}₽\n"
+                "💰 Баланс: {balance}$\n"
+                "🏆 Выигрыши: {winnings}$\n"
                 "📅 Дата регистрации: {registered_at}"
             ),
             "en": (
                 "👤 Your Profile\n\n"
                 "👤 Username: username\n"
-                "💰 Balance: {balance}₽\n"
-                "🏆 Winnings: {winnings}₽\n"
+                "💰 Balance: {balance}$\n"
+                "🏆 Winnings: {winnings}$\n"
                 "📅 Registration date: {registered_at}"
             )
         },
@@ -70,15 +80,15 @@ class Messages:
             "ru": (
                 "👤 Профиль пользователя\n\n"
                 "👤 Имя: username\n"
-                "💰 Баланс: {balance}₽\n"
-                "🏆 Выигрыши: {winnings}₽\n"
+                "💰 Баланс: {balance}$\n"
+                "🏆 Выигрыши: {winnings}$\n"
                 "📅 Регистрация: {registered_at}"
             ),
             "en": (
                 "👤 User Profile\n\n"
                 "👤 Username: username\n"
-                "💰 Balance: {balance}₽\n"
-                "🏆 Winnings: {winnings}₽\n"
+                "💰 Balance: {balance}$\n"
+                "🏆 Winnings: {winnings}$\n"
                 "📅 Registration: {registered_at}"
             )
         },
@@ -88,8 +98,8 @@ class Messages:
                 "🆔 ID: {user_id}\n"
                 "👤 Имя: username\n"
                 "🔐 Хэш имени: {hashed_username}\n"
-                "💰 Баланс: {balance}₽\n"
-                "🏆 Выигрыши: {winnings}₽\n"
+                "💰 Баланс: {balance}$\n"
+                "🏆 Выигрыши: {winnings}$\n"
                 "📧 Почта: {email} ({email_verified})\n"
                 "🎮 Выбранная игра: {selected_game}\n"
                 "🌐 Язык: {language}\n"
@@ -100,8 +110,8 @@ class Messages:
                 "🆔 ID: {user_id}\n"
                 "👤 Username: username\n"
                 "🔐 Hashed username: {hashed_username}\n"
-                "💰 Balance: {balance}₽\n"
-                "🏆 Winnings: {winnings}₽\n"
+                "💰 Balance: {balance}$\n"
+                "🏆 Winnings: {winnings}$\n"
                 "📧 Email: {email} ({email_verified})\n"
                 "🎮 Selected game: {selected_game}\n"
                 "🌐 Language: {language}\n"
@@ -128,8 +138,76 @@ class Messages:
 
     BALANCE = {
         "BALANCE": {
-            "ru": "💰 Ваш текущий баланс: {balance} ₽",
-            "en": "💰 Your current balance: {balance} ₽"
+            "ru": "💰 Ваш текущий баланс: {balance}$",
+            "en": "💰 Your current balance: {balance}$"
+        },
+        "SELECT_CURRENCY": {
+            "ru": "💱 Выберите валюту для операции:",
+            "en": "💱 Select currency for operation:"
+        },
+        "SELECT_AMOUNT": {
+            "ru": "💰 Выберите сумму:",
+            "en": "💰 Select amount:"
+        },
+        "CURRENCY_NOT_AVAILABLE": {
+            "ru": "❌ Данная валюта временно недоступна. Попробуйте позже.",
+            "en": "❌ This currency is temporarily unavailable. Please try later."
+        },
+        "PAYMENT_LINK": {
+            "ru": "💳 Ссылка для оплаты создана. Нажмите кнопку ниже для пополнения:",
+            "en": "💳 Payment link created. Click the button below to deposit:"
+        },
+        "DEPOSIT_SUCCESS": {
+            "ru": "✅ Платеж успешно получен! Баланс пополнен.",
+            "en": "✅ Payment received successfully! Balance updated."
+        },
+        "DEPOSIT_FAILED": {
+            "ru": "❌ Платеж не обнаружен или еще обрабатывается.",
+            "en": "❌ Payment not found or still processing."
+        },
+        "CANCEL_DEPOSIT_CONFIRM": {
+            "ru": "⚠️ Вы уверены, что хотите отменить платёж?",
+            "en": "⚠️ Are you sure you want to cancel the payment?"
+        },
+        "DEPOSIT_CANCELLED": {
+            "ru": "✅ Платеж успешно отменен.",
+            "en": "✅ Payment cancelled successfully."
+        },
+        "DEPOSIT_CANCEL_FAILED": {
+            "ru": "❌ Не удалось отменить платеж. Возможно, он уже обработан.",
+            "en": "❌ Failed to cancel payment. It may have been processed already."
+        },
+        "WITHDRAW_SUCCESS": {
+            "ru": "✅ Средства отправлены!\n\n"
+                  "💰 Сумма: <code>{amount} {currency}</code>\n"
+                  "⏳ Статус: В процессе доставки\n\n"
+                  "Обычно средства поступают в течение нескольких минут.",
+            "en": "✅ Withdrawal completed!\n\n"
+                  "💰 Amount: <code>{amount} {currency}</code>\n"
+                  "⏳ Status: In transit\n\n"
+                  "Funds usually arrive within a few minutes."
+        },
+        "EMPTY_BALANCE_FOR_WITHDRAW": {
+            "ru": "❌ Невозможно вывести средства\n\n"
+                  "💰 Ваш баланс пуст. Сначала пополните счет.\n"
+                  "📝 Выберите пополнение в главном меню.",
+            "en": "❌ Unable to withdraw funds\n\n"
+                  "💰 Your balance is empty. Please deposit funds first.\n"
+                  "📝 Select deposit from the main menu."
+        },
+        "WITHDRAW_ERROR": {
+            "ru": "❌ Ошибка при создании заявки на вывод.\n\n"
+                  "🔍 Возможные причины:\n"
+                  "• Недостаточно средств\n"
+                  "• Минимальная сумма вывода не достигнута\n"
+                  "• Временный сбой системы\n\n"
+                  "Попробуйте позже или обратитесь в поддержку.",
+            "en": "❌ Error creating withdrawal request.\n\n"
+                  "🔍 Possible reasons:\n"
+                  "• Insufficient balance\n"
+                  "• Minimum withdrawal amount not reached\n"
+                  "• Temporary system error\n\n"
+                  "Please try again later or contact support."
         }
     }
 
@@ -167,7 +245,8 @@ class Messages:
                 "<b>Шаг 3:</b> Дайте боту название (например, <code>Casino_YourName</code>)\n"
                 "<b>Шаг 4:</b> Дайте боту юзернейм (должен заканчиваться на <code>_bot</code>)\n"
                 "<b>Шаг 5:</b> BotFather отправит вам токен доступа\n"
-                "<b>Шаг 6:</b> Скопируйте токен (пример токена: <code>123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11</code>) "
+                "<b>Шаг 6:</b> Скопируйте токен (пример токена: "
+                "<code>123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11</code>) "
                 "и отправьте его сюда\n\n"
                 "⚠️ <i>Важно: Никогда не делитесь токеном с другими людьми!</i>"
             ),
@@ -194,7 +273,6 @@ class Messages:
                 "🤖 <b>Имя вашего бота:</b> {bot_name}\n\n"
                 "📊 <b>Как вы зарабатываете:</b>\n"
                 "💰 <code>5%</code> от каждой ставки ваших рефералов\n"
-                "💎 <code>10%</code> от каждого пополнения баланса\n"
                 "🏆 <code>2%</code> от каждого выигрыша"
             ),
             "en": (
@@ -202,7 +280,6 @@ class Messages:
                 "🤖 <b>Your bot name:</b> {bot_name}\n\n"
                 "📊 <b>Your earnings:</b>\n"
                 "💰 <code>5%</code> from each bet of your referrals\n"
-                "💎 <code>10%</code> from each deposit\n"
                 "🏆 <code>2%</code> from each win"
             )
         },
@@ -248,22 +325,14 @@ class Messages:
             "ru": (
                 "👥 <b>Ваши рефералы</b>\n\n"
                 "📊 <b>Общая статистика:</b>\n"
-                "👤 Всего привлечено: <code>{total_referrals}</code>\n"
-                "✅ Активных прямо сейчас: <code>{active_referrals}</code>\n"
-                "💰 Получено наград: <code>{total_rewards} ⚡</code>\n\n"
-                "📈 <b>Лучшие боты:</b>\n"
-                "{top_bots}\n\n"
-                "<i>⏱️ Обновлено: только что</i>"
+                "👤 Всего привлечено: <code>{total_refs}</code>\n"
+                "💰 Получено наград: <code>{rewarded}$</code>"
             ),
             "en": (
                 "👥 <b>Your Referrals</b>\n\n"
                 "📊 <b>Overall Statistics:</b>\n"
-                "👤 Total attracted: <code>{total_referrals}</code>\n"
-                "✅ Active right now: <code>{active_referrals}</code>\n"
-                "💰 Rewards earned: <code>{total_rewards} ⚡</code>\n\n"
-                "📈 <b>Top bots:</b>\n"
-                "{top_bots}\n\n"
-                "<i>⏱️ Updated: just now</i>"
+                "👤 Total attracted: <code>{total_refs}</code>\n"
+                "💰 Rewards earned: <code>{rewarded}$</code>"
             )
         },
         "REFERRAL_MY_BOTS": {
@@ -280,81 +349,19 @@ class Messages:
                 "💡 <i>Tip: Create multiple bots for different groups of friends!</i>"
             )
         },
-        "REFERRAL_BOT_DISABLED": {
-            "ru": "⚠️ <b>Этот бот отключен</b>\n\nВы всё ещё получаете награды за существующих рефералов, однако новые пользователи больше не могут присоединиться через эту ссылку.",
-            "en": "⚠️ <b>This bot is disabled</b>\n\nYou still receive rewards for existing referrals, but new users cannot join through this link."
-        },
         "REFERRAL_REWARD_NOTIFICATION": {
             "ru": (
                 "🎉 <b>Поздравляем! Новый реферал!</b>\n\n"
-                "👤 Пользователь присоединился через вашего бота <code>{bot_name}</code>\n"
-                "💰 Вы получили награду: <code>+100 ⚡</code>\n\n"
-                "💼 Новый баланс: <code>{new_balance} ⚡</code>"
+                "👤 Пользователь присоединился через вашего бота <code>{bot_name}</code>"
             ),
             "en": (
                 "🎉 <b>Congratulations! New Referral!</b>\n\n"
-                "👤 A user joined through your bot <code>{bot_name}</code>\n"
-                "💰 You earned: <code>+100 ⚡</code>\n\n"
-                "💼 New balance: <code>{new_balance} ⚡</code>"
-            )
-        },
-        "REFERRAL_COPY_LINK": {
-            "ru": (
-                "🔗 <b>Ваша реф-ссылка скопирована в буфер обмена!</b>\n\n"
-                "📱 Теперь вы можете поделиться ей в:\n"
-                "💬 Telegram чатах и группах\n"
-                "📱 WhatsApp\n"
-                "📧 Email\n"
-                "🌍 Социальные сети\n\n"
-                "<i>📊 Статистика переходов обновляется в реальном времени</i>"
-            ),
-            "en": (
-                "🔗 <b>Your referral link has been copied!</b>\n\n"
-                "📱 You can now share it in:\n"
-                "💬 Telegram chats and groups\n"
-                "📱 WhatsApp\n"
-                "📧 Email\n"
-                "🌍 Social networks\n\n"
-                "<i>📊 Click statistics update in real-time</i>"
-            )
-        },
-        "REFERRAL_STATS_BOT": {
-            "ru": (
-                "📊 <b>Статистика бота @{bot_name}</b>\n\n"
-                "👥 Привлечено рефералов: <code>{referrals_count}</code>\n"
-                "✅ Активных пользователей: <code>{active_count}</code>\n"
-                "💰 Всего заработано: <code>{total_reward} ⚡</code>\n"
-                "📈 Рейтинг CTR: <code>{ctr}%</code>\n"
-                "📅 Дата создания: <code>{created_date}</code>\n\n"
-                "🔗 Ваша ссылка: <code>{ref_link}</code>"
-            ),
-            "en": (
-                "📊 <b>Bot @{bot_name} Statistics</b>\n\n"
-                "👥 Referrals attracted: <code>{referrals_count}</code>\n"
-                "✅ Active users: <code>{active_count}</code>\n"
-                "💰 Total earned: <code>{total_reward} ⚡</code>\n"
-                "📈 CTR rating: <code>{ctr}%</code>\n"
-                "📅 Creation date: <code>{created_date}</code>\n\n"
-                "🔗 Your link: <code>{ref_link}</code>"
+                "👤 A user joined through your bot <code>{bot_name}</code>"
             )
         },
         "REFERRAL_WAITING_TOKEN": {
             "ru": "⏳ Ожидаю ввод токена вашего бота...",
             "en": "⏳ Waiting for your bot token..."
-        },
-        "REFERRAL_WELCOME": {
-            "ru": (
-                "👋 <b>Добро пожаловать в наш бот!</b>\n\n"
-                "🎁 Вы присоединились по реферальной ссылке.\n"
-                "Спасибо за регистрацию! Вам полагается приветственный бонус.\n\n"
-                "🎮 Начните играть прямо сейчас и зарабатывайте награды!"
-            ),
-            "en": (
-                "👋 <b>Welcome to our bot!</b>\n\n"
-                "🎁 You joined through a referral link.\n"
-                "Thanks for registering! You qualify for a welcome bonus.\n\n"
-                "🎮 Start playing now and earn rewards!"
-            )
         }
     }
 
@@ -382,6 +389,85 @@ class Messages:
         "ADMIN_SUMMARY_MIN_BALANCE": {
             "ru": "🔽 Минимальный баланс",
             "en": "🔽 Lowest balance"
+        },
+        "ADMIN_TABLES_LIST": {
+            "ru": "📊 Таблицы базы данных:",
+            "en": "📊 Database tables:"
+        },
+        "ADMIN_BALANCE_ISSUED": {
+            "ru": "✅ Баланс успешно выдан пользователю.",
+            "en": "✅ Balance successfully issued to user."
+        },
+        "ADMIN_BALANCE_RESET": {
+            "ru": "✅ Баланс пользователя успешно сброшен.",
+            "en": "✅ User balance successfully reset."
+        },
+        "GAME_SETTINGS": {
+            "ru": "⚙️ Выберите игру для настройки:",
+            "en": "⚙️ Select a game to configure:"
+        },
+        "GAME_CONFIG_SELECT": {
+            "ru": "⚙️ Выберите игру для просмотра конфигурации:",
+            "en": "⚙️ Select a game to view configuration:"
+        },
+        "GAME_INFO": {
+            "ru": "{game_icon} {game_name}",
+            "en": "{game_icon} {game_name}"
+        }
+    }
+
+    GAMES = {
+        "USER_ALREADY_PLAYING": {
+            "ru": "❌ Вы уже участвуете в игре!",
+            "en": "❌ You are already playing!"
+        },
+        "SELECT_BET": {
+            "ru": "💰 Выберите размер ставки:",
+            "en": "💰 Select your bet:"
+        },
+        "EMPTY_BALANCE_FOR_BET": {
+            "ru": "❌ Невозможно сделать ставку\n\n"
+                  "💰 Ваш баланс пуст. Пополните счет, чтобы начать играть.\n"
+                  "📝 Выберите пополнение в главном меню.",
+            "en": "❌ Unable to place a bet\n\n"
+                  "💰 Your balance is empty. Deposit funds to start playing.\n"
+                  "📝 Select deposit from the main menu."
+        },
+        "INSUFFICIENT_BALANCE": {
+            "ru": "❌ Недостаточно средств",
+            "en": "❌ Insufficient balance"
+        },
+        "GAME_STARTING": {
+            "ru": "🎮 Игра начинается...",
+            "en": "🎮 Game starting..."
+        },
+        "GAME_WIN": {
+            "ru": "🎉 Поздравляем, вам улыбнулась удача!\n\n🎰 Результат: {symbols}\n"
+                  "💰 Размер ставки: {bet}$\n💵 Ваш большой выигрыш: {amount}$\n"
+                  "Ваш шанс сделать это снова растет! Не остановитесь на достигнутом! 🚀",
+            "en": "🎉 Congratulations, luck is on your side!\n\n🎰 Result: {symbols}\n"
+                  "💰 Bet amount: {bet}$\n💵 Your big prize: {amount}$\n"
+                  "Your chance to do it again is growing! Don't stop now! 🚀"
+        },
+        "GAME_LOSE": {
+            "ru": "😢 К сожалению, в этот раз не повезло\n\n🎰 Результат: {symbols}\n"
+                  "Не сдавайтесь — следующий раунд может изменить всё! Попробуйте снова! 🔥",
+            "en": "😢 Unfortunately, not your lucky round\n\n🎰 Result: {symbols}\n"
+                  "Don't give up — the next round might change everything! Try again! 🔥"
+        },
+        "GAME_WIN_ANNOUNCEMENT": {
+            "ru": "🔥 Внимание!\n\nИгрок {username} только что выиграл {amount}$!\n"
+                  "Результат: {symbols}\n\n"
+                  "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
+                  "🔥 Attention!\n\nPlayer {username} just won {amount}$!\n"
+                  "Result: {symbols}\n\n"
+                  "Luck is on your side — join the game and try to win yourself! 🚀",
+            "en": "🔥 Внимание!\n\nИгрок {username} только что выиграл {amount}$!\n"
+                  "Результат: {symbols}\n\n"
+                  "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
+                  "🔥 Attention!\n\nPlayer {username} just won {amount}$!\n"
+                  "Result: {symbols}\n\n"
+                  "Luck is on your side — join the game and try to win yourself! 🚀"
         }
     }
 
@@ -402,5 +488,7 @@ class Messages:
         **REFERRAL_MESSAGES,
 
         # ═════════════════ Админ-панель ════════════════
-        **ADMIN_PANEL
+        **ADMIN_PANEL,
+
+        **GAMES
     }

@@ -1,6 +1,8 @@
 import uvicorn
 import logging
 import asyncio
+
+from aiocryptopay import Networks
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import config
@@ -48,11 +50,14 @@ def register_crypto_handlers(crypto_instance: CryptoPay):
     global web_app, web_app_runner
 
     web_app = web.Application()
+
     @crypto_instance.crypto.pay_handler()
     async def invoice_paid(update: Update, app) -> None:
         await crypto_pay.invoice_paid(update)
+
     async def close_session() -> None:
         await crypto_instance.crypto.close()
+
     web_app.add_routes([
         web.post(f'/crypto/{payment_config.CRYPTOPAY_WEBHOOK}', crypto_instance.crypto.get_updates)
     ])
@@ -81,8 +86,13 @@ async def lifespan(app: FastAPI):
     global db, bot, crypto_pay, dp, bot_task, clone_tasks
     db = DatabaseInterface(logger)
     await db.create()
-    bot = BotInterface(db, config.TOKEN, config.ADMIN_IDS, logger)
-    crypto_pay = CryptoPay(payment_config.CRYPTOPAY_API_TOKEN, bot, db)
+    await db.create_config(0, "honest")
+    bot = BotInterface(db, config.TOKEN, config.ADMIN_IDS, config.CHANNEL_USERNAME, config.CHANNEL_ID, logger)
+    if payment_config.TEST:
+        crypto_pay = CryptoPay(payment_config.CRYPTOPAY_TEST_API_TOKEN, bot, db, Networks.TEST_NET)
+    else:
+        crypto_pay = CryptoPay(payment_config.CRYPTOPAY_API_TOKEN, bot, db)
+    await crypto_pay.initialize()
     register_crypto_handlers(crypto_pay)
     await start_webhook_server()
     bot.initialize(crypto_pay)
@@ -96,7 +106,8 @@ async def lifespan(app: FastAPI):
         if not clone_token:
             logger.warning(f"Не найден токен для клон-бота {bot_id}")
             continue
-        clone_bot_interface = BotInterface(db, clone_token, config.ADMIN_IDS, logger)
+        clone_bot_interface = BotInterface(db, clone_token, config.ADMIN_IDS,
+                                           config.CHANNEL_USERNAME, config.CHANNEL_ID, logger)
         clone_bot_interface.initialize(crypto_pay)
         await ReferralManager.copy_bot_commands(logger, bot.bot, clone_bot_interface.bot)
         clone_dp = Dispatcher()

@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 
 import aiosqlite
 from typing import Optional, List, Dict, Any, Tuple
@@ -12,6 +13,7 @@ class DatabaseInterface:
     Предоставляет методы для создания таблиц, управления пользователями,
     их балансами и транзакциями, включая транзакции с внешними провайдерами.
     """
+
     def __init__(self, logger: logging.Logger, db_path: str = 'casino.db'):
         """
         Инициализирует DatabaseInterface.
@@ -74,36 +76,48 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при выполнении запроса '{query}' с параметрами {params} (fetch all): {e}")
             raise
 
-    async def log_info(self, message: str, exc_info = None, extra = None):
+    async def log_info(self, message: str, exc_info=None, extra=None):
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "info"))
         self.logger.info(message, exc_info=exc_info, extra=extra)
 
-    async def log_debug(self, message: str, exc_info = None, extra = None):
+    async def log_debug(self, message: str, exc_info=None, extra=None):
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "debug"))
         self.logger.info(message, exc_info=exc_info, extra=extra)
 
-    async def log_error(self, message: str, exc_info = None, extra = None):
+    async def log_error(self, message: str, exc_info=None, extra=None):
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "error"))
         self.logger.error(message, exc_info=exc_info, extra=extra)
 
-    async def log_warning(self, message: str, exc_info = None, extra = None):
+    async def log_warning(self, message: str, exc_info=None, extra=None):
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "warning"))
         self.logger.warning(message, exc_info=exc_info, extra=extra)
 
     async def get_logs(self) -> Optional[List[Dict[str, Any]]]:
         return await self.fetch_all("SELECT * FROM logs ORDER BY log_id")
 
-    async def get_needed(self) -> Tuple[int, int, float, int, int]:
-        row_sum = await self.fetch_one("SELECT SUM(balance) AS total_balance FROM users;")
-        needed = row_sum.get("total_balance", 0) or 0
+    async def get_needed(self, admin_ids: list[int]) -> Tuple[float, int, float, float, float]:
+        if admin_ids:
+            admin_ids_str = ",".join(map(str, admin_ids))
+            where_clause = f"WHERE user_id NOT IN ({admin_ids_str})"
+        else:
+            where_clause = ""
+        row_sum = await self.fetch_one(
+            f"SELECT SUM(CAST(balance AS REAL)) AS total_balance FROM users {where_clause};"
+        )
+        total_balance_str = row_sum.get("total_balance", "0") or "0"
+        try:
+            needed = float(total_balance_str)
+        except ValueError:
+            needed = 0.0
         row_stats = await self.fetch_one(
-            "SELECT COUNT(*) AS count, AVG(balance) AS avg_balance, MAX(balance) AS max_balance, MIN(balance) "
-            "AS min_balance FROM users;"
+            f"SELECT COUNT(*) AS count, AVG(CAST(balance AS REAL)) AS avg_balance, "
+            f"MAX(CAST(balance AS REAL)) AS max_balance, MIN(CAST(balance AS REAL)) AS min_balance "
+            f"FROM users {where_clause};"
         )
         count = row_stats.get("count", 0) or 0
         avg_bal = row_stats.get("avg_balance", 0.0) or 0.0
-        max_bal = row_stats.get("max_balance", 0) or 0
-        min_bal = row_stats.get("min_balance", 0) or 0
+        max_bal = row_stats.get("max_balance", 0.0) or 0.0
+        min_bal = row_stats.get("min_balance", 0.0) or 0.0
         return needed, count, avg_bal, max_bal, min_bal
 
     async def create(self):
@@ -115,16 +129,23 @@ class DatabaseInterface:
         try:
             async with aiosqlite.connect(self.db_path) as db:
                 await db.execute("""
+                    CREATE TABLE IF NOT EXISTS game_configs (
+                        game_id INTEGER PRIMARY KEY,
+                        config TEXT
+                    )
+                """)
+                await db.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         user_id INTEGER PRIMARY KEY,
-                        balance REAL DEFAULT 0.0,
-                        winnings REAL DEFAULT 0.0,
+                        balance TEXT DEFAULT 0.0,
+                        winnings TEXT DEFAULT 0.0,
                         username TEXT,
                         hashed_username TEXT,
-                        in_registration BOOLEAN DEFAULT 1,
+                        in_registration BOOLEAN DEFAULT 0,
                         email TEXT,
                         email_code TEXT,
-                        email_verified BOOLEAN,
+                        email_verified BOOLEAN DEFAULT 1,
+                        subscribed BOOLEAN DEFAULT 0,
                         selected_game INTEGER DEFAULT 0,
                         games_played TEXT,
                         input_type INTEGER DEFAULT 0,
@@ -248,6 +269,22 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при инициализации базы данных: {e}")
             raise
 
+    async def get_config(self, game_id: int):
+        data = await self.fetch_one("SELECT config FROM game_configs WHERE game_id = ?", (game_id,))
+        if data:
+            return data["config"]
+        return None
+
+    async def update_config(self, game_id: int, config: str):
+        await self.execute("UPDATE game_configs SET config = ? WHERE game_id = ?", (config, game_id))
+
+    async def create_config(self, game_id: int, config: str):
+        result = await self.get_config(game_id)
+        if result:
+            return
+        await self.execute("INSERT INTO game_configs (game_id, config) VALUES (?, ?)",
+                           (game_id, config))
+
     async def create_user(self, user_id: int, username: str, language: str) -> bool:
         """
         Регистрирует нового пользователя в базе данных.
@@ -265,10 +302,10 @@ class DatabaseInterface:
 
         try:
             await self.execute("INSERT INTO users (user_id, username, hashed_username, language, email) "
-                                "VALUES (?, ?, ?, ?, ?)",
-                                (user_id, username, Hacher.hash(username), language, "semga05@mail.ru"))
+                               "VALUES (?, ?, ?, ?, ?)",
+                               (user_id, username, Hacher.hash(username), language, "semga05@mail.ru"))
 
-            await self.log_info(f"Пользователь {user_id} ({username}) успешно зарегистрирован с балансом 0.0 RUB.")
+            await self.log_info(f"Пользователь {user_id} ({username}) успешно зарегистрирован с балансом 0.0 $.")
             return True
         except Exception as e:
             await self.log_error(f"Ошибка при создании пользователя {user_id} ({username}): {e}")
@@ -343,6 +380,7 @@ class DatabaseInterface:
                           email: str = None,
                           email_code: str = None,
                           email_verified: bool = None,
+                          subscribed: bool = None,
                           selected_game: int = None,
                           input_type: int = None,
                           block_input: bool = None,
@@ -369,6 +407,9 @@ class DatabaseInterface:
         if email_verified is not None:
             fields.append("email_verified = ?")
             params.append(email_verified)
+        if subscribed is not None:
+            fields.append("subscribed = ?")
+            params.append(subscribed)
         if selected_game is not None:
             fields.append("selected_game = ?")
             params.append(selected_game)
@@ -469,8 +510,14 @@ class DatabaseInterface:
         """
         user_data = await self.get_user(user_id)
         if user_data:
-            return float(user_data.get("balance", 0.0))
+            return float(user_data.get("balance", "0.0"))
         await self.log_warning(f"Попытка получить баланс несуществующего пользователя {user_id}.")
+        return 0.0
+
+    async def get_winnings(self, user_id: int) -> float:
+        user_data = await self.get_user(user_id)
+        if user_data:
+            return float(user_data.get("winnings", "0.0"))
         return 0.0
 
     async def update_balance(self, user_id: int, amount: float, transaction_type: str = 'misc',
@@ -492,15 +539,23 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка: Пользователь {user_id} не найден. Невозможно обновить баланс.")
             return False
 
+        balance = await self.get_balance(user_id)
+        new_balance = Decimal(balance + amount)
+        new_balance = new_balance.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        winnings = await self.get_winnings(user_id)
+        new_winnings = Decimal(winnings + amount)
+        new_winnings = new_winnings.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
         try:
             async with aiosqlite.connect(self.db_path) as db:
                 async with db.execute("BEGIN"):
                     try:
-                        await db.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?",
-                                         (amount, user_id))
+                        await db.execute("UPDATE users SET balance = ? WHERE user_id = ?",
+                                         (str(new_balance), user_id))
                         if transaction_type == "win":
-                            await db.execute("UPDATE users SET winnings = winnings + ? WHERE user_id = ?",
-                                             (amount, user_id))
+                            await db.execute("UPDATE users SET winnings = ? WHERE user_id = ?",
+                                             (str(new_winnings), user_id))
                         if transaction_type == "bet":
                             cursor = await db.execute("SELECT selected_game FROM users WHERE user_id = ?",
                                                       (user_id,))
@@ -540,13 +595,76 @@ class DatabaseInterface:
                         raise e
 
             current_balance = await self.get_balance(user_id)
-            await self.log_info(f"Баланс пользователя {user_id} обновлен на {amount:.2f} RUB. "
-                                f"Новый баланс: {current_balance:.2f} RUB. (Тип: {transaction_type}, "
+            await self.log_info(f"Баланс пользователя {user_id} обновлен на {amount:.2f} $. "
+                                f"Новый баланс: {current_balance:.2f} $. (Тип: {transaction_type}, "
                                 f"Описание: {description})")
             return True
         except Exception as e:
             await self.log_error(
                 f"Ошибка при обновлении баланса пользователя {user_id} на {amount} (тип: {transaction_type}): {e}")
+            return False
+
+    async def set_balance(self, user_id: int, new_balance: float) -> bool:
+        """
+        Устанавливает баланс пользователя на конкретное значение без создания транзакции.
+        Используется только администраторами для корректировки баланса.
+        Сначала проверяет существование пользователя. Если пользователь не найден,
+        выводит предупреждение и возвращает False.
+        Если установка прошла успешно, выводит информацию в лог и возвращает True.
+        :param user_id: ID пользователя Telegram.
+        :param new_balance: Новое значение баланса.
+        :return: True, если баланс успешно установлен, False в случае ошибки или если
+        пользователь не найден.
+        """
+        if not await self.user_exists(user_id):
+            await self.log_error(f"Ошибка: Пользователь {user_id} не найден. Невозможно установить баланс.")
+            return False
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                async with db.execute("BEGIN"):
+                    try:
+                        await db.execute("UPDATE users SET balance = ? WHERE user_id = ?",
+                                         (new_balance, user_id))
+                        await db.commit()
+                        await self.log_info(f"Баланс пользователя {user_id} установлен на {new_balance}.")
+                        return True
+                    except Exception as e:
+                        await db.rollback()
+                        await self.log_error(f"Ошибка при установке баланса пользователя {user_id}: {e}")
+                        raise e
+        except Exception as e:
+            await self.log_error(f"Ошибка подключения к БД при установке баланса для {user_id}: {e}")
+            return False
+
+    async def reset_balance(self, user_id: int) -> bool:
+        """
+        Обнуляет баланс пользователя без создания транзакции.
+        Используется только администраторами для корректировки баланса.
+        Сначала проверяет существование пользователя. Если пользователь не найден,
+        выводит предупреждение и возвращает False.
+        Если обнуление прошло успешно, выводит информацию в лог и возвращает True.
+        :param user_id: ID пользователя Telegram.
+        :return: True, если баланс успешно обнулен, False в случае ошибки или если
+        пользователь не найден.
+        """
+        if not await self.user_exists(user_id):
+            await self.log_error(f"Ошибка: Пользователь {user_id} не найден. Невозможно обнулить баланс.")
+            return False
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                async with db.execute("BEGIN"):
+                    try:
+                        await db.execute("UPDATE users SET balance = 0 WHERE user_id = ?",
+                                         (user_id,))
+                        await db.commit()
+                        await self.log_info(f"Баланс пользователя {user_id} обнулен.")
+                        return True
+                    except Exception as e:
+                        await db.rollback()
+                        await self.log_error(f"Ошибка при обнулении баланса пользователя {user_id}: {e}")
+                        raise e
+        except Exception as e:
+            await self.log_error(f"Ошибка подключения к БД при обнулении баланса для {user_id}: {e}")
             return False
 
     async def get_transactions(self, user_id: int, show_all: bool = False, limit: int = 10) -> List[Dict[str, Any]]:
@@ -705,6 +823,39 @@ class DatabaseInterface:
         except Exception as e:
             await self.log_error(f"✗ Ошибка при обновлении статуса {transaction_id}: {e}")
             raise
+
+    async def get_crypto_data(self, transaction_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Получает криптографические данные транзакции из таблицы `provider_transactions`.
+
+        :param transaction_id: Уникальный внутренний ID транзакции (UUID).
+        :return: Словарь с crypto_data или None если транзакция не найдена или данные пусты.
+        """
+        import json
+        try:
+            result = await self.fetch_one(
+                "SELECT crypto_data FROM provider_transactions WHERE transaction_id = ?",
+                (transaction_id,)
+            )
+            if not result:
+                await self.log_debug(f"Транзакция {transaction_id} не найдена")
+                return None
+            crypto_data_str = result.get("crypto_data")
+            if not crypto_data_str:
+                await self.log_debug(f"crypto_data для транзакции {transaction_id} пусто")
+                return None
+            try:
+                crypto_data = json.loads(crypto_data_str)
+                await self.log_debug(f"✓ Получены crypto_data для транзакции {transaction_id}")
+                return crypto_data
+            except json.JSONDecodeError as e:
+                await self.log_error(
+                    f"Ошибка парсинга JSON crypto_data для {transaction_id}: {e}"
+                )
+                return None
+        except Exception as e:
+            await self.log_error(f"Ошибка при получении crypto_data для {transaction_id}: {e}")
+            return None
 
     async def get_provider_transaction(self, transaction_id: str) -> Optional[Dict[str, Any]]:
         """

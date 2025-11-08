@@ -1,7 +1,3 @@
-from .base_game import BaseGame
+from .base_game import BaseGame, GameResult, GameStatus
 from .casino_slot import CasinoSlot
-
-__all__ = [
-    "BaseGame",
-    "CasinoSlot",
-]
+from .config import SlotConfig
