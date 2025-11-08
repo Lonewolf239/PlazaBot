@@ -3,26 +3,22 @@ import random
 from collections import Counter
 from typing import Callable, Any, Optional
 
+from . import BaseGame, GameStatus, GameResult
 from .config import SlotConfig
-from .base_game import BaseGame, GameStatus, GameResult
 
 
 class CasinoSlot(BaseGame):
     """Слот-машина"""
-    def __init__(self, config: str = "honest"):
+    def __init__(self, config_name: str = "honest"):
         """
         Инициализация слота
 
-        :param config: 'honest', 'aggressive' или 'generous'
+        :param config_name: 'honest', 'aggressive' или 'generous'
         """
-        super().__init__(config)
+        super().__init__(config_name)
+        self.load_config()
         self.icon = "🎰"
         self._name = {"ru": "Слот-машина", "en": "Slot machine"}
-        config_type_upper = config.upper()
-        if hasattr(SlotConfig, config_type_upper):
-            self.config = getattr(SlotConfig, config_type_upper)
-        else:
-            self.config = SlotConfig.HONEST
         self._rules = {
             "ru": (
                 f"ℹ️ Правила слота\n"
@@ -30,7 +26,7 @@ class CasinoSlot(BaseGame):
                 f"— 3× 💎: выигрыш × {self.config['multipliers']['big_win']}\n"
                 f"— 3× 🔔: выигрыш × {self.config['multipliers']['medium_win']}\n"
                 f"— 3× фрукт: выигрыш × {self.config['multipliers']['small_win']}\n"
-                f"— 2× фрукт: вернуть ставку\n"
+                f"— 2× фрукт: вернуть ставку"
             ),
             "en": (
                 f"ℹ️ Slot Rules\n"
@@ -38,7 +34,7 @@ class CasinoSlot(BaseGame):
                 f"— 3× 💎: win × {self.config['multipliers']['big_win']}\n"
                 f"— 3× 🔔: win × {self.config['multipliers']['medium_win']}\n"
                 f"— 3× fruit: win × {self.config['multipliers']['small_win']}\n"
-                f"— 2× fruit: return bet\n"
+                f"— 2× fruit: return bet"
             )
         }
         self.fruits = ['🍒', '🍋', '🍊', '🍇', '🍉']
@@ -55,6 +51,13 @@ class CasinoSlot(BaseGame):
         self.reel_order = list(self.symbols.keys())
         self.start_output = "🎰 [*] | [*] | [*]"
         self.start_frame_time = 0.03
+
+    def load_config(self):
+        config_type_upper = self.config_name.upper()
+        if hasattr(SlotConfig, config_type_upper):
+            self.config = getattr(SlotConfig, config_type_upper)
+        else:
+            self.config = SlotConfig.HONEST
 
     def get_config_info(self) -> str:
         """Получить информацию о конфигурации"""
@@ -76,42 +79,55 @@ class CasinoSlot(BaseGame):
         )
 
     async def play(self, bot, user_id: int, message_id: int,
-                   bet: float, bet_date: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
+                   bet: float, bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Запуск слота"""
         self.game_over = False
         self.current_status = GameStatus.RUNNING
         self.frame_time = self.start_frame_time
 
-        spin = self.do_spin()
-        animation_data = await self.animate(spin, bot, user_id, message_id, send_frame)
-        win_amount, multiplier = self.evaluate_spin(spin, bet)
+        result = self.generate_result()
+        win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
+        animation_data = await self.create_animation(result, bot, user_id,
+                                                     message_id, send_frame)
 
-        result = GameResult(
+        game_result = GameResult(
             status=GameStatus.FINISHED,
             win_amount=win_amount,
             bet_amount=bet,
+            user_bet=None,
             multiplier=multiplier,
             is_win=win_amount > 0,
-            game_data={
-                'spin': spin,
-                'symbols_info': self._get_spin_info(spin)
-            },
-            animations_data=animation_data
+            game_data=self._get_game_data(result, bet_data),
+            animations_data=animation_data,
+            bet_data=bet_data
         )
 
-        return await self._finalize_game(result)
+        return await self._finalize_game(game_result)
 
-    @staticmethod
-    def _get_spin_info(spin: list[str]) -> dict[str, Any]:
-        """Получить информацию о результате спина"""
-        counts = Counter(spin)
-        return {
-            'counts': dict(counts),
-            'all_same': len(counts) == 1,
-            'unique_count': len(counts)
-        }
+    def generate_result(self) -> list[str]:
+        """Генерация результата спина на основе конфигурированных вероятностей."""
+        probs = self.config['probabilities']
+        roll = random.random()
+        if roll < probs['jackpot']:
+            return ['7️⃣'] * 3
+        elif roll < probs['jackpot'] + probs['big_win']:
+            return ['💎'] * 3
+        elif roll < probs['jackpot'] + probs['big_win'] + probs['medium_win']:
+            return ['🔔'] * 3
+        elif roll < probs['jackpot'] + probs['big_win'] + probs['medium_win'] + probs['small_win']:
+            fruit = random.choice(self.fruits)
+            return [fruit] * 3
+        elif (roll < probs['jackpot'] + probs['big_win'] + probs['medium_win'] +
+              probs['small_win'] + probs['break_even']):
+            sym = random.choice(self.fruits)
+            other = random.choice([s for s in self.fruits if s != sym])
+            result = [sym, sym, other]
+            random.shuffle(result)
+            return result
+        else:
+            return [random.choice(self.reel_order) for _ in range(3)]
 
-    def evaluate_spin(self, result: list[str], bet: float) -> tuple[float, float]:
+    def evaluate_result(self, result: list[str], bet: float, bet_data: Optional[str] = None) -> tuple[float, float]:
         """
         Оценка результата спина.
         :return: (сумма выигрыша, множитель)
@@ -135,34 +151,11 @@ class CasinoSlot(BaseGame):
                 return bet, 1.0
         return 0, 0.0
 
-    def do_spin(self) -> list[str]:
-        """Генерация результата спина на основе конфигурированных вероятностей."""
-        probs = self.config['probabilities']
-        roll = random.random()
-        if roll < probs['jackpot']:
-            return ['7️⃣'] * 3
-        elif roll < probs['jackpot'] + probs['big_win']:
-            return ['💎'] * 3
-        elif roll < probs['jackpot'] + probs['big_win'] + probs['medium_win']:
-            return ['🔔'] * 3
-        elif roll < probs['jackpot'] + probs['big_win'] + probs['medium_win'] + probs['small_win']:
-            fruit = random.choice(self.fruits)
-            return [fruit] * 3
-        elif (roll < probs['jackpot'] + probs['big_win'] + probs['medium_win'] +
-              probs['small_win'] + probs['break_even']):
-            sym = random.choice(self.fruits)
-            other = random.choice([s for s in self.fruits if s != sym])
-            result = [sym, sym, other]
-            random.shuffle(result)
-            return result
-        else:
-            return [random.choice(self.reel_order) for _ in range(3)]
-
-    async def animate(self, final_result: list[str], bot, user_id: int, message_id: int,
-                      send_frame: Optional[Callable]) -> dict[str, Any]:
+    async def create_animation(self, result: list[str], bot, user_id: int,
+                               message_id: int, send_frame: Optional[Callable] = None) -> dict[str, Any]:
         """
         Анимация спина.
-        :return: данные анимации для логирования/отладки
+        :return: данные анимации
         """
         animation_frames = []
         if send_frame:
@@ -179,7 +172,7 @@ class CasinoSlot(BaseGame):
                     positions[reel_index] = (positions[reel_index] + 1) % len(reels[reel_index])
                     frame_symbols.append(reels[reel_index][positions[reel_index]])
                 else:
-                    frame_symbols.append(final_result[reel_index])
+                    frame_symbols.append(result[reel_index])
             frame = "🎰 " + " | ".join(frame_symbols)
             if send_frame:
                 await send_frame(bot, user_id, message_id, frame)
@@ -189,6 +182,20 @@ class CasinoSlot(BaseGame):
                 await asyncio.sleep(self.frame_time)
         return {
             'total_frames': len(animation_frames),
-            'final_symbols': ' | '.join(final_result),
-            'animation_duration': sum(self.frame_time for _ in range(len(animation_frames)))
+            'final_result': ' | '.join(result),
+            'animation_duration': sum(self.frame_time for _ in range(len(animation_frames))),
+            "icon": self.icon
+        }
+
+    def _get_game_data(self, result: list[str], bet_data: Optional[str] = None) -> dict[str, Any]:
+        """Создает структуру game_data для слота"""
+        counts = Counter(result)
+        symbols_info = {
+            'counts': dict(counts),
+            'all_same': len(counts) == 1,
+            'unique_count': len(counts)
+        }
+        return {
+            'spin': result,
+            'symbols_info': symbols_info
         }

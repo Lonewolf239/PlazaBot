@@ -134,6 +134,15 @@ class DatabaseInterface:
                         config TEXT
                     )
                 """)
+
+                await db.execute("""
+                    CREATE TABLE IF NOT EXISTS bot_configs (
+                        bot_id INTEGER PRIMARY KEY,
+                        chat_id INTEGER,
+                        chat_username TEXT
+                    )
+                """)
+
                 await db.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         user_id INTEGER PRIMARY KEY,
@@ -146,6 +155,7 @@ class DatabaseInterface:
                         email_code TEXT,
                         email_verified BOOLEAN DEFAULT 1,
                         subscribed BOOLEAN DEFAULT 0,
+                        payments_connected BOOLEAN DEFAULT 0,
                         selected_game INTEGER DEFAULT 0,
                         games_played TEXT,
                         input_type INTEGER DEFAULT 0,
@@ -269,6 +279,46 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при инициализации базы данных: {e}")
             raise
 
+    async def get_bot_config(self, bot_id: int):
+        data = await self.fetch_one("SELECT * FROM bot_configs WHERE bot_id = ?", (bot_id,))
+        if data:
+            return data
+        await self.execute("INSERT INTO bot_configs (bot_id) VALUES (?)", (bot_id,))
+        return None
+
+    async def clear_bot_config(self, bot_id: int):
+        query = "UPDATE bot_configs SET chat_id = NULL, chat_username = NULL WHERE bot_id = ?"
+        try:
+            await self.execute(query, (bot_id,))
+            await self.log_info(f"У бота {bot_id} успешно очищены chat_id и chat_username")
+        except Exception as e:
+            await self.log_error(f"Ошибка при очистке бота {bot_id}: {e}")
+
+    async def set_bot_config(self, bot_id: int, chat_id: str = None, chat_username: str = None):
+        fields = []
+        params = []
+
+        if chat_id is not None:
+            fields.append("chat_id = ?")
+            params.append(chat_id)
+        if chat_username is not None:
+            fields.append("chat_username = ?")
+            params.append(chat_username)
+
+        if not fields:
+            return False
+
+        params.append(bot_id)
+        query = f"UPDATE bot_configs SET {', '.join(fields)} WHERE bot_id = ?"
+
+        try:
+            await self.execute(query, tuple(params))
+            await self.log_info(f"Бот {bot_id} успешно обновлен. Обновлены поля: {', '.join(fields)}")
+            return True
+        except Exception as e:
+            await self.log_error(f"Ошибка при обновлении бота {bot_id}: {e}")
+            return False
+
     async def get_config(self, game_id: int):
         data = await self.fetch_one("SELECT config FROM game_configs WHERE game_id = ?", (game_id,))
         if data:
@@ -380,6 +430,7 @@ class DatabaseInterface:
                           email: str = None,
                           email_code: str = None,
                           email_verified: bool = None,
+                          payments_connected: bool = None,
                           subscribed: bool = None,
                           selected_game: int = None,
                           input_type: int = None,
@@ -407,6 +458,9 @@ class DatabaseInterface:
         if email_verified is not None:
             fields.append("email_verified = ?")
             params.append(email_verified)
+        if payments_connected is not None:
+            fields.append("payments_connected = ?")
+            params.append(payments_connected)
         if subscribed is not None:
             fields.append("subscribed = ?")
             params.append(subscribed)

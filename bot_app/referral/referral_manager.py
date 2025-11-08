@@ -157,7 +157,8 @@ class ReferralManager:
         :return: True если успешно
         """
         try:
-            if bot_id == (await Bot(self.main_bot_token).get_me()).username:
+            is_clone = await self.db.is_clone_bot(bot_id)
+            if not is_clone:
                 return True
 
             referrer_id = await self.get_bot_creator(bot_id)

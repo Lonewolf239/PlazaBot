@@ -57,7 +57,7 @@ class ReferralHandler:
                 ref_link = await bot.referral_manager.get_referral_link(chat_id, bot_id)
                 text = await bot.get_text(chat_id, "REFERRAL_CLONE_BOT_SUCCESS",
                                           custom_data={'bot_name': f'@{bot_info.username}', 'ref_link': ref_link})
-                await bot.database_interface.update_user(chat_id, input_type=0)
+                await bot.database_interface.update_user(chat_id, block_input=False, input_type=0)
                 await bot.send_message(chat_id, text)
                 from aiogram import Dispatcher
                 from main import register_bot_handlers
@@ -66,8 +66,6 @@ class ReferralHandler:
                     bot.database_interface,
                     token,
                     bot.admin_ids,
-                    bot.channel_username,
-                    bot.channel_id,
                     bot.logger
                 )
                 clone_bot_interface.initialize(bot.crypto_pay)

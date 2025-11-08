@@ -65,7 +65,7 @@ class GameManager:
                 self.logger.error(f"Ошибка при вызове {callback_type}: {e}")
 
     async def start_game(self, bot, user_id: int, message_id: int, game_id: int, bet: float,
-                         bet_date: Optional[str] = None, send_frame: Optional[Callable] = None) -> Optional[GameResult]:
+                         bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> Optional[GameResult]:
         """
         Запуск игры
 
@@ -74,7 +74,7 @@ class GameManager:
         :param message_id: ID сообщения
         :param game_id: ID игры
         :param bet: Размер ставки
-        :param bet_date: Данные ставки
+        :param bet_data: Данные ставки
         :param send_frame: Callback для отправки кадров анимации
         :return: GameResult или None в случае ошибки
         """
@@ -99,7 +99,7 @@ class GameManager:
         self.active_sessions[user_id] = session
         try:
             await self._call_callbacks('on_game_start', session)
-            result = await game.play(bot, user_id, message_id, bet, bet_date, send_frame)
+            result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
             await self._call_callbacks('on_game_end', result, session)
             self.logger.info(f"Пользователь {user_id} завершил игру {game_id}. Выигрыш: {result.win_amount}")
             return result

@@ -19,42 +19,57 @@ class HandlersManager:
         await bot.registration_menu(callback_query.message)
 
     @staticmethod
-    async def check_subscription(bot, chat_id: int, first_name: str):
+    async def check_subscription(bot, chat_id: int, first_name: str) -> bool:
         try:
-            member = await bot.bot.get_chat_member(
-                chat_id=f"@{bot.channel_username}",
-                user_id=chat_id
-            )
-            if member.status in ["member", "administrator", "creator"]:
+            user_data = await bot.database_interface.get_user(chat_id)
+            if not user_data:
+                return True
+            if bool(user_data.get("subscribed")):
+                return True
+            bot_config = await bot.bot_config()
+            if not bot_config:
+                return True
+            channel_id = bot_config.get("chat_id")
+            channel_username = bot_config.get("chat_username")
+            if not channel_id or not channel_username:
+                return True
+            member = await bot.bot.get_chat_member(f"@{channel_username}", chat_id)
+            if member.status in ("member", "administrator", "creator"):
                 await bot.database_interface.update_user(chat_id, subscribed=True)
-                await bot.send_message(chat_id,
-                                       f"👋 Добро пожаловать, {first_name}!\n\n"
-                                       "✅ Вы подписаны на наш канал.")
-                await bot.main_menu(chat_id)
-            else:
-                await bot.send_message(chat_id,
-                                       f"👋 Привет, {first_name}!\n\n"
-                                       "❌ Для продолжения работы подпишитесь на наш канал:",
-                                       reply_markup=KeyboardManager.get_channel_keyboard(bot.channel_username))
-        except Exception:
+                await bot.send_message(chat_id, f"👋 Добро пожаловать, {first_name}!\n\n✅ Вы подписаны на наш канал.")
+                return True
             await bot.send_message(chat_id,
-                                   "⚠️ Произошла ошибка при проверке подписки.\n"
-                                   "Пожалуйста, повторите попытку")
+                                   f"👋 Привет, {first_name}!\n\n❌ Для продолжения работы подпишитесь на наш канал:",
+                                   reply_markup=KeyboardManager.get_channel_keyboard(channel_username))
+        except Exception:
+            await bot.send_message(chat_id, "⚠️ Произошла ошибка при проверке подписки.\nПожалуйста, повторите попытку")
+        return False
 
     # ════════════════════ Игры ═══════════════════
     @staticmethod
     async def start_game(bot, chat_id: int, user_data: dict[str, Any], bet: float):
+        """Начало игры"""
         if bet > float(user_data.get("balance", "0.0")):
-            # TODO: рефералка
             await bot.send_message(chat_id, await bot.get_text(chat_id, "INSUFFICIENT_BALANCE", user_data))
             await bot.main_menu(chat_id)
             return
-        message = await bot.send_message(chat_id, await bot.get_text(chat_id, "GAME_STARTING", user_data))
-        await bot.game_manager.start_game(bot, chat_id, message.message_id, int(user_data.get("selected_game", 0)),
-                                          bet, send_frame=HandlersManager.send_frame)
+
+        message = await bot.send_message(chat_id, await bot.get_text(chat_id, "GAME_STARTING", user_data),
+                                         add_delete_keyboard=False)
+        selected_game = int(user_data.get("selected_game", 0))
+        game = await bot.game_manager.get_game(selected_game)
+        bet_data = None
+        if game.need_bet_data:
+            bet_data = bot.bet_data_collector.format_bet_data(chat_id)
+            bot.bet_data_collector.reset(chat_id)
+        await bot.game_manager.start_game(
+            bot, chat_id, message.message_id, selected_game,
+            bet, bet_data, HandlersManager.send_frame
+        )
 
     @staticmethod
     async def select_bet(bot, chat_id: int, user_data: dict[str, Any]):
+        """Выбор ставки или начало сбора bet_data"""
         if bot.game_manager.is_user_playing(chat_id):
             await bot.send_message(chat_id, await bot.get_text(chat_id, "USER_ALREADY_PLAYING", user_data))
             await bot.main_menu(chat_id)
@@ -63,24 +78,75 @@ class HandlersManager:
         try:
             balance_float = float(balance_str) if balance_str else 0.0
             if balance_float <= 0:
-                await bot.send_message(
-                    chat_id,
-                    await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data)
-                )
+                await bot.send_message(chat_id, await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data))
                 await bot.main_menu(chat_id)
                 return
         except (ValueError, TypeError):
-            await bot.send_message(
-                chat_id,
-                await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data)
-            )
+            await bot.send_message(chat_id, await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data))
             await bot.main_menu(chat_id)
             return
-        game = await bot.game_manager.get_game(int(user_data.get("selected_game", "en")))
-        await bot.send_message(chat_id, await bot.get_text(chat_id, "SELECT_BET", user_data),
-                               reply_markup=KeyboardManager.get_bet_keyboard(game,
-                                                                             float(user_data.get("balance", "0.0")),
-                                                                             user_data.get("language", "en")))
+        game = await bot.game_manager.get_game(int(user_data.get("selected_game", "0")))
+        if game.need_bet_data and game.bet_data_flow:
+            bot.bet_data_collector.start_collection(chat_id, game.bet_data_flow)
+            await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data)
+        else:
+            await bot.send_message(
+                chat_id,
+                await bot.get_text(chat_id, "SELECT_BET", user_data),
+                reply_markup=KeyboardManager.get_bet_keyboard(
+                    game,
+                    float(user_data.get("balance", "0.0")),
+                    user_data.get("language", "en")
+                )
+            )
+
+    @staticmethod
+    async def _show_next_bet_parameter(bot, chat_id: int, user_data: dict[str, Any]):
+        """Показать следующий параметр для выбора"""
+        current_param = bot.bet_data_collector.get_current_parameter(chat_id)
+        if not current_param:
+            await HandlersManager._show_final_bet_selection(bot, chat_id, user_data)
+            return
+        language = user_data.get("language", "en")
+        progress = bot.bet_data_collector.get_progress_text(chat_id, language)
+        param_name = current_param.param_name.get(language, current_param.param_type)
+        message_text = f"{progress}\n\n" if progress else ""
+        message_text += f"Выберите {param_name}:" if language == 'ru' else f"Select {param_name}:"
+        collected = bot.bet_data_collector.get_collected_data(chat_id) or {}
+        bet_type = collected.get('bet_type', '')
+        await bot.send_message(chat_id, message_text,
+                               reply_markup=KeyboardManager.get_bet_parameter_keyboard(
+                                   current_param, language, bet_type))
+
+    @staticmethod
+    async def _show_final_bet_selection(bot, chat_id: int, user_data: dict[str, Any]):
+        """Показать финальный выбор ставки после сбора всех параметров"""
+        language = user_data.get("language", "en")
+        game = await bot.game_manager.get_game(int(user_data.get("selected_game", "0")))
+        progress = bot.bet_data_collector.get_progress_text(chat_id, language)
+        message_text = f"{progress}\n\n"
+        message_text += await bot.get_text(chat_id, "SELECT_BET", user_data)
+        await bot.send_message(
+            chat_id,
+            message_text,
+            reply_markup=KeyboardManager.get_bet_keyboard(
+                game,
+                float(user_data.get("balance", "0.0")),
+                language
+            )
+        )
+
+    @staticmethod
+    async def select_bet_data(bot, chat_id: int, user_data: dict[str, Any],
+                              bet_data_type: str, value: str):
+        """Обработка выбора параметра ставки"""
+        if not bot.bet_data_collector.add_value(chat_id, bet_data_type, value):
+            await bot.main_menu(chat_id)
+            return
+        if bot.bet_data_collector.is_complete(chat_id):
+            await HandlersManager._show_final_bet_selection(bot, chat_id, user_data)
+        else:
+            await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data)
 
     @staticmethod
     async def send_frame(bot, chat_id: int, message_id: int, frame: str):
@@ -105,35 +171,40 @@ class HandlersManager:
         game_id = int(session["game_id"])
         started_at = session["started_at"]
         user_data = await bot.database_interface.get_user(user_id)
-        final_symbols = result.animations_data["final_symbols"]
+        final_result = result.animations_data["final_result"]
+        icon = result.animations_data["icon"]
+        user_bet = result.user_bet
         if result.is_win:
             custom_data = {
                 "username": f"<a href='https://t.me/"
                             f"{(await bot.bot.get_me()).username}?"
                             f"start=user_{user_data['hashed_username']}'>{user_data['username']}</a>",
-                "amount": str(result.win_amount),
+                "amount": f"{result.win_amount:.2f}",
                 "bet": str(result.bet_amount),
-                "symbols": final_symbols}
+                "user_bet": user_bet,
+                "final_result": final_result,
+                "icon": icon
+            }
             await bot.database_interface.update_balance(
-                user_id,
-                result.win_amount,
-                "win",
+                user_id, result.win_amount, "win",
                 f"Game finished: {game_id}, multiplier: {result.multiplier}x, started_at: {started_at}"
             )
             await bot.referral_manager.process_user_action(user_id, (await bot.bot.get_me()).id,
                                                            "win", result.win_amount)
             try:
-                await bot.send_message(bot.channel_id,
-                                       await bot.get_text(user_id, "GAME_WIN_ANNOUNCEMENT", user_data, custom_data),
-                                       reply_markup=KeyboardManager.get_channel_announcement_keyboard(
-                                           (await bot.bot.get_me()).username))
+                channel_id = await bot.chat_id()
+                if channel_id:
+                    await bot.send_message(channel_id,
+                                           await bot.get_text(user_id, "GAME_WIN_ANNOUNCEMENT", user_data, custom_data),
+                                           reply_markup=KeyboardManager.get_channel_announcement_keyboard(
+                                               (await bot.bot.get_me()).username))
             except Exception:
                 pass
             await bot.send_message(user_id, await bot.get_text(user_id, "GAME_WIN", user_data, custom_data),
                                    reply_markup=KeyboardManager.get_game_again_keyboard(
                                        user_data.get("language", "en")))
         else:
-            custom_data = {"symbols": final_symbols}
+            custom_data = {"final_result": final_result, "user_bet": user_bet, "icon": icon}
             await bot.send_message(user_id, await bot.get_text(user_id, "GAME_LOSE", user_data, custom_data),
                                    reply_markup=KeyboardManager.get_game_again_keyboard(
                                        user_data.get("language", "en")))
@@ -430,6 +501,29 @@ class HandlersManager:
         game = await bot.game_manager.get_game(game_id)
         await bot.send_message(chat_id, game.get_config_info())
         await HandlersManager.admin_panel(bot, chat_id, user_data)
+
+    @staticmethod
+    async def admin_bot_config(bot, chat_id: int, user_data: dict[str, Any], command: str):
+        language_code = user_data.get("language", "en")
+        command_parts = command.split(':')
+        if len(command_parts) > 1:
+            if command_parts[1] == "set":
+                await bot.database_interface.update_user(chat_id, block_input=True, input_type=20)
+                await bot.send_message(chat_id, await bot.get_text(chat_id, "BOT_CONFIG_ENTER_ID", user_data))
+                return
+            else:
+                await bot.database_interface.clear_bot_config(bot.bot.id)
+                await HandlersManager.admin_panel(bot, chat_id, user_data)
+                return
+        bot_config = await bot.bot_config()
+        if bot_config:
+            channel_username = bot_config.get("chat_username", "")
+            channel_display = f"@{channel_username}" if channel_username else "❌ Не подключён"
+        else:
+            channel_display = "❌ Не подключён"
+        custom_data = {"channel_username": channel_display}
+        await bot.send_message(chat_id, await bot.get_text(chat_id, "BOT_CONFIG", user_data, custom_data),
+                               reply_markup=KeyboardManager.get_bot_config(language_code))
 
     @staticmethod
     async def admin_user(bot, chat_id: int, command: str, user_data: dict[str, Any]):

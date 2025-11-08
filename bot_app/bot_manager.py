@@ -2,8 +2,9 @@ import logging
 from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
+
 from bot_app.keyboards import KeyboardManager
-from bot_app.games import CasinoSlot
+from bot_app.games import CasinoSlot, Roulette, BetDataFlow, BetParameter
 from bot_app.database import DatabaseInterface
 from bot_app.payments import CryptoPay
 from bot_app.referral import ReferralManager
@@ -15,23 +16,109 @@ from bot_app.handlers import HandlersManager
 PAGE_LIMIT = 16
 
 
+class BetDataCollector:
+    """Управляет процессом сбора bet_data от пользователя"""
+
+    def __init__(self):
+        self._user_states: Dict[int, Dict[str, Any]] = {}
+
+    def start_collection(self, chat_id: int, bet_data_flow: BetDataFlow):
+        """Начать сбор данных"""
+        self._user_states[chat_id] = {
+            'parameters': bet_data_flow.parameters,
+            'current_step': 0,
+            'collected_data': {}
+        }
+
+    def add_value(self, chat_id: int, param_type: str, value: str):
+        """Добавить значение параметра"""
+        if chat_id not in self._user_states:
+            return False
+
+        state = self._user_states[chat_id]
+        state['collected_data'][param_type] = value
+        state['current_step'] += 1
+        return True
+
+    def get_current_parameter(self, chat_id: int) -> Optional[BetParameter]:
+        """Получить текущий параметр"""
+        if chat_id not in self._user_states:
+            return None
+
+        state = self._user_states[chat_id]
+        current_step = state['current_step']
+
+        if current_step < len(state['parameters']):
+            return state['parameters'][current_step]
+        return None
+
+    def is_complete(self, chat_id: int) -> bool:
+        """Проверить, все ли параметры собраны"""
+        if chat_id not in self._user_states:
+            return False
+
+        state = self._user_states[chat_id]
+        return state['current_step'] >= len(state['parameters'])
+
+    def get_collected_data(self, chat_id: int) -> Optional[Dict[str, str]]:
+        """Получить собранные данные"""
+        if chat_id not in self._user_states:
+            return None
+        return self._user_states[chat_id]['collected_data'].copy()
+
+    def format_bet_data(self, chat_id: int) -> Optional[str]:
+        """Форматировать собранные данные в строку"""
+        data = self.get_collected_data(chat_id)
+        if not data:
+            return None
+        return ';'.join([f"{k}:{v}" for k, v in data.items()])
+
+    def get_progress_text(self, chat_id: int, language: str = 'en') -> str:
+        """Получить текст прогресса"""
+        if chat_id not in self._user_states:
+            return ""
+
+        state = self._user_states[chat_id]
+        collected = state['collected_data']
+
+        if not collected:
+            return ""
+
+        lines = []
+        for param_type, value in collected.items():
+            param = next((p for p in state['parameters'] if p.param_type == param_type), None)
+            if param:
+                param_name = param.param_name.get(language, param_type)
+                lines.append(f"✅ {param_name}: {value}")
+
+        return "\n".join(lines)
+
+    def reset(self, chat_id: int):
+        """Сбросить состояние пользователя"""
+        if chat_id in self._user_states:
+            del self._user_states[chat_id]
+
+    def cancel_collection(self, chat_id: int):
+        """Отменить сбор данных"""
+        self.reset(chat_id)
+
+
 class BotInterface:
     CasinoGames = {
         0: CasinoSlot,
+        1: Roulette
     }
     GameConfigs = {
-        0: ["honest", "aggressive", "generous"]
+        0: ["honest", "aggressive", "generous"],
+        1: ["honest", "aggressive", "generous"]
     }
 
-    def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list,
-                 channel_username: str, channel_id: int, logger: logging.Logger):
+    def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list, logger: logging.Logger):
         self.database_interface = db_interface
         self.token = token
         self.bot = Bot(token)
         self.crypto_pay: Optional[CryptoPay] = None
         self.admin_ids = admin_ids
-        self.channel_username = channel_username
-        self.channel_id = channel_id
         self.referral_manager: Optional[ReferralManager] = None
         self.logger = logger
         self.game_manager = GameManager(db_interface, logger)
@@ -39,6 +126,7 @@ class BotInterface:
         self.game_manager.on_game_start(self.on_game_started)
         self.game_manager.on_game_end(self.on_game_finished)
         self.game_manager.on_game_error(self.on_game_error)
+        self.bet_data_collector = BetDataCollector()
 
     def initialize(self, crypto_pay: CryptoPay):
         self.crypto_pay = crypto_pay
@@ -63,6 +151,22 @@ class BotInterface:
     async def get_game(self, chat_id: int):
         return await self.database_interface.get_selected_game(chat_id)
 
+    @staticmethod
+    def _remove_none_blocks(text: str, data: Dict[str, Any]) -> str:
+        """Удаляет блоки между ## если содержащиеся в них параметры равны None"""
+        import re
+        pattern = r'#([^#]*?)#'
+
+        def replace_block(match):
+            block_content = match.group(1)
+            params = re.findall(r'\{(\w+)}', block_content)
+            for param in params:
+                if data.get(param) is None:
+                    return ""
+            return block_content
+
+        return re.sub(pattern, replace_block, text)
+
     async def get_text(self, chat_id: int, tag: str, user_data: Dict[str, Any] = None,
                        custom_data: Dict[str, Any] = None) -> str:
         if user_data is None:
@@ -72,9 +176,9 @@ class BotInterface:
         game = await self.game_manager.get_game(int(user_data.get("selected_game", 0)))
         text_template = text_template.replace("{selected_game}",
                                               f"{game.icon} {game.name(user_data.get("language", "en"))}")
-        if custom_data:
-            return text_template.format(**custom_data)
-        return text_template.format(**user_data)
+        format_data = custom_data if custom_data else user_data
+        text_template = self._remove_none_blocks(text_template, format_data)
+        return text_template.format(**format_data)
 
     @staticmethod
     def get_user_language(message: types.Message) -> str:
@@ -85,6 +189,21 @@ class BotInterface:
             return "ru"
         else:
             return "en"
+
+    async def bot_config(self):
+        bot_id = self.bot.id
+        bot_config = await self.database_interface.get_bot_config(bot_id)
+        return bot_config
+
+    async def chat_id(self):
+        return (await self.bot_config()).get("chat_id", None)
+
+    async def get_channel_username(self, channel_id: int):
+        try:
+            chat = await self.bot.get_chat(channel_id)
+            return chat.username
+        except Exception:
+            return None
 
     async def main_menu(self, chat_id: int):
         selected_game = await self.get_game(chat_id)
@@ -197,8 +316,7 @@ class BotInterface:
             elif start_param == "deb":
                 await HandlersManager.select_bet(self, chat_id, user_data)
                 return
-        if not bool(user_data.get("subscribed", False)):
-            await HandlersManager.check_subscription(self, chat_id, message.from_user.first_name)
+        if not await HandlersManager.check_subscription(self, chat_id, message.from_user.first_name):
             return
         await self.main_menu(chat_id)
 
@@ -220,6 +338,20 @@ class BotInterface:
             from bot_app.handlers.referral_handler import ReferralHandler
             await ReferralHandler.process_token_input(self, chat_id, input_text)
 
+        elif input_type == 20:
+            if not input_text.startswith('-'):
+                input_text = '-' + input_text
+            channel_username = await self.get_channel_username(input_text)
+            if channel_username is None:
+                await self.send_message(chat_id, await self.get_text(chat_id, "CHANNEL_CONFIG_ERROR"))
+                return
+            await self.database_interface.update_user(chat_id, block_input=False, input_type=0)
+            await self.database_interface.set_bot_config((await self.bot.get_me()).id, chat_id=input_text,
+                                                         chat_username=channel_username)
+            await self.send_message(input_text, await self.get_text(chat_id, "CHANNEL_TEST_MESSAGE"))
+            await self.send_message(chat_id, await self.get_text(chat_id, "CHANNEL_CONFIG_SUCCESS"))
+            await self.main_menu(chat_id)
+
     async def on_inline_button(self, callback_query: types.CallbackQuery):
         command = callback_query.data
         if not command:
@@ -228,8 +360,9 @@ class BotInterface:
         chat_id = callback_query.message.chat.id
         user_data = await self.database_interface.get_user(chat_id)
 
-        if command == "check_subscription":
-            await HandlersManager.check_subscription(self, chat_id, user_data["username"])
+        if command == "check-subscription":
+            if await HandlersManager.check_subscription(self, chat_id, user_data["username"]):
+                await self.main_menu(chat_id)
             await self.bot.delete_message(chat_id, callback_query.message.message_id)
             return
 
@@ -289,6 +422,12 @@ class BotInterface:
             await HandlersManager.register_back(self, callback_query)
 
         # ════════════════════ Игры ═══════════════════
+        elif command.startswith("select-bet-data"):
+            parts = command.split(':')
+            if len(parts) == 3:
+                bet_data_type = parts[1]
+                value = parts[2]
+                await HandlersManager.select_bet_data(self, chat_id, user_data, bet_data_type, value)
         elif command == "select-bet":
             await HandlersManager.select_bet(self, chat_id, user_data)
         elif command.startswith("start-game"):
@@ -364,6 +503,8 @@ class BotInterface:
             await HandlersManager.admin_game_settings_handler(self, chat_id, user_data, command)
         elif command.startswith("admin-game-config"):
             await HandlersManager.admin_game_config_handler(self, chat_id, user_data, command)
+        elif command.startswith("admin-bot-config"):
+            await HandlersManager.admin_bot_config(self, chat_id, user_data, command)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":
@@ -450,12 +591,12 @@ class BotInterface:
 
     async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML",
                            reply_markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardRemove]] = None,
-                           disable_web_page_preview: Optional[bool] = True):
+                           disable_web_page_preview: Optional[bool] = True, add_delete_keyboard=True):
         """
         Отправляет текстовое сообщение с опциональными параметрами parse_mode,
         клавиатурой и отключением предпросмотра ссылок.
         """
-        if reply_markup is None:
+        if reply_markup is None and add_delete_keyboard:
             reply_markup = KeyboardManager.get_delete_keyboard()
         return await self.bot.send_message(
             chat_id=chat_id,

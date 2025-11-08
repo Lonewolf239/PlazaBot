@@ -34,10 +34,12 @@ class Messages:
 
     MAIN_MENU = {
         "MAIN_MENU": {
-            "ru": "👋 Добро пожаловать в наш бот!\n\n💰 Баланс: {balance}$\n"
-                  "Что вы хотели бы сделать? Выберите нужный раздел из меню ниже.",
-            "en": "👋 Welcome!\n\n💰 Balance: {balance}$\n"
-                  "What would you like to do? Select the section you need from the menu below."
+            "ru": "🎰 Добро пожаловать в наш элитный игровой клуб!\n\n"
+                  "🚀 Испытайте удачу, крутите барабаны и сорвите свой крупный выигрыш прямо сейчас!\n\n"
+                  "🎉 Сегодня ваш день! Не теряйте шанс выиграть больше!",
+            "en": "🎰 Welcome to our elite gaming club!\n\n"
+                  "🚀 Feel the thrill, spin the reels, and hit your big win right now!\n\n"
+                  "🎉 Today is your day! Don't miss your chance to win even more!"
         },
         "SETTINGS": {
             "ru": "⚙️ Ваши настройки\n\nВыбранная игра: {selected_game}\n",
@@ -442,32 +444,125 @@ class Messages:
             "en": "🎮 Game starting..."
         },
         "GAME_WIN": {
-            "ru": "🎉 Поздравляем, вам улыбнулась удача!\n\n🎰 Результат: {symbols}\n"
-                  "💰 Размер ставки: {bet}$\n💵 Ваш большой выигрыш: {amount}$\n"
+            "ru": "🎉 Поздравляем, вам улыбнулась удача!\n\n{icon} Результат: {final_result}\n"
+                  "#💰 Ваша ставка: {user_bet}\n#"
+                  "💵 Ваш большой выигрыш: {amount}$\n"
                   "Ваш шанс сделать это снова растет! Не остановитесь на достигнутом! 🚀",
-            "en": "🎉 Congratulations, luck is on your side!\n\n🎰 Result: {symbols}\n"
-                  "💰 Bet amount: {bet}$\n💵 Your big prize: {amount}$\n"
+            "en": "🎉 Congratulations, luck is on your side!\n\n{icon} Result: {final_result}\n"
+                  "#💰 Your bet: {user_bet}\n#"
+                  "💵 Your big prize: {amount}$\n"
                   "Your chance to do it again is growing! Don't stop now! 🚀"
         },
         "GAME_LOSE": {
-            "ru": "😢 К сожалению, в этот раз не повезло\n\n🎰 Результат: {symbols}\n"
+            "ru": "😢 К сожалению, в этот раз не повезло\n\n{icon} Результат: {final_result}\n"
+                  "#💰 Ваша ставка: {user_bet}\n#"
                   "Не сдавайтесь — следующий раунд может изменить всё! Попробуйте снова! 🔥",
-            "en": "😢 Unfortunately, not your lucky round\n\n🎰 Result: {symbols}\n"
+            "en": "😢 Unfortunately, not your lucky round\n\n{icon} Result: {final_result}\n"
+                  "#💰 Your bet: {user_bet}\n#"
                   "Don't give up — the next round might change everything! Try again! 🔥"
         },
         "GAME_WIN_ANNOUNCEMENT": {
             "ru": "🔥 Внимание!\n\nИгрок {username} только что выиграл {amount}$!\n"
-                  "Результат: {symbols}\n\n"
+                  "#💰 Ставка: {user_bet}\n#"
+                  "{icon} Результат: {final_result}\n\n"
                   "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
                   "🔥 Attention!\n\nPlayer {username} just won {amount}$!\n"
-                  "Result: {symbols}\n\n"
+                  "#💰 Bet: {user_bet}\n#"
+                  "{icon} Result: {final_result}\n\n"
                   "Luck is on your side — join the game and try to win yourself! 🚀",
             "en": "🔥 Внимание!\n\nИгрок {username} только что выиграл {amount}$!\n"
-                  "Результат: {symbols}\n\n"
+                  "#💰 Ставка: {user_bet}\n#"
+                  "{icon} Результат: {final_result}\n\n"
                   "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
                   "🔥 Attention!\n\nPlayer {username} just won {amount}$!\n"
-                  "Result: {symbols}\n\n"
+                  "#💰 Bet: {user_bet}\n#"
+                  "{icon} Result: {final_result}\n\n"
                   "Luck is on your side — join the game and try to win yourself! 🚀"
+        }
+    }
+
+    CHANNEL_CONFIG = {
+        "BOT_CONFIG": {
+            "ru": (
+                "⚙️ Настройка бота для уведомлений\n\n"
+                "📢 Здесь вы можете подключить бота к каналу\n"
+                "для автоматической публикации уведомлений о выигрышах\n\n"
+                "📌 Подключённый канал: {channel_username}"
+            ),
+            "en": (
+                "⚙️ Bot notification setup\n\n"
+                "📢 Here you can connect the bot to a channel\n"
+                "for automatic win announcements\n\n"
+                "📌 Connected channel: {channel_username}"
+            )
+        },
+        "BOT_CONFIG_ENTER_ID": {
+            "ru": (
+                "📝 Введите ID канала или чата\n\n"
+                "💡 Как получить ID:\n"
+                "1️⃣ Перешлите сообщение из канала/чата боту @userinfobot\n"
+                "2️⃣ Вы получите ID в ответе (пример: <code>-10***********</code>)\n"
+                "3️⃣ Скопируйте ID и пришлите его сюда\n\n"
+                "⚠️ Убедитесь, что бот добавлен в канал/чат как администратор!"
+            ),
+            "en": (
+                "📝 Enter channel or chat ID\n\n"
+                "💡 How to get ID:\n"
+                "1️⃣ Forward a message from the channel/chat to @userinfobot\n"
+                "2️⃣ You will receive the ID in the response (example: <code>-10***********</code>)\n"
+                "3️⃣ Copy the ID and send it here\n\n"
+                "⚠️ Make sure the bot is added to the channel/chat as an administrator!"
+            )
+        },
+        "CHANNEL_CONFIG_ERROR": {
+            "ru": (
+                "❌ Ошибка настройки канала\n\n"
+                "🔍 Возможные причины:\n"
+                "• Неверный ID канала или чата\n"
+                "• Бот не добавлен в канал как администратор\n"
+                "• Канал является приватным\n\n"
+                "📝 Убедитесь, что:\n"
+                "1️⃣ ID канала указан правильно\n"
+                "2️⃣ Бот добавлен в канал с правами администратора\n"
+                "3️⃣ Канал доступен для бота"
+            ),
+            "en": (
+                "❌ Channel configuration error\n\n"
+                "🔍 Possible reasons:\n"
+                "• Invalid channel or chat ID\n"
+                "• Bot not added to channel as administrator\n"
+                "• Channel is private\n\n"
+                "📝 Make sure that:\n"
+                "1️⃣ Channel ID is correct\n"
+                "2️⃣ Bot is added to channel with admin rights\n"
+                "3️⃣ Channel is accessible to bot"
+            )
+        },
+        "CHANNEL_TEST_MESSAGE": {
+            "ru": (
+                "✅ Тестовое сообщение\n\n"
+                "🤖 Бот успешно подключен к каналу!\n"
+                "Все сообщения будут публиковаться здесь."
+            ),
+            "en": (
+                "✅ Test message\n\n"
+                "🤖 Bot successfully connected to channel!\n"
+                "All messages will be posted here."
+            )
+        },
+        "CHANNEL_CONFIG_SUCCESS": {
+            "ru": (
+                "✅ Канал успешно настроен!\n\n"
+                "📢 Тестовое сообщение отправлено в канал.\n"
+                "Если вы его видите — настройка завершена успешно!\n\n"
+                "🎉 Теперь все объявления о выигрышах будут публиковаться в указанном канале."
+            ),
+            "en": (
+                "✅ Channel configured successfully!\n\n"
+                "📢 Test message sent to channel.\n"
+                "If you can see it — configuration completed successfully!\n\n"
+                "🎉 Now all win announcements will be posted to the specified channel."
+            )
         }
     }
 
@@ -490,5 +585,9 @@ class Messages:
         # ═════════════════ Админ-панель ════════════════
         **ADMIN_PANEL,
 
-        **GAMES
+        # ═════════════════════ Игры ════════════════════
+        **GAMES,
+
+        # ════════════════ Настройка канала ═════════════
+        **CHANNEL_CONFIG
     }

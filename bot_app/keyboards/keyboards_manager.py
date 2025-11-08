@@ -1,7 +1,7 @@
 from typing import List, Any, Type, Dict
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from bot_app.games import BaseGame
+from bot_app.games import BaseGame, BetParameter
 
 
 class Messages:
@@ -23,7 +23,10 @@ class Messages:
         },
         "BALANCE": {
             "deposit": {"ru": "Пополнить баланс", "en": "Deposit"},
-            "withdraw": {"ru": "Вывести средства", "en": "Withdraw"}
+            "withdraw": {"ru": "Вывести средства", "en": "Withdraw"},
+            "pay": {"ru": "Оплатить", "en": "Pay"},
+            "check": {"ru": "Проверить", "en": "Check"},
+            "cancel_payment": {"ru": "Отменить платёж", "en": "Cancel Payment"}
         },
         "ADMIN": {
             "summary": {"ru": "Сводка по балансу", "en": "Balance Summary"},
@@ -34,7 +37,10 @@ class Messages:
             "reset_balance": {"ru": "Обнулить баланс", "en": "Reset balance"},
             "get_balance": {"ru": "Получить баланс", "en": "Get balance"},
             "game_settings": {"ru": "Настройки игры", "en": "Game Settings"},
-            "game_config": {"ru": "Конфиг игры", "en": "Game Config"}
+            "game_config": {"ru": "Конфиг игры", "en": "Game Config"},
+            "bot_config": {"ru": "Настройка бота", "en": "Bot setup"},
+            "set_bot_config": {"ru": "Изменить", "en": "Change"},
+            "remove_bot_config": {"ru": "Удалить", "en": "Remove"}
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
@@ -46,9 +52,6 @@ class Messages:
             "confirm_yes": {"ru": "Да", "en": "Yes"},
             "confirm_no": {"ru": "Нет", "en": "No"},
             "try_again": {"ru": "Попробовать снова", "en": "Try again"},
-            "pay": {"ru": "Оплатить", "en": "Pay"},
-            "check": {"ru": "Проверить", "en": "Check"},
-            "cancel_payment": {"ru": "Отменить платёж", "en": "Cancel Payment"},
             "prev_page": {"ru": "", "en": ""},
             "next_page": {"ru": "", "en": ""},
             "did_deb": {"en": "Играй сейчас/Play Now"}
@@ -73,7 +76,10 @@ class Messages:
         },
         "BALANCE": {
             "deposit": "➕",
-            "withdraw": "💸"
+            "withdraw": "💸",
+            "pay": "💳",
+            "check": "🔍",
+            "cancel_payment": "❌"
         },
         "ADMIN": {
             "summary": "📊",
@@ -84,7 +90,10 @@ class Messages:
             "reset_balance": "♻️",
             "get_balance": "🏦",
             "game_settings": "🛠️",
-            "game_config": "🧩"
+            "game_config": "🧩",
+            "bot_config": "⚙️",
+            "set_bot_config": "⚙️",
+            "remove_bot_config": "🗑️"
         },
         "REFERRAL": {
             "create": "➕",
@@ -274,13 +283,13 @@ class KeyboardManager:
     @staticmethod
     def get_pay_keyboard(language_code: str, deposit: dict[str, Any], transaction_id: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        kb.button(text=Messages.get_text("OTHERS", "pay", language_code), url=deposit['payment_url'])
+        kb.button(text=Messages.get_text("BALANCE", "pay", language_code), url=deposit['payment_url'])
 
         # TODO: удалить после реализации вебхуков
-        kb.button(text=Messages.get_text("OTHERS", "check", language_code),
+        kb.button(text=Messages.get_text("BALANCE", "check", language_code),
                   callback_data=f"check-deposit:{transaction_id}")
 
-        kb.button(text=Messages.get_text("OTHERS", "cancel_payment", language_code),
+        kb.button(text=Messages.get_text("BALANCE", "cancel_payment", language_code),
                   callback_data=f"cancel-deposit:{transaction_id}")
         kb.adjust(1)
         return kb.as_markup()
@@ -316,6 +325,8 @@ class KeyboardManager:
                   callback_data="admin-game-settings")
         kb.button(text=Messages.get_text("ADMIN", "game_config", language_code),
                   callback_data="admin-game-config")
+        kb.button(text=Messages.get_text("ADMIN", "bot_config", language_code),
+                  callback_data="admin-bot-config")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(2)
@@ -388,6 +399,65 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
+    def get_bot_config(language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("ADMIN", "set_bot_config", language_code),
+                  callback_data="admin-bot-config:set")
+        kb.button(text=Messages.get_text("ADMIN", "remove_bot_config", language_code),
+                  callback_data="admin-bot-config:remove")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="admin-panel")
+        kb.adjust(2, 1)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_bet_parameter_keyboard(parameter: BetParameter, language: str, bet_type: str) -> InlineKeyboardMarkup:
+        """Создать клавиатуру для выбора параметра"""
+        kb = InlineKeyboardBuilder()
+        options = parameter.options
+        values = options.get('values', [])
+        for item in values:
+            display_text = item.get(language, item.get('en', ''))
+            emoji = item.get('emoji', '')
+            value = item.get('value', '')
+            adjust = int(item.get('adjust', 2))
+            if parameter.validation_func is not None:
+                try:
+                    is_valid = parameter.validation_func(item, bet_type)
+                    if not is_valid:
+                        continue
+                except Exception:
+                    continue
+            if isinstance(value, list):
+                for num in value:
+                    kb.button(
+                        text=str(num),
+                        callback_data=f"select-bet-data:{parameter.param_type}:{num}"
+                    )
+                kb.adjust(adjust)
+            else:
+                kb.button(
+                    text=f"{emoji} {display_text}",
+                    callback_data=f"select-bet-data:{parameter.param_type}:{value}"
+                )
+                kb.adjust(adjust)
+        kb.button(
+            text=Messages.get_text("OTHERS", "back", language),
+            callback_data="back"
+        )
+        return kb.as_markup()
+
+    @staticmethod
+    def get_bet_data_keyboard(bet_data_type: str, options: dict, language: str):
+        """Получить клавиатуру для выбора bet_data"""
+        keyboards = {
+            # 'lines': KeyboardManager._get_lines_keyboard
+        }
+        if bet_data_type not in keyboards:
+            return None
+        return keyboards[bet_data_type](options, language)
+
+    @staticmethod
     def get_bet_keyboard(game: BaseGame, balance: float, language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         PRESET_BETS = [
@@ -405,15 +475,18 @@ class KeyboardManager:
             text = f"{int(bet)}$" if bet == int(bet) else f"{bet:.1f}$"
             kb.button(text=text, callback_data=f"start-game:{bet}")
         kb.button(text=f"{balance}$", callback_data=f"start-game:{balance}")
-        kb.button(text=Messages.get_text("OTHERS", "back", language_code), callback_data="back")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="back")
         kb.adjust(3)
         return kb.as_markup()
 
     @staticmethod
     def get_game_again_keyboard(language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        kb.button(text=Messages.get_text("OTHERS", "try_again", language_code), callback_data="select-bet")
-        kb.button(text=Messages.get_text("OTHERS", "back", language_code), callback_data="back")
+        kb.button(text=Messages.get_text("OTHERS", "try_again", language_code),
+                  callback_data="select-bet")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="back")
         kb.adjust(2)
         return kb.as_markup()
 
@@ -428,8 +501,10 @@ class KeyboardManager:
     @staticmethod
     def get_referral_keyboard(language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        kb.button(text=Messages.get_text("REFERRAL", "create", language_code), callback_data="referral-create")
-        kb.button(text=Messages.get_text("REFERRAL", "stats", language_code), callback_data="referral-stats")
+        kb.button(text=Messages.get_text("REFERRAL", "create", language_code),
+                  callback_data="referral-create")
+        kb.button(text=Messages.get_text("REFERRAL", "stats", language_code),
+                  callback_data="referral-stats")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(1)
@@ -447,6 +522,6 @@ class KeyboardManager:
     def get_channel_keyboard(channel_username) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text="📢 Подписаться", url=f"https://t.me/{channel_username}")
-        kb.button(text="✅ Проверить подписку", callback_data="check_subscription")
+        kb.button(text="✅ Проверить подписку", callback_data="check-subscription")
         kb.adjust(1)
         return kb.as_markup()

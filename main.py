@@ -87,7 +87,8 @@ async def lifespan(app: FastAPI):
     db = DatabaseInterface(logger)
     await db.create()
     await db.create_config(0, "honest")
-    bot = BotInterface(db, config.TOKEN, config.ADMIN_IDS, config.CHANNEL_USERNAME, config.CHANNEL_ID, logger)
+    await db.create_config(1, "honest")
+    bot = BotInterface(db, config.TOKEN, config.ADMIN_IDS, logger)
     if payment_config.TEST:
         crypto_pay = CryptoPay(payment_config.CRYPTOPAY_TEST_API_TOKEN, bot, db, Networks.TEST_NET)
     else:
@@ -106,8 +107,7 @@ async def lifespan(app: FastAPI):
         if not clone_token:
             logger.warning(f"Не найден токен для клон-бота {bot_id}")
             continue
-        clone_bot_interface = BotInterface(db, clone_token, config.ADMIN_IDS,
-                                           config.CHANNEL_USERNAME, config.CHANNEL_ID, logger)
+        clone_bot_interface = BotInterface(db, clone_token, config.ADMIN_IDS, logger)
         clone_bot_interface.initialize(crypto_pay)
         await ReferralManager.copy_bot_commands(logger, bot.bot, clone_bot_interface.bot)
         clone_dp = Dispatcher()
