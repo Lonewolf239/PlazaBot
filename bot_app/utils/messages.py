@@ -65,7 +65,7 @@ class Messages:
         "PROFILE": {
             "ru": (
                 "👤 Ваш профиль\n\n"
-                "👤 Имя пользователя: username\n"
+                "👤 Имя: username\n"
                 "💰 Баланс: {balance}$\n"
                 "🏆 Выигрыши: {winnings}$\n"
                 "📅 Дата регистрации: {registered_at}"

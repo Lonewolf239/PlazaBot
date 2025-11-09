@@ -49,23 +49,35 @@ class HandlersManager:
     @staticmethod
     async def start_game(bot, chat_id: int, user_data: dict[str, Any], bet: float):
         """Начало игры"""
-        if bet > float(user_data.get("balance", "0.0")):
+        user_balance = float(user_data.get("balance", "0.0"))
+        if bet > user_balance:
             await bot.send_message(chat_id, await bot.get_text(chat_id, "INSUFFICIENT_BALANCE", user_data))
             await bot.main_menu(chat_id)
             return
-
-        message = await bot.send_message(chat_id, await bot.get_text(chat_id, "GAME_STARTING", user_data),
-                                         add_delete_keyboard=False)
+        total_required = bet
         selected_game = int(user_data.get("selected_game", 0))
         game = await bot.game_manager.get_game(selected_game)
         bet_data = None
         if game.need_bet_data:
             bet_data = bot.bet_data_collector.format_bet_data(chat_id)
+            bet_dict = {}
+            bet_parts = bet_data.split(";")
+            for part in bet_parts:
+                key, value = part.split(":", 1)
+                bet_dict[key] = value
+            bet_values = bet_dict.get("bet_value", "")
+            bet_values_list = [v.strip() for v in bet_values.split(",") if v.strip()]
+            count_values = len(bet_values_list)
+            total_required = bet * count_values
+            if total_required > user_balance:
+                await bot.send_message(chat_id, await bot.get_text(chat_id, "INSUFFICIENT_BALANCE", user_data))
+                await bot.main_menu(chat_id)
+                return
             bot.bet_data_collector.reset(chat_id)
-        await bot.game_manager.start_game(
-            bot, chat_id, message.message_id, selected_game,
-            bet, bet_data, HandlersManager.send_frame
-        )
+        message = await bot.send_message(chat_id, await bot.get_text(chat_id, "GAME_STARTING", user_data),
+                                         add_delete_keyboard=False)
+        await bot.game_manager.start_game(bot, chat_id, message.message_id,
+                                          selected_game, total_required, bet_data, HandlersManager.send_frame)
 
     @staticmethod
     async def select_bet(bot, chat_id: int, user_data: dict[str, Any]):
@@ -86,59 +98,120 @@ class HandlersManager:
         game = await bot.game_manager.get_game(int(user_data.get("selected_game", "0")))
         if game.need_bet_data and game.bet_data_flow:
             bot.bet_data_collector.start_collection(chat_id, game.bet_data_flow)
-            await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data)
+            message = await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data)
+            if message:
+                bot.bet_data_collector.set_message_id(chat_id, message.message_id)
         else:
             await bot.send_message(chat_id, await bot.get_text(chat_id, "SELECT_BET", user_data),
                                    reply_markup=KeyboardManager.get_bet_keyboard(game, balance,
                                                                                  user_data.get("language", "en")))
 
     @staticmethod
-    async def _show_next_bet_parameter(bot, chat_id: int, user_data: dict[str, Any]):
+    async def _show_next_bet_parameter(bot, chat_id: int, user_data: dict[str, Any], message_id: int = None):
         """Показать следующий параметр для выбора"""
         current_param = bot.bet_data_collector.get_current_parameter(chat_id)
         if not current_param:
-            await HandlersManager._show_final_bet_selection(bot, chat_id, user_data)
+            await HandlersManager._show_final_bet_selection(bot, chat_id, user_data, message_id)
             return
         language = user_data.get("language", "en")
         progress = bot.bet_data_collector.get_progress_text(chat_id, language)
         param_name = current_param.param_name.get(language, current_param.param_type)
         message_text = f"{progress}\n\n" if progress else ""
-        message_text += f"Выберите {param_name}:" if language == 'ru' else f"Select {param_name}:"
+        if current_param.multi_select:
+            max_select = current_param.multi_select_max
+            message_text += f"Выберите до {max_select} вариантов {param_name}:" \
+                if language == 'ru' else f"Select up to {max_select} {param_name}:"
+        else:
+            message_text += f"Выберите {param_name}:" if language == 'ru' else f"Select {param_name}:"
         collected = bot.bet_data_collector.get_collected_data(chat_id) or {}
         bet_type = collected.get('bet_type', '')
-        await bot.send_message(chat_id, message_text,
-                               reply_markup=KeyboardManager.get_bet_parameter_keyboard(
-                                   current_param, language, bet_type))
+        selected_values = []
+        if current_param.multi_select:
+            selected_values = bot.bet_data_collector.get_multi_select_values(chat_id, current_param.param_type)
+        keyboard = KeyboardManager.get_bet_parameter_keyboard(current_param, language, bet_type, selected_values)
+        if message_id is None:
+            message_id = bot.bet_data_collector.get_message_id(chat_id)
+        if message_id:
+            try:
+                await bot.bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text=message_text,
+                    reply_markup=keyboard
+                )
+                return None
+            except Exception as e:
+                bot.logger.error(f"Ошибка при редактировании сообщения: {e}")
+                return await bot.send_message(chat_id, message_text, reply_markup=keyboard)
+        else:
+            return await bot.send_message(chat_id, message_text, reply_markup=keyboard)
 
     @staticmethod
-    async def _show_final_bet_selection(bot, chat_id: int, user_data: dict[str, Any]):
+    async def _show_final_bet_selection(bot, chat_id: int, user_data: dict[str, Any], message_id: int = None):
         """Показать финальный выбор ставки после сбора всех параметров"""
         language = user_data.get("language", "en")
         game = await bot.game_manager.get_game(int(user_data.get("selected_game", "0")))
         progress = bot.bet_data_collector.get_progress_text(chat_id, language)
         message_text = f"{progress}\n\n"
         message_text += await bot.get_text(chat_id, "SELECT_BET", user_data)
-        await bot.send_message(
-            chat_id,
-            message_text,
-            reply_markup=KeyboardManager.get_bet_keyboard(
-                game,
-                float(user_data.get("balance", "0.0")),
-                language
-            )
-        )
+        keyboard = KeyboardManager.get_bet_keyboard(game, float(user_data.get("balance", "0.0")), language)
+        if message_id is None:
+            message_id = bot.bet_data_collector.get_message_id(chat_id)
+        if message_id:
+            try:
+                await bot.bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text=message_text,
+                    reply_markup=keyboard
+                )
+            except Exception as e:
+                bot.logger.error(f"Ошибка при редактировании сообщения: {e}")
+                await bot.send_message(chat_id, message_text, reply_markup=keyboard)
+        else:
+            await bot.send_message(chat_id, message_text, reply_markup=keyboard)
 
     @staticmethod
-    async def select_bet_data(bot, chat_id: int, user_data: dict[str, Any],
-                              bet_data_type: str, value: str):
+    async def select_bet_data(bot, chat_id: int, user_data: dict[str, Any], bet_data_type: str, value: str):
         """Обработка выбора параметра ставки"""
-        if not bot.bet_data_collector.add_value(chat_id, bet_data_type, value):
+        current_param = bot.bet_data_collector.get_current_parameter(chat_id)
+        if not current_param or current_param.param_type != bet_data_type:
             await bot.main_menu(chat_id)
             return
-        if bot.bet_data_collector.is_complete(chat_id):
-            await HandlersManager._show_final_bet_selection(bot, chat_id, user_data)
+        message_id = bot.bet_data_collector.get_message_id(chat_id)
+        if current_param.multi_select:
+            if not bot.bet_data_collector.add_value(chat_id, bet_data_type, value):
+                return
+            await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data, message_id)
         else:
-            await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data)
+            if not bot.bet_data_collector.add_value(chat_id, bet_data_type, value):
+                await bot.main_menu(chat_id)
+                return
+            if bot.bet_data_collector.is_complete(chat_id):
+                await HandlersManager._show_final_bet_selection(bot, chat_id, user_data, message_id)
+            else:
+                await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data, message_id)
+
+    @staticmethod
+    async def finalize_bet_data(bot, chat_id: int, user_data: dict[str, Any], bet_data_type: str):
+        """Завершить multi-select параметр и перейти к следующему"""
+        current_param = bot.bet_data_collector.get_current_parameter(chat_id)
+        if not current_param or current_param.param_type != bet_data_type:
+            await bot.main_menu(chat_id)
+            return
+        if not current_param.multi_select:
+            return
+        if not bot.bet_data_collector.is_multi_select_complete(chat_id, bet_data_type):
+            language = user_data.get("language", "en")
+            error_msg = "Выберите хотя бы один вариант!" if language == 'ru' else "Select at least one option!"
+            await bot.send_message(chat_id, error_msg)
+            return
+        bot.bet_data_collector.finalize_multi_select(chat_id, bet_data_type)
+        message_id = bot.bet_data_collector.get_message_id(chat_id)
+        if bot.bet_data_collector.is_complete(chat_id):
+            await HandlersManager._show_final_bet_selection(bot, chat_id, user_data, message_id)
+        else:
+            await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data, message_id)
 
     @staticmethod
     async def send_frame(bot, chat_id: int, message_id: int, frame: str):
@@ -185,7 +258,7 @@ class HandlersManager:
                                                            "win", result.win_amount)
             try:
                 channel_id = await bot.chat_id()
-                if channel_id:
+                if channel_id and result.win_amount > result.bet_amount:
                     await bot.send_message(channel_id,
                                            await bot.get_text(user_id, "GAME_WIN_ANNOUNCEMENT", user_data, custom_data),
                                            reply_markup=KeyboardManager.get_channel_announcement_keyboard(

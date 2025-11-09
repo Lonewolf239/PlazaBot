@@ -23,7 +23,7 @@ class GameManager:
         if game_id in self.games:
             self.logger.warning(f"Game {game_id} is already registered")
         self.games[game_id] = game_class
-        self.logger.info(f"Registered game {game_id}'")
+        self.logger.info(f"Registered game {game_id}")
 
     def register_games(self, games: Dict[int, Type[BaseGame]]) -> None:
         for game_id, game_class in games.items():

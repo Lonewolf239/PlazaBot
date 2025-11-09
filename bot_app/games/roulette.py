@@ -1,5 +1,5 @@
 import asyncio
-from random import choice
+from secrets import choice
 from typing import Optional, Callable, Any
 from . import BaseGame, GameStatus, GameResult, BetParameter
 from .config import RouletteConfig
@@ -27,24 +27,7 @@ class Roulette(BaseGame):
         self.animation_settings = None
         self.icon = "🎡"
         self._name = {"ru": "Рулетка", "en": "Roulette"}
-        self._rules = {
-            "ru": (
-                "ℹ️ Правила рулетки\n"
-                "🎯 Номер (0–36) — выплата ×35\n"
-                "🟴 Цвет (красное/чёрное) — выплата ×1.25\n"
-                "📊 Диапазон (1–18/19–36) — выплата ×1.25\n"
-                "🔢 Дюжина (1–12, 13–24, 25–36) — выплата ×2\n"
-                "📈 Колонна (1, 2, 3) — выплата ×2"
-            ),
-            "en": (
-                "ℹ️ Roulette Rules\n"
-                "🎯 Number (0–36) — payout ×35\n"
-                "🟴 Color (red/black) — payout ×1.25\n"
-                "📊 Range (1–18/19–36) — payout ×1.25\n"
-                "🔢 Dozen (1–12, 13–24, 25–36) — payout ×2\n"
-                "📈 Column (1, 2, 3) — payout ×2"
-            )
-        }
+        self._rules = self.generate_rules()
         self.numbers = list(range(37))
         self.colors = {
             0: "🟢",
@@ -72,11 +55,18 @@ class Roulette(BaseGame):
             param_name={'ru': 'тип ставки', 'en': 'bet type'},
             options={
                 'values': [
-                    {'ru': 'Число', 'en': 'Number', 'value': 'number', 'emoji': '🎯'},
-                    {'ru': 'Цвет', 'en': 'Color', 'value': 'color', 'emoji': '🎨'},
-                    {'ru': 'Чет/Нечет', 'en': 'Even/Odd', 'value': 'parity', 'emoji': '⚖️'},
-                    {'ru': 'Дюжина', 'en': 'Dozen', 'value': 'dozen', 'emoji': '📊'},
-                    {'ru': '1-18 / 19-36', 'en': 'Low/High', 'value': 'half', 'emoji': '⬆️'}
+                    {'ru': 'Число', 'en': 'Number', 'value': 'number', 'emoji': '🎯',
+                        'adjust': 2},
+                    {'ru': 'Цвет', 'en': 'Color', 'value': 'color', 'emoji': '🎨',
+                        'adjust': 2},
+                    {'ru': 'Чет/Нечет', 'en': 'Even/Odd', 'value': 'parity', 'emoji': '⚖️',
+                        'adjust': 2},
+                    {'ru': 'Дюжина', 'en': 'Dozen', 'value': 'dozen', 'emoji': '📊',
+                        'adjust': 2},
+                    {'ru': '1-18 / 19-36', 'en': 'Low/High', 'value': 'half', 'emoji': '⬆️',
+                        'adjust': 2},
+                    {'ru': 'Колонна', 'en': 'Column', 'value': 'column', 'emoji': '🏛️',
+                        'adjust': 2}
                 ]
             }
         )
@@ -165,13 +155,36 @@ class Roulette(BaseGame):
                         'bet_type': 'half',
                         'adjust': 2
                     },
+                    {
+                        'ru': '1 Колонна (1,4,7,...)',
+                        'en': '1 Column (1,4,7,...)',
+                        'emoji': '🥇',
+                        'value': '1',
+                        'bet_type': 'column',
+                        'adjust': 2
+                    },
+                    {
+                        'ru': '2 Колонна (2,5,8,...)',
+                        'en': '2 Column (2,5,8,...)',
+                        'emoji': '🥈',
+                        'value': '2',
+                        'bet_type': 'column',
+                        'adjust': 2
+                    },
+                    {
+                        'ru': '3 Колонна (3,6,9,...)',
+                        'en': '3 Column (3,6,9,...)',
+                        'emoji': '🥉',
+                        'value': '3',
+                        'bet_type': 'column',
+                        'adjust': 2
+                    },
                 ]
             },
             validation_func=lambda value, bet_type: value.get('bet_type') == bet_type
         )
         self.setup_bet_data_flow(bet_type_param, value_param)
         self.start_output = "🎡 ..."
-        self.load_config()
 
     def load_config(self) -> None:
         """Загружает конфигурацию в зависимости от выбранного режима"""
@@ -200,10 +213,90 @@ class Roulette(BaseGame):
             f"• Колонна: {probabilities['column_win'] * 100:.1f}%\n\n"
             f"<b>💰 Выплаты:</b>\n"
             f"• Номер: ×{multipliers['number']}\n"
-            f"• Цвет/Диапазон: ×{multipliers['color']}\n"
+            f"• Цвет/Половина/Диапазон: ×{multipliers['color']}\n"
             f"• Дюжина/Колонна: ×{multipliers['dozen']}\n"
         )
         return info
+
+    def generate_rules(self) -> dict:
+        """Генерирует HTML-версию правил с множителями из конфига"""
+        multipliers = self.config['multipliers']
+        rules_ru = f"""
+<b>{self.icon} Правила Рулетки</b>
+
+<b>🎯 КАК ИГРАТЬ</b>
+Выбери один из шести типов ставок.
+Предсказание должно совпасть с результатом!
+
+<b>📋 ТИПЫ СТАВОК</b>
+
+<b>🎯 Число (0–36)</b>
+Ставь на конкретный номер.
+• Множитель → {multipliers['number']}x
+
+<b>🎨 Цвет (красное/чёрное)</b>
+Выбери цвет выпавшего номера.
+• Множитель → {multipliers['color']}x
+
+<b>⚖️ Чётное/Нечётное</b>
+Предскажи чётность номера.
+• Множитель → {multipliers['color']}x
+
+<b>📊 Дюжина (1–12, 13–24, 25–36)</b>
+Ставь на одну из трёх групп по 12 номеров.
+• Множитель → {multipliers['dozen']}x
+
+<b>⬆️ Половина (1–18, 19–36)</b>
+Ставь на нижнюю или верхнюю половину номеров.
+• Множитель → {multipliers['color']}x
+
+<b>🏛️ Колонна (вертикальные ряды)</b>
+Выбери одну из трёх колонн чисел.
+• Множитель → {multipliers['dozen']}x
+
+<b>🎲 ОСОБЕННОСТИ</b>
+Зеро (0) - банк берёт при любой ставке, кроме самой на 0
+"""
+        rules_en = f"""
+<b>{self.icon} Roulette Rules</b>
+
+<b>🎯 HOW TO PLAY</b>
+Choose one of six bet types.
+Your prediction must match the result!
+
+<b>📋 BET TYPES</b>
+
+<b>🎯 Number (0–36)</b>
+Bet on a specific number.
+• Multiplier → {multipliers['number']}x
+
+<b>🎨 Color (Red/Black)</b>
+Choose the color of the winning number.
+• Multiplier → {multipliers['color']}x
+
+<b>⚖️ Even/Odd</b>
+Predict the parity of the number.
+• Multiplier → {multipliers['color']}x
+
+<b>📊 Dozen (1–12, 13–24, 25–36)</b>
+Bet on one of three groups of 12 numbers.
+• Multiplier → {multipliers['dozen']}x
+
+<b>⬆️ Half (1–18, 19–36)</b>
+Bet on the lower or upper half of numbers.
+• Multiplier → {multipliers['color']}x
+
+<b>🏛️ Column (vertical rows)</b>
+Choose one of three columns of numbers.
+• Multiplier → {multipliers['dozen']}x
+
+<b>🎲 FEATURES</b>
+Zero (0) - bank wins on any bet except betting directly on 0
+"""
+        return {
+            "ru": rules_ru,
+            "en": rules_en
+        }
 
     async def play(self, bot, user_id: int, message_id: int,
                    bet: float, bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
@@ -215,9 +308,7 @@ class Roulette(BaseGame):
         win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
         animation_data = await self.create_animation(result, bot, user_id,
                                                      message_id, send_frame)
-
         game_data = self._get_game_data(result, bet_data)
-
         game_result = GameResult(
             status=GameStatus.FINISHED,
             win_amount=win_amount,
@@ -276,15 +367,10 @@ class Roulette(BaseGame):
         return payout, multiplier
 
     async def create_animation(self, result: int, bot, user_id: int, message_id: int,
-                               send_frame: Optional[Callable] = None) -> dict[str, Any]:
+                               send_frame: Optional[Callable] = None,
+                               bet_data: Optional[str] = None) -> dict[str, Any]:
         """
         Показывает анимацию кручения рулетки как реально вращающееся колесо.
-
-        :param result: Итоговый номер рулетки
-        :param bot: Объект бота
-        :param user_id: ID пользователя
-        :param message_id: ID сообщения для обновления
-        :param send_frame: Callback для отправки фреймов
         :return: Словарь с данными анимации
         """
         settings = self.animation_settings
@@ -310,13 +396,11 @@ class Roulette(BaseGame):
         total_animation_time = 0
         for step in range(total_steps):
             progress = step / total_steps
-            if progress < 0.2:
-                current_time = start_frame_time * 0.15
-            elif progress < 0.7:
-                current_time = start_frame_time * 0.18
+            if progress < 0.75:
+                current_time = start_frame_time + progress * 0.1
             else:
-                deceleration = (progress - 0.7) / 0.3
-                current_time = start_frame_time * (0.18 + 0.5 * deceleration ** 2)
+                adjusted_progress = (progress - 0.75) / 0.75
+                current_time = start_frame_time + 0.1 + (adjusted_progress ** 2) * 0.1
             wheel_index = start_offset + step
             positions = [
                 wheel[(wheel_index - 2) % len(wheel)],
@@ -382,25 +466,25 @@ class Roulette(BaseGame):
         }
         if highlight_result:
             frame = f"""
-            🎡
-            ◀ {top_2:2d} {colors[top_2]} ▶
-            ◀ {top_1:2d} {colors[top_1]} ▶
-            ▲
-            ◀ {center:2d} {colors[center]} ▶ ✓
-            ▼
-            ◀ {bottom_1:2d} {colors[bottom_1]} ▶
-            ◀ {bottom_2:2d} {colors[bottom_2]} ▶
+🎡
+◀ {top_2:2d} {colors[top_2]} ▶
+◀ {top_1:2d} {colors[top_1]} ▶
+▲
+◀ {center:2d} {colors[center]} ▶ ✓
+▼
+◀ {bottom_1:2d} {colors[bottom_1]} ▶
+◀ {bottom_2:2d} {colors[bottom_2]} ▶
             """
         else:
             frame = f"""
-            🎡
-            ◀ {top_2:2d} {colors[top_2]} ▶
-            ◀ {top_1:2d} {colors[top_1]} ▶
-            ▲
-            ◀ {center:2d} {colors[center]} ▶
-            ▼
-            ◀ {bottom_1:2d} {colors[bottom_1]} ▶
-            ◀ {bottom_2:2d} {colors[bottom_2]} ▶
+🎡
+◀ {top_2:2d} {colors[top_2]} ▶
+◀ {top_1:2d} {colors[top_1]} ▶
+▲
+◀ {center:2d} {colors[center]} ▶
+▼
+◀ {bottom_1:2d} {colors[bottom_1]} ▶
+◀ {bottom_2:2d} {colors[bottom_2]} ▶
             """
         return frame
 

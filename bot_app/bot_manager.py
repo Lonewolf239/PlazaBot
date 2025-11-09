@@ -4,13 +4,13 @@ from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
 
 from bot_app.keyboards import KeyboardManager
-from bot_app.games import CasinoSlot, Roulette, BetDataFlow, BetParameter, Coin, Dice
+from bot_app.games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice
 from bot_app.database import DatabaseInterface
 from bot_app.payments import CryptoPay
 from bot_app.referral import ReferralManager
 from bot_app.handlers import ReferralHandler, GameManager
 from bot_app.utils import Messages
-from bot_app.utils import Email, Language
+# from bot_app.utils import Email, Language
 from bot_app.handlers import HandlersManager
 
 PAGE_LIMIT = 16
@@ -18,7 +18,6 @@ PAGE_LIMIT = 16
 
 class BetDataCollector:
     """Управляет процессом сбора bet_data от пользователя"""
-
     def __init__(self):
         self._user_states: Dict[int, Dict[str, Any]] = {}
 
@@ -27,27 +26,84 @@ class BetDataCollector:
         self._user_states[chat_id] = {
             'parameters': bet_data_flow.parameters,
             'current_step': 0,
-            'collected_data': {}
+            'collected_data': {},
+            'multi_select_data': {},
+            "message_id": None
         }
 
-    def add_value(self, chat_id: int, param_type: str, value: str):
-        """Добавить значение параметра"""
+    def set_message_id(self, chat_id: int, message_id: int):
+        """Сохранить message_id для редактирования"""
+        if chat_id in self._user_states:
+            self._user_states[chat_id]["message_id"] = message_id
+
+    def get_message_id(self, chat_id: int) -> int:
+        """Получить сохраненный message_id"""
+        if chat_id not in self._user_states:
+            return None
+        return self._user_states[chat_id].get("message_id")
+
+    def add_value(self, chat_id: int, param_type: str, value: str) -> bool:
+        """Добавить или переключить значение параметра"""
         if chat_id not in self._user_states:
             return False
-
         state = self._user_states[chat_id]
-        state['collected_data'][param_type] = value
+        param = next((p for p in state['parameters'] if p.param_type == param_type), None)
+        if not param:
+            return False
+        if param.multi_select:
+            if param_type not in state['multi_select_data']:
+                state['multi_select_data'][param_type] = []
+            selected = state['multi_select_data'][param_type]
+            if value in selected:
+                selected.remove(value)
+            else:
+                if len(selected) < param.multi_select_max:
+                    selected.append(value)
+                else:
+                    return False
+            return True
+        else:
+            state['collected_data'][param_type] = value
+            state['current_step'] += 1
+            return True
+
+    def is_multi_select_complete(self, chat_id: int, param_type: str) -> bool:
+        """Проверить, что выбрано хотя бы одно значение в multi-select параметре"""
+        if chat_id not in self._user_states:
+            return False
+        state = self._user_states[chat_id]
+        return len(state['multi_select_data'].get(param_type, [])) > 0
+
+    def finalize_multi_select(self, chat_id: int, param_type: str) -> bool:
+        """Завершить multi-select параметр и перейти к следующему"""
+        if chat_id not in self._user_states:
+            return False
+        state = self._user_states[chat_id]
+        param = next((p for p in state['parameters'] if p.param_type == param_type), None)
+        if not param or not param.multi_select:
+            return False
+        selected = state['multi_select_data'].get(param_type, [])
+        if not selected:
+            return False
+        state['collected_data'][param_type] = ','.join(selected)
         state['current_step'] += 1
+        if param_type in state['multi_select_data']:
+            del state['multi_select_data'][param_type]
         return True
+
+    def get_multi_select_values(self, chat_id: int, param_type: str) -> list:
+        """Получить текущие выбранные значения для multi-select параметра"""
+        if chat_id not in self._user_states:
+            return []
+        state = self._user_states[chat_id]
+        return state['multi_select_data'].get(param_type, [])
 
     def get_current_parameter(self, chat_id: int) -> Optional[BetParameter]:
         """Получить текущий параметр"""
         if chat_id not in self._user_states:
             return None
-
         state = self._user_states[chat_id]
         current_step = state['current_step']
-
         if current_step < len(state['parameters']):
             return state['parameters'][current_step]
         return None
@@ -56,7 +112,6 @@ class BetDataCollector:
         """Проверить, все ли параметры собраны"""
         if chat_id not in self._user_states:
             return False
-
         state = self._user_states[chat_id]
         return state['current_step'] >= len(state['parameters'])
 
@@ -77,20 +132,16 @@ class BetDataCollector:
         """Получить текст прогресса"""
         if chat_id not in self._user_states:
             return ""
-
         state = self._user_states[chat_id]
         collected = state['collected_data']
-
         if not collected:
             return ""
-
         lines = []
         for param_type, value in collected.items():
             param = next((p for p in state['parameters'] if p.param_type == param_type), None)
             if param:
                 param_name = param.param_name.get(language, param_type)
                 lines.append(f"✅ {param_name}: {value}")
-
         return "\n".join(lines)
 
     def reset(self, chat_id: int):
@@ -107,14 +158,16 @@ class BotInterface:
     CasinoGames = {
         0: CasinoSlot,
         1: Roulette,
-        2: Coin,
-        3: Dice
+        2: RouletteV2,
+        3: Coin,
+        4: Dice
     }
     GameConfigs = {
         0: ["honest", "aggressive", "generous"],
         1: ["honest", "aggressive", "generous"],
         2: ["honest", "aggressive", "generous"],
-        3: ["honest"],
+        3: ["honest", "aggressive", "generous"],
+        4: ["honest"],
     }
 
     def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list, logger: logging.Logger):
@@ -233,38 +286,38 @@ class BotInterface:
             if bool(user_data.get("email_verified", False)):
                 return
         return
-        if registration_type == 0:
-            await self.database_interface.update_user(chat_id, in_registration=True,
-                                                      email_verified=False, block_input=True, input_type=1)
-            await self.send_message(chat_id, await self.get_text(chat_id, first_message),
-                                    reply_markup=KeyboardManager.get_register_cancel_keyboard(
-                                        user_data.get("language", "en")))
-        elif registration_type == 1:
-            input_text = message.text.strip()
-            if not Email.validate_email_address(input_text):
-                await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_ERROR_EMAIL"))
-                return
-            email_code = Email.generate_verification_code()
-            await self.database_interface.update_user(chat_id,
-                                                      in_registration=False,
-                                                      email=input_text,
-                                                      email_code=email_code,
-                                                      input_type=2)
-            await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_STEP_TWO"),
-                                    reply_markup=KeyboardManager.get_back_keyboard(
-                                        user_data.get("language", "en"),
-                                        callback_data="register_back"))
-            Email.send_verification_email(input_text, email_code, Language.RUSSIAN if user_data.get(
-                "language", "en") == "ru" else Language.ENGLISH)
-        else:
-            email_code = message.text.strip()
-            if await self.database_interface.verify_email(chat_id, email_code):
-                await self.database_interface.update_user(chat_id, in_registration=False,
-                                                          block_input=False, input_type=0)
-                await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_COMPLETED"))
-                await self.main_menu(chat_id)
-                return
-            await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_ERROR_CODE"))
+        # if registration_type == 0:
+        #     await self.database_interface.update_user(chat_id, in_registration=True,
+        #                                               email_verified=False, block_input=True, input_type=1)
+        #     await self.send_message(chat_id, await self.get_text(chat_id, first_message),
+        #                             reply_markup=KeyboardManager.get_register_cancel_keyboard(
+        #                                 user_data.get("language", "en")))
+        # elif registration_type == 1:
+        #     input_text = message.text.strip()
+        #     if not Email.validate_email_address(input_text):
+        #         await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_ERROR_EMAIL"))
+        #         return
+        #     email_code = Email.generate_verification_code()
+        #     await self.database_interface.update_user(chat_id,
+        #                                               in_registration=False,
+        #                                               email=input_text,
+        #                                               email_code=email_code,
+        #                                               input_type=2)
+        #     await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_STEP_TWO"),
+        #                             reply_markup=KeyboardManager.get_back_keyboard(
+        #                                 user_data.get("language", "en"),
+        #                                 callback_data="register_back"))
+        #     Email.send_verification_email(input_text, email_code, Language.RUSSIAN if user_data.get(
+        #         "language", "en") == "ru" else Language.ENGLISH)
+        # else:
+        #     email_code = message.text.strip()
+        #     if await self.database_interface.verify_email(chat_id, email_code):
+        #         await self.database_interface.update_user(chat_id, in_registration=False,
+        #                                                   block_input=False, input_type=0)
+        #         await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_COMPLETED"))
+        #         await self.main_menu(chat_id)
+        #         return
+        #     await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_ERROR_CODE"))
 
     async def _process_referral_reward(self, user_id: int, amount: float,
                                        action_type: str, bot_username: str = None):
@@ -364,39 +417,24 @@ class BotInterface:
         chat_id = callback_query.message.chat.id
         user_data = await self.database_interface.get_user(chat_id)
 
-        if command == "check-subscription":
-            if await HandlersManager.check_subscription(self, chat_id, user_data["username"]):
-                await self.main_menu(chat_id)
-            await self.bot.delete_message(chat_id, callback_query.message.message_id)
-            return
+        need_delete = True
+
+        if command.startswith("select-bet-data"):
+            need_delete = False
+        elif command.startswith("finalize-bet-data"):
+            need_delete = False
+        elif command == "check-subscription":
+            need_delete = False
 
         # TODO: удалить после реализации вебхуков
-        if command.startswith("check-deposit"):
-            internal_tx_id = command.split(':')[1]
-            if await HandlersManager.check_deposit(self, chat_id, user_data, internal_tx_id):
-                await self.bot.delete_message(chat_id, callback_query.message.message_id)
-            await callback_query.answer()
-            return
+        elif command.startswith("check-deposit"):
+            need_delete = False
 
-        if command.startswith("cancel-deposit"):
-            parts = command.split(':')
-            tx_id = parts[1]
-            message_id = parts[2] if len(parts) > 2 else ""
-            confirm = parts[3] if len(parts) > 3 else ""
-            if not confirm:
-                await HandlersManager.cancel_deposit_confirm(self, chat_id, user_data,
-                                                             tx_id, callback_query.message.message_id)
-                await callback_query.answer()
-                return
+        elif command.startswith("cancel-deposit"):
+            need_delete = False
+
+        if need_delete:
             await self.bot.delete_message(chat_id, callback_query.message.message_id)
-            if confirm == "yes":
-                await HandlersManager.cancel_deposit(self, chat_id, user_data, tx_id)
-                await self.bot.delete_message(chat_id, message_id)
-            else:
-                await self.main_menu(chat_id)
-            return
-
-        await self.bot.delete_message(chat_id, callback_query.message.message_id)
 
         if command == "delete":
             return
@@ -408,8 +446,7 @@ class BotInterface:
                 return
             await HandlersManager.register_cancel(self, chat_id)
             return
-
-        if command == "referral-cancel":
+        elif command == "referral-cancel":
             await ReferralHandler.referral_cancel(self, chat_id)
             return
 
@@ -424,14 +461,26 @@ class BotInterface:
             if not user_data.get("in_registration", False):
                 return
             await HandlersManager.register_back(self, callback_query)
+        elif command == "check-subscription":
+            if await HandlersManager.check_subscription(self, chat_id, user_data["username"]):
+                await self.main_menu(chat_id)
+            await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            return
 
         # ════════════════════ Игры ═══════════════════
-        elif command.startswith("select-bet-data"):
+        if command.startswith("select-bet-data"):
             parts = command.split(':')
             if len(parts) == 3:
                 bet_data_type = parts[1]
                 value = parts[2]
                 await HandlersManager.select_bet_data(self, chat_id, user_data, bet_data_type, value)
+            await callback_query.answer()
+        elif command.startswith("finalize-bet-data"):
+            parts = command.split(':')
+            if len(parts) == 2:
+                bet_data_type = parts[1]
+                await HandlersManager.finalize_bet_data(self, chat_id, user_data, bet_data_type)
+            await callback_query.answer()
         elif command == "select-bet":
             await HandlersManager.select_bet(self, chat_id, user_data)
         elif command.startswith("start-game"):
@@ -470,6 +519,30 @@ class BotInterface:
             currency = command.split(':')[1]
             amount = float(command.split(':')[2])
             await HandlersManager.do_deposit(self, chat_id, user_data, currency, amount)
+
+        # TODO: удалить после реализации вебхуков
+        elif command.startswith("check-deposit"):
+            internal_tx_id = command.split(':')[1]
+            if await HandlersManager.check_deposit(self, chat_id, user_data, internal_tx_id):
+                await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            await callback_query.answer()
+
+        elif command.startswith("cancel-deposit"):
+            parts = command.split(':')
+            tx_id = parts[1]
+            message_id = parts[2] if len(parts) > 2 else ""
+            confirm = parts[3] if len(parts) > 3 else ""
+            if not confirm:
+                await HandlersManager.cancel_deposit_confirm(self, chat_id, user_data,
+                                                             tx_id, callback_query.message.message_id)
+                await callback_query.answer()
+                return
+            await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            if confirm == "yes":
+                await HandlersManager.cancel_deposit(self, chat_id, user_data, tx_id)
+                await self.bot.delete_message(chat_id, message_id)
+            else:
+                await self.main_menu(chat_id)
         elif command.startswith("do-withdraw"):
             currency = command.split(':')[1]
             amount = float(command.split(':')[2])
@@ -523,8 +596,6 @@ class BotInterface:
         # ═══════════════════ Прочее ══════════════════
         elif command == "rules":
             await HandlersManager.rules(self, chat_id, user_data)
-        else:
-            await self.send_message(chat_id, command)
 
     @staticmethod
     def get_page(rows, page: int):
@@ -556,9 +627,9 @@ class BotInterface:
         - Любимая игра
         - Всего игр и количество сыгранных раз по каждой
         """
-        games_dict = await self.database_interface.get_games_played(chat_id)
+        games_dict = await self.database_interface.get_games_played(user_data["user_id"])
         if not games_dict:
-            return await self.get_text(chat_id, "USERINFO_NO_GAMES", user_data)
+            return await self.get_text(chat_id, "USERINFO_NO_GAMES", custom_data=user_data)
         favorite_game_id = max(games_dict, key=games_dict.get)
         favorite_game = await self.game_manager.get_game(favorite_game_id)
         favorite_game_name = f"{favorite_game.icon} {favorite_game.name(user_data.get("language", "en"))}"
@@ -567,14 +638,14 @@ class BotInterface:
         for game_id, count in games_dict.items():
             game = await self.game_manager.get_game(game_id)
             game_name = f"{game.icon} {game.name(user_data.get("language", "en"))}"
-            game_text = await self.get_text(chat_id, "USERINFO_GAMES_LIST", user_data)
+            game_text = await self.get_text(chat_id, "USERINFO_GAMES_LIST", custom_data=user_data)
             game_text = game_text.replace("game_name", game_name).replace("count", str(count))
             games_list.append(game_text)
-        response_text = await self.get_text(chat_id, "USERINFO_FOFAVORITE_GAME", user_data)
+        response_text = await self.get_text(chat_id, "USERINFO_FOFAVORITE_GAME", custom_data=user_data)
         response_text = (response_text.replace("favorite_game_name", favorite_game_name).
                          replace("favorite_play_times", str(favorite_play_times)))
         if for_admin:
-            response_text += (f"\n{await self.get_text(chat_id, "USERINFO_GAMES_LIST_TITLE", user_data)}:\n"
+            response_text += (f"\n{await self.get_text(chat_id, "USERINFO_GAMES_LIST_TITLE", custom_data=user_data)}:\n"
                               + "\n".join(games_list))
 
         return response_text
@@ -588,6 +659,8 @@ class BotInterface:
             tag = "PROFILE"
         elif for_admin:
             tag = "USERINFO_ADMIN"
+        if int(user_data["user_id"]) != chat_id:
+            user_data["winnings"] = float(user_data["winnings"]) * 1.15
         userinfo = await self.get_text(chat_id, tag, user_data)
         userinfo = userinfo.replace("username",
                                     f"<a href='https://t.me/{(await self.bot.get_me()).username}?"

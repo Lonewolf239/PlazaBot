@@ -415,16 +415,19 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    def get_bet_parameter_keyboard(parameter: BetParameter, language: str, bet_type: str) -> InlineKeyboardMarkup:
-        """Создать клавиатуру для выбора параметра"""
+    def get_bet_parameter_keyboard(parameter: BetParameter, language: str, bet_type: str,
+                                   selected_values: list = None) -> InlineKeyboardMarkup:
+        """Создать клавиатуру для выбора параметра с поддержкой multi-select"""
+        if selected_values is None:
+            selected_values = []
         kb = InlineKeyboardBuilder()
         options = parameter.options
         values = options.get('values', [])
+        adjust = 2
         for item in values:
             display_text = item.get(language, item.get('en', ''))
             emoji = item.get('emoji', '')
             value = item.get('value', '')
-            adjust = int(item.get('adjust', 2))
             if parameter.validation_func is not None:
                 try:
                     is_valid = parameter.validation_func(item, bet_type)
@@ -432,23 +435,36 @@ class KeyboardManager:
                         continue
                 except Exception:
                     continue
+            adjust = int(item.get('adjust', 2))
             if isinstance(value, list):
                 for num in value:
+                    is_selected = str(num) in selected_values
+                    status_emoji = "✅" if is_selected else "⬜"
                     kb.button(
-                        text=str(num),
+                        text=f"{status_emoji} {num}",
                         callback_data=f"select-bet-data:{parameter.param_type}:{num}"
                     )
-                kb.adjust(adjust)
             else:
+                if parameter.multi_select:
+                    is_selected = value in selected_values
+                    status_emoji = "✅" if is_selected else "⬜"
+                    display_text = f"{status_emoji} {emoji} {display_text}".strip()
+                else:
+                    display_text = f"{emoji} {display_text}".strip()
                 kb.button(
-                    text=f"{emoji} {display_text}",
+                    text=display_text,
                     callback_data=f"select-bet-data:{parameter.param_type}:{value}"
                 )
-                kb.adjust(adjust)
+        if parameter.multi_select:
+            kb.button(
+                text="✅ Готово" if language == 'ru' else "✅ Done",
+                callback_data=f"finalize-bet-data:{parameter.param_type}"
+            )
         kb.button(
             text=Messages.get_text("OTHERS", "back", language),
             callback_data="back"
         )
+        kb.adjust(adjust)
         return kb.as_markup()
 
     @staticmethod

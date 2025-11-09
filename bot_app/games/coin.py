@@ -1,6 +1,6 @@
 import asyncio
 
-from random import random
+from secrets import randbelow
 from typing import Optional, Callable, Any
 from . import BaseGame, GameStatus, GameResult, BetParameter
 from .config import CoinConfig
@@ -13,19 +13,7 @@ class Coin(BaseGame):
         self.animation_settings = None
         self.icon = "🪙"
         self._name = {"ru": "Монетка", "en": "Coin"}
-        self._rules = {
-            "ru": (
-                "ℹ️ Правила монетки\n"
-                "Выберите Орёл или Решку\n"
-                "При выпадении выбранной стороны получите ставку ×2"
-            ),
-            "en": (
-                "ℹ️ Coin Rules\n"
-                "Choose Heads or Tails\n"
-                "If your choice drops you get bet ×2"
-            )
-        }
-
+        self._rules = self.generate_rules()
         self.need_bet_data = True
         value_param = BetParameter(
             param_type='bet_value',
@@ -51,7 +39,6 @@ class Coin(BaseGame):
         )
         self.setup_bet_data_flow(value_param)
         self.start_output = "🪙 ..."
-        self.load_config()
 
     def load_config(self) -> None:
         """Загружает конфигурацию в зависимости от выбранного режима"""
@@ -75,6 +62,43 @@ class Coin(BaseGame):
             f"🎲 Множитель выигрыша: ×2"
         )
         return info
+
+    def generate_rules(self) -> dict:
+        """Генерирует HTML-версию правил с множителями из конфига"""
+        rules_ru = f"""
+<b>{self.icon} Правила Монетки</b>
+
+<b>🎯 КАК ИГРАТЬ</b>
+Выбери Орёл или Решку.
+Если выпадет выбранная сторона, ты выиграешь!
+
+<b>💰 МНОЖИТЕЛЬ ВЫИГРЫША</b>
+• Орёл или Решка → 2x
+
+<b>✅ ВЫИГРЫШ</b>
+• Угадай сторону монеты — получишь ставку ×2!
+
+<b>🍀 Удачи!</b>
+"""
+        rules_en = f"""
+<b>{self.icon} Coin Rules</b>
+
+<b>🎯 HOW TO PLAY</b>
+Choose Heads or Tails.
+If the chosen side lands, you win!
+
+<b>💰 WINNING MULTIPLIER</b>
+• Heads or Tails → 2x
+
+<b>✅ WIN</b>
+• Guess the side of the coin and get 2x your bet!
+
+<b>🍀 Good luck!</b>
+"""
+        return {
+            "ru": rules_ru,
+            "en": rules_en
+        }
 
     async def play(self, bot, user_id: int, message_id: int,
                    bet: float, bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
@@ -110,7 +134,7 @@ class Coin(BaseGame):
         rtp = config.get('rtp', 95) / 100.0
         win_probability = rtp / 2.0
         win_probability = max(0.0, min(1.0, win_probability))
-        random_value = random()
+        random_value = randbelow(1000) / 1000.0
         user_choice = int(bet_data.split(':')[1])
         if random_value < win_probability:
             return user_choice
@@ -138,7 +162,8 @@ class Coin(BaseGame):
         return payout, multiplier
 
     async def create_animation(self, result: int, bot, user_id: int,
-                               message_id: int, send_frame: Optional[Callable] = None) -> dict[str, Any]:
+                               message_id: int, send_frame: Optional[Callable] = None,
+                               bet_data: Optional[str] = None) -> dict[str, Any]:
         """
         Показывает быструю и красивую анимацию кручения монетки.
         """

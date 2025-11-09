@@ -1,6 +1,6 @@
 import asyncio
 
-from random import randint
+from secrets import randbelow
 
 from typing import Optional, Callable, Any
 
@@ -15,16 +15,7 @@ class Dice(BaseGame):
         self.animation_settings = None
         self.icon = "🎲"
         self._name = {"ru": "Кости", "en": "Dice"}
-        self._rules = {
-            "ru": (
-                "ℹ️ Правила Костей\n"
-                "Бросаются два кубика. Выберите тип ставки и предскажите результат!"
-            ),
-            "en": (
-                "ℹ️ Dice Rules\n"
-                "Two dice are rolled. Choose a bet type and predict the result!"
-            )
-        }
+        self._rules = self.generate_rules()
         self.numbers = list(range(2, 13))
         self.need_bet_data = True
         bet_type_param = BetParameter(
@@ -67,8 +58,8 @@ class Dice(BaseGame):
                      'adjust': 2},
 
                     # ===== ДУБЛИ (ОДИНАКОВЫЕ ЧИСЛА) =====
-                    {'ru': 'Дубль (любой)', 'en': 'Doubles (any)', 'emoji': '🎲🎲', 'value': 'any', 'bet_type': 'doubles',
-                     'adjust': 2},
+                    {'ru': 'Дубль (любой)', 'en': 'Doubles (any)', 'emoji': '🎲🎲', 'value': 'any',
+                     'bet_type': 'doubles', 'adjust': 2},
                     {'ru': 'Дубль 1 (1-1)', 'en': 'Doubles 1 (1-1)', 'emoji': '1️⃣', 'value': 1, 'bet_type': 'doubles',
                      'adjust': 2},
                     {'ru': 'Дубль 2 (2-2)', 'en': 'Doubles 2 (2-2)', 'emoji': '2️⃣', 'value': 2, 'bet_type': 'doubles',
@@ -102,7 +93,6 @@ class Dice(BaseGame):
         )
         self.setup_bet_data_flow(bet_type_param, value_param)
         self.start_output = "🎲 ..."
-        self.load_config()
 
     def load_config(self) -> None:
         """Загружает конфигурацию в зависимости от выбранного режима"""
@@ -125,24 +115,115 @@ class Dice(BaseGame):
         )
         return info
 
+    def generate_rules(self) -> dict:
+        """Генерирует HTML-версию правил с множителями из конфига"""
+        multipliers = self.config['multipliers']
+        rules_ru = f"""
+<b>{self.icon} Правила Костей</b>
+
+<b>🎯 КАК ИГРАТЬ</b>
+Бросаются два кубика (значения от 1 до 6).
+Выбери тип ставки и предскажи результат!
+
+<b>📋 ТИПЫ СТАВОК</b>
+
+<b>➕ Сумма (2-12)</b>
+Угадай сумму двух кубиков.
+Каждой сумме — свой множитель (редкие суммы дают больше).
+• Сумма 2 → {multipliers.get('sum_2', 0)}x
+• Сумма 3 → {multipliers.get('sum_3', 0)}x
+• Сумма 4 → {multipliers.get('sum_4', 0)}x
+• Сумма 5 → {multipliers.get('sum_5', 0)}x
+• Сумма 6 → {multipliers.get('sum_6', 0)}x
+• Сумма 7 → {multipliers.get('sum_7', 0)}x
+• Сумма 8 → {multipliers.get('sum_8', 0)}x
+• Сумма 9 → {multipliers.get('sum_9', 0)}x
+• Сумма 10 → {multipliers.get('sum_10', 0)}x
+• Сумма 11 → {multipliers.get('sum_11', 0)}x
+• Сумма 12 → {multipliers.get('sum_12', 0)}x
+
+<b>⚖️ Четность</b>
+• Четная сумма → {multipliers.get('parity', 0)}x
+• Нечетная сумма → {multipliers.get('parity', 0)}x
+
+<b>🎲🎲 Дубль</b>
+• Дубль (любой) — оба кубика показывают одно число → {multipliers.get('doubles', 0)}x
+
+<b>⚔️ Сравнение</b>
+• Первый кубик > Второй → {multipliers.get('compare', 0)}x
+• Второй кубик > Первый → {multipliers.get('compare', 0)}x
+• Кубики равны → {multipliers.get('compare', 0)}x
+
+<b>📊 Диапазон</b>
+• Сумма &lt; 7 → {multipliers.get('range', 0)}x
+• Сумма &gt; 7 → {multipliers.get('range', 0)}x
+• Сумма = 7 → {multipliers.get('range', 0)}x
+
+<b>✅ ВЫИГРЫШ</b>
+Сделай ставку, выбери тип и значение — выигрыш зависит от твоего выбора!
+
+<b>🍀 Удачи!</b>
+"""
+        rules_en = f"""
+<b>{self.icon} Dice Rules</b>
+
+<b>🎯 HOW TO PLAY</b>
+Two dice are rolled (values from 1 to 6).
+Choose a bet type and predict the result!
+
+<b>📋 BET TYPES</b>
+
+<b>➕ Sum (2-12)</b>
+Guess the sum of two dice.
+Each sum has its own multiplier (rare sums give more).
+• Sum 2 → {multipliers.get('sum_2', 0)}x
+• Sum 3 → {multipliers.get('sum_3', 0)}x
+• Sum 4 → {multipliers.get('sum_4', 0)}x
+• Sum 5 → {multipliers.get('sum_5', 0)}x
+• Sum 6 → {multipliers.get('sum_6', 0)}x
+• Sum 7 → {multipliers.get('sum_7', 0)}x
+• Sum 8 → {multipliers.get('sum_8', 0)}x
+• Sum 9 → {multipliers.get('sum_9', 0)}x
+• Sum 10 → {multipliers.get('sum_10', 0)}x
+• Sum 11 → {multipliers.get('sum_11', 0)}x
+• Sum 12 → {multipliers.get('sum_12', 0)}x
+
+<b>⚖️ Parity</b>
+• Even sum → {multipliers.get('parity', 0)}x
+• Odd sum → {multipliers.get('parity', 0)}x
+
+<b>🎲🎲 Doubles</b>
+• Doubles (any) — both dice show the same number → {multipliers.get('doubles', 0)}x
+
+<b>⚔️ Compare</b>
+• First die > Second → {multipliers.get('compare', 0)}x
+• Second die > First → {multipliers.get('compare', 0)}x
+• Dice are equal → {multipliers.get('compare', 0)}x
+
+<b>📊 Range</b>
+• Sum &lt; 7 → {multipliers.get('range', 0)}x
+• Sum &gt; 7 → {multipliers.get('range', 0)}x
+• Sum = 7 → {multipliers.get('range', 0)}x
+
+<b>✅ WIN</b>
+Make a bet, choose a type and value — your winnings depend on your choice!
+
+<b>🍀 Good luck!</b>
+"""
+        return {
+            "ru": rules_ru,
+            "en": rules_en
+        }
+
     async def play(self, bot, user_id: int, message_id: int,
                    bet: float, bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Запуск игры в кости"""
         self.game_over = False
         self.current_status = GameStatus.RUNNING
-
-        # Генерируем результат двух кубиков
         dice1, dice2 = self.generate_result(bet_data)
-
-        # Проверяем выигрыш/проигрыш
         win_amount, multiplier = self.evaluate_result((dice1, dice2), bet, bet_data)
-
-        # Показываем анимацию с реальным результатом
         animation_data = await self.create_animation((dice1, dice2), bot, user_id, message_id, send_frame)
-
-        # Получаем игровые данные
         game_data = self._get_game_data((dice1, dice2), bet_data)
-
         game_result = GameResult(
             status=GameStatus.FINISHED,
             win_amount=win_amount,
@@ -154,7 +235,6 @@ class Dice(BaseGame):
             animations_data=animation_data,
             bet_data=bet_data
         )
-
         return await self._finalize_game(game_result)
 
     def generate_result(self, bet_data: Optional[str] = None) -> tuple[int, int]:
@@ -162,8 +242,8 @@ class Dice(BaseGame):
         Генерирует результат броска двух костей (значения от 1 до 6 для каждого).
         Возвращает кортеж (dice1, dice2)
         """
-        dice1 = randint(1, 6)
-        dice2 = randint(1, 6)
+        dice1 = randbelow(6) + 1
+        dice2 = randbelow(6) + 1
         return dice1, dice2
 
     def evaluate_result(self, result: tuple[int, int], bet: float,
@@ -175,26 +255,20 @@ class Dice(BaseGame):
         """
         if not bet_data:
             return 0, 0
-
         dice1, dice2 = result
         actual_sum = dice1 + dice2
-
         bet_parts = bet_data.split(";")
         bet_type = bet_parts[0].split(':')[1]
         bet_value = bet_parts[1].split(':')[1]
-
         multiplier = 0
         is_win = False
-
         if bet_type == 'sum':
             is_win = actual_sum == int(bet_value)
             multiplier = self.config['multipliers'].get(f'sum_{bet_value}', 0)
-
         elif bet_type == 'parity':
             is_even = actual_sum % 2 == 0
             is_win = (bet_value == 'even' and is_even) or (bet_value == 'odd' and not is_even)
             multiplier = self.config['multipliers'].get('parity', 0)
-
         elif bet_type == 'doubles':
             is_double = dice1 == dice2
             if bet_value == 'any':
@@ -202,7 +276,6 @@ class Dice(BaseGame):
             else:
                 is_win = is_double and dice1 == int(bet_value)
             multiplier = self.config['multipliers'].get('doubles', 0)
-
         elif bet_type == 'compare':
             if bet_value == 'first_greater':
                 is_win = dice1 > dice2
@@ -211,7 +284,6 @@ class Dice(BaseGame):
             elif bet_value == 'equal':
                 is_win = dice1 == dice2
             multiplier = self.config['multipliers'].get('compare', 0)
-
         elif bet_type == 'range':
             if bet_value == 'less_than_7':
                 is_win = actual_sum < 7
@@ -220,22 +292,12 @@ class Dice(BaseGame):
             elif bet_value == 'equal_7':
                 is_win = actual_sum == 7
             multiplier = self.config['multipliers'].get('range', 0)
-
         payout = bet * multiplier if is_win else 0
         return payout, multiplier
 
     async def create_animation(self, result: tuple[int, int], bot, user_id: int, message_id: int,
-                               send_frame: Optional[Callable] = None) -> dict[str, Any]:
-        """
-        Показывает анимацию кручения костей, заканчивающуюся реальным результатом.
-
-        :param result: Кортеж (dice1, dice2) - реальный результат
-        :param bot: Объект бота
-        :param user_id: ID пользователя
-        :param message_id: ID сообщения для обновления
-        :param send_frame: Callback для отправки фреймов
-        :return: Словарь с данными анимации
-        """
+                               send_frame: Optional[Callable] = None,
+                               bet_data: Optional[str] = None) -> dict[str, Any]:
         if not send_frame:
             dice1, dice2 = result
             return {
@@ -244,33 +306,23 @@ class Dice(BaseGame):
                 'animation_duration': 0,
                 'icon': self.icon
             }
-
         animation_frames = self.animation_settings.get('frames', 20)
         frame_delay = self.animation_settings.get('delay', 0.1)
-
-        # Генерируем случайные значения для анимации
-        dice1_values = [randint(1, 6) for _ in range(animation_frames)]
-        dice2_values = [randint(1, 6) for _ in range(animation_frames)]
-
-        # Показываем анимацию
+        dice1_values = [randbelow(6) + 1 for _ in range(animation_frames)]
+        dice2_values = [randbelow(6) + 1 for _ in range(animation_frames)]
         for i in range(animation_frames):
-            frame_sum = dice1_values[i] + dice2_values[i]
-            frame_text = f"{self.icon} [{dice1_values[i]}] [{dice2_values[i]}] = {frame_sum}"
-
+            frame_text = (f"🎲 {dice1_values[i]} + 🎲 {dice2_values[i]}  "
+                          f"= {dice1_values[i] + dice2_values[i]}  "
+                          f"{'🎉' if i == animation_frames - 1 else '🔄'}")
             if send_frame:
                 await send_frame(bot, user_id, message_id, frame_text)
-
             if frame_delay > 0:
                 await asyncio.sleep(frame_delay)
-
-        # Финальный результат - СОВПАДАЕТ С РЕАЛЬНЫМ РЕЗУЛЬТАТОМ
         dice1_final, dice2_final = result
         final_sum = dice1_final + dice2_final
-
-        final_text = f"{self.icon} [{dice1_final}] [{dice2_final}] = {final_sum}"
+        final_text = f"🎲 {dice1_final} + 🎲 {dice2_final} = {final_sum} 🎉"
         if send_frame:
             await send_frame(bot, user_id, message_id, final_text)
-
         return {
             'total_frames': animation_frames,
             'final_result': result,

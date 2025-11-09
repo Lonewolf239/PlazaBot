@@ -1,5 +1,6 @@
 import asyncio
-import random
+
+from secrets import randbelow, choice
 from collections import Counter
 from typing import Callable, Any, Optional
 
@@ -19,24 +20,7 @@ class CasinoSlot(BaseGame):
         self.load_config()
         self.icon = "🎰"
         self._name = {"ru": "Слот-машина", "en": "Slot machine"}
-        self._rules = {
-            "ru": (
-                f"ℹ️ Правила слота\n"
-                f"— 3× 7️⃣: выигрыш × {self.config['multipliers']['jackpot']}\n"
-                f"— 3× 💎: выигрыш × {self.config['multipliers']['big_win']}\n"
-                f"— 3× 🔔: выигрыш × {self.config['multipliers']['medium_win']}\n"
-                f"— 3× фрукт: выигрыш × {self.config['multipliers']['small_win']}\n"
-                f"— 2× фрукт: вернуть ставку"
-            ),
-            "en": (
-                f"ℹ️ Slot Rules\n"
-                f"— 3× 7️⃣: win × {self.config['multipliers']['jackpot']}\n"
-                f"— 3× 💎: win × {self.config['multipliers']['big_win']}\n"
-                f"— 3× 🔔: win × {self.config['multipliers']['medium_win']}\n"
-                f"— 3× fruit: win × {self.config['multipliers']['small_win']}\n"
-                f"— 2× fruit: return bet"
-            )
-        }
+        self._rules = self.generate_rules()
         self.fruits = ['🍒', '🍋', '🍊', '🍇', '🍉']
         self.symbols = {
             '🍒': 1,
@@ -78,6 +62,54 @@ class CasinoSlot(BaseGame):
             f"Вероятность выигрыша/при своём: {win_chance:.1f}%"
         )
 
+    def generate_rules(self) -> dict:
+        """Генерирует HTML-версию правил с множителями из конфига"""
+        multipliers = self.config['multipliers']
+        rules_ru = f"""
+<b>{self.icon} Правила Слот-машины</b>
+
+<b>🎯 КАК ИГРАТЬ</b>
+Нажми кнопку, чтобы запустить три барабана.
+Комбинируй одинаковые символы, чтобы выиграть!
+
+<b>💰 МНОЖИТЕЛИ ВЫИГРЫША</b>
+• 3× 7️⃣ → {multipliers['jackpot']}x
+• 3× 💎 → {multipliers['big_win']}x
+• 3× 🔔 → {multipliers['medium_win']}x
+• 3× фрукт → {multipliers['small_win']}x
+• 2× фрукт → 1x
+
+<b>✅ ВЫИГРЫШ</b>
+Собери три одинаковых символа на линии и получи выигрыш!
+Джекпот (3× 7️⃣) — наибольший приз!
+
+<b>🍀 Удачи!</b>
+"""
+        rules_en = f"""
+<b>{self.icon} Slot Machine Rules</b>
+
+<b>🎯 HOW TO PLAY</b>
+Click the button to spin the three reels.
+Match matching symbols to win!
+
+<b>💰 WIN MULTIPLIERS</b>
+• f3× 7️⃣ → {multipliers['jackpot']}x
+• f3× 💎 → {multipliers['big_win']}x
+• f3× 🔔 → {multipliers['medium_win']}x
+• f3× fruit → {multipliers['small_win']}x
+• 2× fruit → 1x
+
+<b>✅ WIN</b>
+Collect three identical symbols on a line and win!
+Jackpot (3× 7️⃣) — the biggest prize!
+
+<b>🍀 Good luck!</b>
+"""
+        return {
+            "ru": rules_ru,
+            "en": rules_en
+        }
+
     async def play(self, bot, user_id: int, message_id: int,
                    bet: float, bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Запуск слота"""
@@ -107,7 +139,7 @@ class CasinoSlot(BaseGame):
     def generate_result(self, bet_data: Optional[str] = None) -> list[str]:
         """Генерация результата спина на основе конфигурированных вероятностей."""
         probs = self.config['probabilities']
-        roll = random.random()
+        roll = randbelow(1000) / 1000.0
         if roll < probs['jackpot']:
             return ['7️⃣'] * 3
         elif roll < probs['jackpot'] + probs['big_win']:
@@ -115,25 +147,30 @@ class CasinoSlot(BaseGame):
         elif roll < probs['jackpot'] + probs['big_win'] + probs['medium_win']:
             return ['🔔'] * 3
         elif roll < probs['jackpot'] + probs['big_win'] + probs['medium_win'] + probs['small_win']:
-            fruit = random.choice(self.fruits)
+            fruit = choice(self.fruits)
             return [fruit] * 3
         elif (roll < probs['jackpot'] + probs['big_win'] + probs['medium_win'] +
               probs['small_win'] + probs['break_even']):
-            sym = random.choice(self.fruits)
-            other = random.choice([s for s in self.fruits if s != sym])
+            sym = choice(self.fruits)
+            other = choice([s for s in self.fruits if s != sym])
             result = [sym, sym, other]
-            random.shuffle(result)
-            return result
+            indices = list(range(len(result)))
+            shuffled_indices = []
+            while indices:
+                idx = choice(indices)
+                shuffled_indices.append(idx)
+                indices.remove(idx)
+            return [result[i] for i in shuffled_indices]
         else:
-            return [random.choice(self.reel_order) for _ in range(3)]
+            return [choice(self.reel_order) for _ in range(3)]
 
     def evaluate_result(self, result: list[str], bet: float, bet_data: Optional[str] = None) -> tuple[float, float]:
         """
         Оценка результата спина.
         :return: (сумма выигрыша, множитель)
         """
-        counts = Counter(result)
         mults = self.config['multipliers']
+        counts = Counter(result)
         if counts.get('7️⃣', 0) == 3:
             multiplier = mults['jackpot']
             return bet * multiplier, multiplier
@@ -152,7 +189,8 @@ class CasinoSlot(BaseGame):
         return 0, 0.0
 
     async def create_animation(self, result: list[str], bot, user_id: int,
-                               message_id: int, send_frame: Optional[Callable] = None) -> dict[str, Any]:
+                               message_id: int, send_frame: Optional[Callable] = None,
+                               bet_data: Optional[str] = None) -> dict[str, Any]:
         """
         Анимация спина.
         :return: данные анимации
@@ -162,7 +200,7 @@ class CasinoSlot(BaseGame):
             await send_frame(bot, user_id, message_id, self.start_output)
             animation_frames.append(self.start_output)
         reels = [self.reel_order * 5, self.reel_order * 7, self.reel_order * 9]
-        positions = [random.randint(0, len(reels[r]) - 1) for r in range(3)]
+        positions = [randbelow(len(reels[r])) for r in range(3)]
         total_steps = 12
         stop_delays = [total_steps, total_steps + 3, total_steps + 6]
         for step in range(total_steps + 7):

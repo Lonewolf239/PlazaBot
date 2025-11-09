@@ -35,6 +35,8 @@ class BetParameter:
     is_required: bool = True
     default_value: Optional[str] = None
     validation_func: Optional[Callable] = None
+    multi_select: bool = False
+    multi_select_max: int = 2
 
 
 @dataclass
@@ -96,6 +98,10 @@ class BaseGame(ABC):
         """Получить информацию о конфигурации"""
         return ""
 
+    @abstractmethod
+    def generate_rules(self) -> dict:
+        pass
+
     def name(self, language: str):
         return self._name[language]
 
@@ -147,7 +153,8 @@ class BaseGame(ABC):
 
     @abstractmethod
     async def create_animation(self, result: Any, bot, user_id: int,
-                               message_id: int, send_frame: Optional[Callable] = None) -> dict[str, Any]:
+                               message_id: int, send_frame: Optional[Callable] = None,
+                               bet_data: Optional[str] = None) -> dict[str, Any]:
         """
         Создает анимацию игры.
 
@@ -157,6 +164,7 @@ class BaseGame(ABC):
             user_id: ID пользователя
             message_id: ID сообщения
             send_frame: Функция для отправки кадров
+            bet_data: Данные ставки игрока
 
         Returns:
             dict: Данные анимации

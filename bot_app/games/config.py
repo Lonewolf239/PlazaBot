@@ -94,9 +94,9 @@ class RouletteConfig:
             'number': 35,
             'dozen': 2,
             'column': 2,
-            'color': 1,
-            'parity': 1,
-            'half': 1,
+            'color': 1.25,
+            'parity': 1.25,
+            'half': 1.25,
         },
         'color_bias': 0.0,
     }
@@ -116,9 +116,9 @@ class RouletteConfig:
             'number': 35,
             'dozen': 2,
             'column': 2,
-            'color': 1,
-            'parity': 1,
-            'half': 1,
+            'color': 1.25,
+            'parity': 1.25,
+            'half': 1.25,
         },
         'color_bias': 0.03,
     }
@@ -138,15 +138,15 @@ class RouletteConfig:
             'number': 35,
             'dozen': 2,
             'column': 2,
-            'color': 1,
-            'parity': 1,
-            'half': 1,
+            'color': 1.25,
+            'parity': 1.25,
+            'half': 1.25,
         },
         'color_bias': -0.02,
     }
 
     ANIMATION_SETTINGS = {
-        'total_steps': 20,
+        'total_steps': 42,
         'start_frame_time': 0.05,
         'frame_acceleration': 0.02,
         'final_frame_duration': 2.0,
@@ -154,7 +154,28 @@ class RouletteConfig:
 
 
 class RouletteV2Config:
-    pass
+    HONEST = {
+        'name': 'Честная Рулетка V2 (Среднее ХЭ 52.88%)',
+        'description': 'Идеальный баланс: справедливые шансы для игроков, стабильная прибыль казино',
+        'house_edge': 52.88,
+        'rtp': 47.12,
+        'multipliers': {
+            '1_number': 15,
+            '2_numbers': 14,
+            '3_numbers': 13,
+            '4_numbers': 12,
+            '5_numbers': 11,
+            '6_numbers': 10,
+        },
+        'probabilities': {
+            '1_number': 1 / 90,
+            '2_numbers': 2 / 90,
+            '3_numbers': 3 / 90,
+            '4_numbers': 4 / 90,
+            '5_numbers': 5 / 90,
+            '6_numbers': 6 / 90,
+        }
+    }
 
 
 class CoinConfig:
