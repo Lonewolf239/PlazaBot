@@ -23,8 +23,8 @@ class Roulette(BaseGame):
         :param config_name: 'honest', 'aggressive' или 'generous'
         """
         super().__init__(max_bet, config_name)
-        self.load_config()
         self.animation_settings = None
+        self.load_config()
         self.icon = "🎡"
         self._name = {"ru": "Рулетка", "en": "Roulette"}
         self._rules = self.generate_rules()

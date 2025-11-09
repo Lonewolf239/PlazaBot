@@ -9,8 +9,8 @@ from .config import CoinConfig
 class Coin(BaseGame):
     def __init__(self, max_bet: float, config_name: str = "honest"):
         super().__init__(max_bet, config_name)
-        self.load_config()
         self.animation_settings = None
+        self.load_config()
         self.icon = "🪙"
         self._name = {"ru": "Монетка", "en": "Coin"}
         self._rules = self.generate_rules()

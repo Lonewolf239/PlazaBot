@@ -321,9 +321,6 @@ class BotInterface:
 
     async def _process_referral_reward(self, user_id: int, amount: float,
                                        action_type: str, bot_username: str = None):
-        """
-        НОВОЕ: Обрабатывает реферальные начисления
-        """
         if not bot_username:
             bot_info = await self.bot.get_me()
             bot_username = bot_info.username
