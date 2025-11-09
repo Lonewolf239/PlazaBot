@@ -512,6 +512,7 @@ class HandlersManager:
                     f"   Заморожено: {onhold:,.8f}"
                 )
             return "\n".join(formatted)
+
         total = await bot.crypto_pay.get_total_balance_usd()
         await bot.send_message(chat_id, format_balance(balance_data) + f"\n\n<b>Всего: {total:.2f}$</b>")
         await HandlersManager.admin_panel(bot, chat_id, user_data)

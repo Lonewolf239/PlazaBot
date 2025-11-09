@@ -1,4 +1,5 @@
 from .base_game import BaseGame, GameResult, GameStatus, BetDataFlow, BetParameter
+from .interactive_game_base import InteractiveGameBase, InteractiveGameStatus
 from .casino_slot import CasinoSlot
 from .roulette import Roulette
 from .roulette_v2 import RouletteV2

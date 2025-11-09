@@ -483,6 +483,10 @@ class BotInterface:
         elif command.startswith("start-game"):
             bet = float(command.split(':')[1])
             await HandlersManager.start_game(self, chat_id, user_data, bet)
+        elif command.startswith("game_action:"):
+            action = command[len("game_action:"):]
+            from bot_app.handlers import InteractiveGameHandlers
+            await InteractiveGameHandlers.handle_game_action(self, callback_query, action)
 
         # ═════════════════ Настройки ═════════════════
         elif command == "settings":
