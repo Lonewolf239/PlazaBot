@@ -136,6 +136,13 @@ class DatabaseInterface:
                 """)
 
                 await db.execute("""
+                    CREATE TABLE IF NOT EXISTS bank_config (
+                        bank_id INTEGER PRIMARY KEY,
+                        max_bet TEXT
+                    )
+                """)
+
+                await db.execute("""
                     CREATE TABLE IF NOT EXISTS bot_configs (
                         bot_id INTEGER PRIMARY KEY,
                         chat_id INTEGER,
@@ -278,6 +285,19 @@ class DatabaseInterface:
         except Exception as e:
             await self.log_error(f"Ошибка при инициализации базы данных: {e}")
             raise
+
+    async def get_max_bet(self):
+        data = await self.fetch_one("SELECT max_bet FROM bank_config WHERE bank_id = 1", ())
+        if data:
+            return float(data.get("max_bet", "50"))
+        await self.execute("INSERT INTO bank_config (bank_id) VALUES (?)", (1,))
+        await self.set_max_bet(50)
+        return 50
+
+    async def set_max_bet(self, casino_balance, percentage: float = 1.0) -> float:
+        max_bet = casino_balance * (percentage / 100)
+        await self.execute("UPDATE bank_config SET max_bet = ? WHERE bank_id = 1", (max_bet,))
+        return max_bet
 
     async def get_bot_config(self, bot_id: int):
         data = await self.fetch_one("SELECT * FROM bot_configs WHERE bot_id = ?", (bot_id,))

@@ -231,6 +231,26 @@ class CryptoPay:
             self._logger.error(f"Failed to get balance: {e}")
             raise
 
+    async def get_total_balance_usd(self) -> float:
+        """Получает общий баланс в долларах (только итоговую сумму)."""
+        try:
+            balance = await self.crypto.get_balance()
+            exchange_rates = await self.crypto.get_exchange_rates()
+            rates_map = {}
+            for rate in exchange_rates:
+                if rate.target == "USD":
+                    rates_map[rate.source] = float(rate.rate)
+            total_usd = 0.0
+            for b in balance:
+                available = float(b.available)
+                rate_to_usd = rates_map.get(b.currency_code, 0)
+                total_usd += available * rate_to_usd
+            self._logger.info(f"Total balance: {total_usd} USD")
+            return round(total_usd, 2)
+        except Exception as e:
+            self._logger.error(f"Failed to calculate total balance in USD: {e}")
+            raise
+
     async def get_currencies_with_balance(self) -> list[str]:
         """
         Получает список кодов валют с ненулевым балансом.

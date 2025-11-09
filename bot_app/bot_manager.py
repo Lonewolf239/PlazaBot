@@ -4,7 +4,7 @@ from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
 
 from bot_app.keyboards import KeyboardManager
-from bot_app.games import CasinoSlot, Roulette, BetDataFlow, BetParameter
+from bot_app.games import CasinoSlot, Roulette, BetDataFlow, BetParameter, Coin, Dice
 from bot_app.database import DatabaseInterface
 from bot_app.payments import CryptoPay
 from bot_app.referral import ReferralManager
@@ -106,11 +106,15 @@ class BetDataCollector:
 class BotInterface:
     CasinoGames = {
         0: CasinoSlot,
-        1: Roulette
+        1: Roulette,
+        2: Coin,
+        3: Dice
     }
     GameConfigs = {
         0: ["honest", "aggressive", "generous"],
-        1: ["honest", "aggressive", "generous"]
+        1: ["honest", "aggressive", "generous"],
+        2: ["honest", "aggressive", "generous"],
+        3: ["honest"],
     }
 
     def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list, logger: logging.Logger):
@@ -505,6 +509,8 @@ class BotInterface:
             await HandlersManager.admin_game_config_handler(self, chat_id, user_data, command)
         elif command.startswith("admin-bot-config"):
             await HandlersManager.admin_bot_config(self, chat_id, user_data, command)
+        elif command == "update-max-bet":
+            await HandlersManager.update_max_bet(self, chat_id, user_data)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":

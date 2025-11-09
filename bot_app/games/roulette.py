@@ -1,5 +1,5 @@
 import asyncio
-from random import random, shuffle, choice
+from random import choice
 from typing import Optional, Callable, Any
 from . import BaseGame, GameStatus, GameResult, BetParameter
 from .config import RouletteConfig
@@ -11,18 +11,18 @@ class Roulette(BaseGame):
 
     Типы ставок:
     - number|0-36: на конкретный номер (выплата ×35)
-    - color|🔴 или color|⚫️: на цвет (выплата ×1)
-    - range|1-18 или range|19-36: на диапазон (выплата ×1)
+    - color|🔴 или color|⚫️: на цвет (выплата ×1.25)
+    - range|1-18 или range|19-36: на диапазон (выплата ×1.25)
     - dozen|1, dozen|2 или dozen|3: на дюжину (выплата ×2)
     - column|1, column|2 или column|3: на колонну (выплата ×2)
     """
-    def __init__(self, config_name: str = "honest"):
+    def __init__(self, max_bet: float, config_name: str = "honest"):
         """
         Инициализация рулетки
 
         :param config_name: 'honest', 'aggressive' или 'generous'
         """
-        super().__init__(config_name)
+        super().__init__(max_bet, config_name)
         self.load_config()
         self.animation_settings = None
         self.icon = "🎡"
@@ -31,16 +31,16 @@ class Roulette(BaseGame):
             "ru": (
                 "ℹ️ Правила рулетки\n"
                 "🎯 Номер (0–36) — выплата ×35\n"
-                "🟴 Цвет (красное/чёрное) — выплата ×1\n"
-                "📊 Диапазон (1–18/19–36) — выплата ×1\n"
+                "🟴 Цвет (красное/чёрное) — выплата ×1.25\n"
+                "📊 Диапазон (1–18/19–36) — выплата ×1.25\n"
                 "🔢 Дюжина (1–12, 13–24, 25–36) — выплата ×2\n"
                 "📈 Колонна (1, 2, 3) — выплата ×2"
             ),
             "en": (
                 "ℹ️ Roulette Rules\n"
                 "🎯 Number (0–36) — payout ×35\n"
-                "🟴 Color (red/black) — payout ×1\n"
-                "📊 Range (1–18/19–36) — payout ×1\n"
+                "🟴 Color (red/black) — payout ×1.25\n"
+                "📊 Range (1–18/19–36) — payout ×1.25\n"
                 "🔢 Dozen (1–12, 13–24, 25–36) — payout ×2\n"
                 "📈 Column (1, 2, 3) — payout ×2"
             )
@@ -194,7 +194,8 @@ class Roulette(BaseGame):
             f"<b>🎲 Вероятности выигрыша:</b>\n"
             f"• Номер: {probabilities['number_win'] * 100:.1f}%\n"
             f"• Цвет: {probabilities['color_win'] * 100:.1f}%\n"
-            f"• Диапазон: {probabilities['range_win'] * 100:.1f}%\n"
+            f"• Чет/Нечет: {probabilities['parity_win'] * 100:.1f}%\n"
+            f"• Диапазон: {probabilities['half_win'] * 100:.1f}%\n"
             f"• Дюжина: {probabilities['dozen_win'] * 100:.1f}%\n"
             f"• Колонна: {probabilities['column_win'] * 100:.1f}%\n\n"
             f"<b>💰 Выплаты:</b>\n"
@@ -231,24 +232,12 @@ class Roulette(BaseGame):
 
         return await self._finalize_game(game_result)
 
-    def generate_result(self) -> int:
+    def generate_result(self, bet_data: Optional[str] = None) -> int:
         """
         Симулирует кручение колеса рулетки с учётом конфигурации
         Использует вероятности и смещения цвета из config
         """
-        config = self.config
-        probabilities = config['probabilities']
-        color_bias = config.get('color_bias', 0.0)
-        rand = random()
-        if rand < probabilities['number_win'] * 1 / 37:
-            return 0
-        red_numbers = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
-        black_numbers = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35}
-        color_threshold = 0.5 + color_bias
-        if rand < color_threshold:
-            return choice(list(red_numbers))
-        else:
-            return choice(list(black_numbers))
+        return choice(self.numbers)
 
     def evaluate_result(self, result: int, bet: float, bet_data: Optional[str] = None) -> tuple[float, float]:
         """Оценивает ставку и возвращает выигрыш и множитель"""
@@ -258,8 +247,6 @@ class Roulette(BaseGame):
                 bet_parts = bet_data.split(";")
                 bet_type = bet_parts[0].split(':')[1]
                 bet_value = bet_parts[1].split(':')[1]
-                print(bet_type)
-                print(bet_value)
                 multipliers = self.config['multipliers']
                 if bet_type == "number":
                     if result == int(bet_value):
@@ -267,24 +254,31 @@ class Roulette(BaseGame):
                 elif bet_type == "color":
                     if self.colors[result] == bet_value:
                         payout = bet * multipliers['color']
-                elif bet_type == "range":
-                    if result in self.ranges.get(bet_value, set()):
-                        payout = bet * multipliers['range']
+                elif bet_type == "parity":
+                    if result == 0:
+                        payout = 0
+                    elif (bet_value == "even" and result % 2 == 0) or (bet_value == "odd" and result % 2 != 0):
+                        payout = bet * multipliers['parity']
                 elif bet_type == "dozen":
                     if result in self.dozens.get(int(bet_value), set()):
                         payout = bet * multipliers['dozen']
                 elif bet_type == "column":
                     if result in self.columns.get(int(bet_value), set()):
                         payout = bet * multipliers['column']
+                elif bet_type == "half":
+                    if bet_value == "1-18" and 1 <= result <= 18:
+                        payout = bet * multipliers['half']
+                    elif bet_value == "19-36" and 19 <= result <= 36:
+                        payout = bet * multipliers['half']
             except (ValueError, IndexError, KeyError):
                 payout = 0
         multiplier = payout / bet if bet > 0 else 0
         return payout, multiplier
 
-    async def create_animation(self, result: int, bot, user_id: int,
-                               message_id: int, send_frame: Optional[Callable] = None) -> dict[str, Any]:
+    async def create_animation(self, result: int, bot, user_id: int, message_id: int,
+                               send_frame: Optional[Callable] = None) -> dict[str, Any]:
         """
-        Показывает анимацию кручения рулетки с плавным замедлением.
+        Показывает анимацию кручения рулетки как реально вращающееся колесо.
 
         :param result: Итоговый номер рулетки
         :param bot: Объект бота
@@ -295,61 +289,129 @@ class Roulette(BaseGame):
         """
         settings = self.animation_settings
         total_steps = settings['total_steps']
-        frame_time = settings['start_frame_time']
-        frame_acceleration = settings['frame_acceleration']
-
+        start_frame_time = settings['start_frame_time']
         animation_frames = []
         frame_times = []
-
         start_frame = self.start_output
         if send_frame:
             await send_frame(bot, user_id, message_id, start_frame)
         animation_frames.append(start_frame)
-
-        wheel = []
-        for _ in range(3):
-            rotated = self.numbers.copy()
-            shuffle(rotated)
-            wheel.extend(rotated)
-
+        wheel = self.numbers * 8
+        target_indices = [i for i, num in enumerate(wheel) if num == result]
+        final_index = target_indices[-2]
+        start_offset = max(0, final_index - total_steps)
+        wheel_display = {
+            'top_1': None,
+            'top_2': None,
+            'center': None,
+            'bottom_1': None,
+            'bottom_2': None
+        }
+        total_animation_time = 0
         for step in range(total_steps):
-            num = wheel[step % len(wheel)]
-            color = self.colors[num]
-
-            spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-            spinner = spinner_chars[step % len(spinner_chars)]
-
-            frame = f"🎡 {spinner} {num:2d}  {color}"
-
+            progress = step / total_steps
+            if progress < 0.2:
+                current_time = start_frame_time * 0.15
+            elif progress < 0.7:
+                current_time = start_frame_time * 0.18
+            else:
+                deceleration = (progress - 0.7) / 0.3
+                current_time = start_frame_time * (0.18 + 0.5 * deceleration ** 2)
+            wheel_index = start_offset + step
+            positions = [
+                wheel[(wheel_index - 2) % len(wheel)],
+                wheel[(wheel_index - 1) % len(wheel)],
+                wheel[wheel_index % len(wheel)],
+                wheel[(wheel_index + 1) % len(wheel)],
+                wheel[(wheel_index + 2) % len(wheel)]
+            ]
+            wheel_display['top_2'] = positions[0]
+            wheel_display['top_1'] = positions[1]
+            wheel_display['center'] = positions[2]
+            wheel_display['bottom_1'] = positions[3]
+            wheel_display['bottom_2'] = positions[4]
+            frame = self._build_roulette_frame(wheel_display)
             if send_frame:
                 await send_frame(bot, user_id, message_id, frame)
-
             animation_frames.append(frame)
-            frame_times.append(frame_time)
-
-            await asyncio.sleep(frame_time)
-            frame_time += frame_acceleration
-
-        result_color = self.colors[result]
-        final_frame = f"🎡 ✓ {result:2d}  {result_color}"
-
+            frame_times.append(current_time)
+            total_animation_time += current_time
+            await asyncio.sleep(current_time)
+        positions = [
+            wheel[(final_index - 2) % len(wheel)],
+            wheel[(final_index - 1) % len(wheel)],
+            wheel[final_index % len(wheel)],
+            wheel[(final_index + 1) % len(wheel)],
+            wheel[(final_index + 2) % len(wheel)]
+        ]
+        wheel_display['top_2'] = positions[0]
+        wheel_display['top_1'] = positions[1]
+        wheel_display['center'] = positions[2]
+        wheel_display['bottom_1'] = positions[3]
+        wheel_display['bottom_2'] = positions[4]
+        final_frame = self._build_roulette_frame(wheel_display, highlight_result=True)
         if send_frame:
             await send_frame(bot, user_id, message_id, final_frame)
-
         animation_frames.append(final_frame)
-
         return {
             'total_frames': len(animation_frames),
-            'final_result': f"{result:2d}  {result_color}",
-            'animation_duration': sum(frame_times),
-            "icon": self.icon
+            'final_result': f"{wheel_display['center']:2d} {self.colors[wheel_display['center']]}",
+            'animation_duration': total_animation_time,
+            'icon': self.icon
         }
+
+    def _build_roulette_frame(self, wheel_display: dict, highlight_result: bool = False) -> str:
+        """
+        Строит визуализацию вращающейся рулетки.
+
+        :param wheel_display: Словарь с позициями на колесе
+        :param highlight_result: Выделять ли результат (используется для финального кадра)
+        :return: Строка визуализации рулетки
+        """
+        top_2 = wheel_display['top_2']
+        top_1 = wheel_display['top_1']
+        center = wheel_display['center']
+        bottom_1 = wheel_display['bottom_1']
+        bottom_2 = wheel_display['bottom_2']
+        colors = {
+            top_2: self.colors[top_2],
+            top_1: self.colors[top_1],
+            center: self.colors[center],
+            bottom_1: self.colors[bottom_1],
+            bottom_2: self.colors[bottom_2]
+        }
+        if highlight_result:
+            frame = f"""
+            🎡
+            ◀ {top_2:2d} {colors[top_2]} ▶
+            ◀ {top_1:2d} {colors[top_1]} ▶
+            ▲
+            ◀ {center:2d} {colors[center]} ▶ ✓
+            ▼
+            ◀ {bottom_1:2d} {colors[bottom_1]} ▶
+            ◀ {bottom_2:2d} {colors[bottom_2]} ▶
+            """
+        else:
+            frame = f"""
+            🎡
+            ◀ {top_2:2d} {colors[top_2]} ▶
+            ◀ {top_1:2d} {colors[top_1]} ▶
+            ▲
+            ◀ {center:2d} {colors[center]} ▶
+            ▼
+            ◀ {bottom_1:2d} {colors[bottom_1]} ▶
+            ◀ {bottom_2:2d} {colors[bottom_2]} ▶
+            """
+        return frame
 
     def _get_game_data(self, result: int, bet_data: Optional[str] = None) -> dict[str, Any]:
         """Создает структуру game_data для рулетки"""
+        bet_parts = bet_data.split(";")
+        bet_type = bet_parts[0].split(':')[1]
+        bet_value = bet_parts[1].split(':')[1]
         return {
             'result': result,
             'result_color': self.colors[result],
-            'bet_type': bet_data.split(';')[0] if bet_data else None,
-            'bet_value': bet_data.split(';')[1] if bet_data else None
+            'bet_type': bet_type if bet_data else None,
+            'bet_value': bet_value if bet_data else None
         }

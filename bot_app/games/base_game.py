@@ -63,14 +63,13 @@ class BetDataConfig:
 
 class BaseGame(ABC):
     """Базовый класс для всех игр"""
-    def __init__(self, config_name: str = "honest"):
+    def __init__(self, max_bet: float, config_name: str = "honest"):
         self.icon = ""
         self._name = {"ru": "", "en": ""}
         self._rules = {"ru": "", "en": ""}
         self.config_name = config_name
         self.config = None
-        self.min_bet = 0.1
-        self.max_bet = 5000
+        self.max_bet = max_bet
         self.frame_time = 0
         self.bet_data_flow: Optional[BetDataFlow] = None
         self.need_bet_data: bool = False
@@ -122,7 +121,7 @@ class BaseGame(ABC):
         pass
 
     @abstractmethod
-    def generate_result(self) -> Any:
+    def generate_result(self, bet_data: Optional[str] = None) -> Any:
         """
         Генерирует результат раунда.
 

@@ -9,13 +9,13 @@ from .config import SlotConfig
 
 class CasinoSlot(BaseGame):
     """Слот-машина"""
-    def __init__(self, config_name: str = "honest"):
+    def __init__(self, max_bet: float, config_name: str = "honest"):
         """
         Инициализация слота
 
         :param config_name: 'honest', 'aggressive' или 'generous'
         """
-        super().__init__(config_name)
+        super().__init__(max_bet, config_name)
         self.load_config()
         self.icon = "🎰"
         self._name = {"ru": "Слот-машина", "en": "Slot machine"}
@@ -104,7 +104,7 @@ class CasinoSlot(BaseGame):
 
         return await self._finalize_game(game_result)
 
-    def generate_result(self) -> list[str]:
+    def generate_result(self, bet_data: Optional[str] = None) -> list[str]:
         """Генерация результата спина на основе конфигурированных вероятностей."""
         probs = self.config['probabilities']
         roll = random.random()

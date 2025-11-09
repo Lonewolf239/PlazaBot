@@ -35,7 +35,8 @@ class GameManager:
             return None
         game_class = self.games[game_id]
         config = await self.db_interface.get_config(game_id)
-        return game_class(config)
+        max_bet = await self.db_interface.get_max_bet()
+        return game_class(max_bet, config)
 
     def get_available_games(self) -> Dict[int, Type[BaseGame]]:
         """Получить все доступные игры"""
@@ -84,10 +85,6 @@ class GameManager:
 
         game = await self.get_game(game_id)
         if not game:
-            return None
-
-        if not (game.min_bet <= bet <= game.max_bet):
-            self.logger.error(f"Ставка {bet} вне допустимых лимитов [{game.min_bet}, {game.max_bet}]")
             return None
 
         session = {

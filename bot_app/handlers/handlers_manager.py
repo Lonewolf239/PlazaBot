@@ -74,14 +74,12 @@ class HandlersManager:
             await bot.send_message(chat_id, await bot.get_text(chat_id, "USER_ALREADY_PLAYING", user_data))
             await bot.main_menu(chat_id)
             return
-        balance_str = user_data.get("balance", "0").strip()
+        balance = 0.0
         try:
-            balance_float = float(balance_str) if balance_str else 0.0
-            if balance_float <= 0:
-                await bot.send_message(chat_id, await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data))
-                await bot.main_menu(chat_id)
-                return
+            balance = float(user_data.get("balance", "0") or 0)
         except (ValueError, TypeError):
+            pass
+        if balance <= 0:
             await bot.send_message(chat_id, await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data))
             await bot.main_menu(chat_id)
             return
@@ -90,15 +88,9 @@ class HandlersManager:
             bot.bet_data_collector.start_collection(chat_id, game.bet_data_flow)
             await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data)
         else:
-            await bot.send_message(
-                chat_id,
-                await bot.get_text(chat_id, "SELECT_BET", user_data),
-                reply_markup=KeyboardManager.get_bet_keyboard(
-                    game,
-                    float(user_data.get("balance", "0.0")),
-                    user_data.get("language", "en")
-                )
-            )
+            await bot.send_message(chat_id, await bot.get_text(chat_id, "SELECT_BET", user_data),
+                                   reply_markup=KeyboardManager.get_bet_keyboard(game, balance,
+                                                                                 user_data.get("language", "en")))
 
     @staticmethod
     async def _show_next_bet_parameter(bot, chat_id: int, user_data: dict[str, Any]):
@@ -446,8 +438,8 @@ class HandlersManager:
                     f"   Заморожено: {onhold:,.8f}"
                 )
             return "\n".join(formatted)
-
-        await bot.send_message(chat_id, format_balance(balance_data))
+        total = await bot.crypto_pay.get_total_balance_usd()
+        await bot.send_message(chat_id, format_balance(balance_data) + f"\n\n<b>Всего: {total:.2f}$</b>")
         await HandlersManager.admin_panel(bot, chat_id, user_data)
 
     @staticmethod
@@ -524,6 +516,13 @@ class HandlersManager:
         custom_data = {"channel_username": channel_display}
         await bot.send_message(chat_id, await bot.get_text(chat_id, "BOT_CONFIG", user_data, custom_data),
                                reply_markup=KeyboardManager.get_bot_config(language_code))
+
+    @staticmethod
+    async def update_max_bet(bot, chat_id: int, user_data: dict[str, Any]):
+        max_bet = await bot.database_interface.set_max_bet(await bot.crypto_pay.get_total_balance_usd())
+        custom_data = {"max_bet": max_bet}
+        await bot.send_message(chat_id, await bot.get_text(chat_id, "MAX_BET_CONFIG", user_data, custom_data))
+        await HandlersManager.admin_panel(bot, chat_id, user_data)
 
     @staticmethod
     async def admin_user(bot, chat_id: int, command: str, user_data: dict[str, Any]):

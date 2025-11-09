@@ -40,7 +40,8 @@ class Messages:
             "game_config": {"ru": "Конфиг игры", "en": "Game Config"},
             "bot_config": {"ru": "Настройка бота", "en": "Bot setup"},
             "set_bot_config": {"ru": "Изменить", "en": "Change"},
-            "remove_bot_config": {"ru": "Удалить", "en": "Remove"}
+            "remove_bot_config": {"ru": "Удалить", "en": "Remove"},
+            "max_bet": {"ru": "Макс ставка", "en": "Max Bet"}
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
@@ -93,7 +94,8 @@ class Messages:
             "game_config": "🧩",
             "bot_config": "⚙️",
             "set_bot_config": "⚙️",
-            "remove_bot_config": "🗑️"
+            "remove_bot_config": "🗑️",
+            "max_bet": "🔧"
         },
         "REFERRAL": {
             "create": "➕",
@@ -178,12 +180,12 @@ class KeyboardManager:
     def get_change_game_keyboard(games: Dict[str, Type[BaseGame]], language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         for game_id, game_class in games.items():
-            game_instance = game_class()
+            game_instance = game_class(50)
             kb.button(
                 text=f"{game_instance.icon} {game_instance.name(language_code)}",
                 callback_data=f"set-game:{game_id}"
             )
-        kb.adjust(1)
+        kb.adjust(2)
         return kb.as_markup()
 
     @staticmethod
@@ -327,6 +329,8 @@ class KeyboardManager:
                   callback_data="admin-game-config")
         kb.button(text=Messages.get_text("ADMIN", "bot_config", language_code),
                   callback_data="admin-bot-config")
+        kb.button(text=Messages.get_text("ADMIN", "max_bet", language_code),
+                  callback_data="update-max-bet")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(2)
@@ -377,7 +381,7 @@ class KeyboardManager:
     def get_games_keyboard(command: str, games: Dict[str, Type[BaseGame]], language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         for game_id, game_class in games.items():
-            game_instance = game_class()
+            game_instance = game_class(50)
             kb.button(
                 text=f"{game_instance.icon} {game_instance.name(language_code)}",
                 callback_data=f"{command}:{game_id}")
@@ -460,21 +464,35 @@ class KeyboardManager:
     @staticmethod
     def get_bet_keyboard(game: BaseGame, balance: float, language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        PRESET_BETS = [
-            0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 5, 7.5, 10,
-            15, 20, 25, 50, 75, 100, 250, 500, 1000, 2500, 5000
-        ]
-        bet_values = [v for v in PRESET_BETS if game.min_bet <= v <= game.max_bet]
-        if game.min_bet not in bet_values:
-            bet_values.insert(0, game.min_bet)
-        if game.max_bet not in bet_values:
-            bet_values.append(game.max_bet)
-        for bet in sorted(set(bet_values)):
-            if bet > balance:
-                continue
-            text = f"{int(bet)}$" if bet == int(bet) else f"{bet:.1f}$"
+        max_bet = min(game.max_bet, balance)
+        min_bet = 0.01
+        bet_values = []
+        if max_bet <= 10:
+            n_points = 12
+            step = (max_bet - min_bet) / (n_points - 1) if max_bet > min_bet else 0
+            bet_values = [round(min_bet + i * step, 2) for i in range(n_points)]
+            bet_values = [v for v in bet_values if v <= max_bet]
+        else:
+            import math
+            log_min = math.log10(min_bet)
+            log_max = math.log10(max_bet)
+            step = (log_max - log_min) / 18
+            for i in range(19):
+                log_val = log_min + step * i
+                val = 10 ** log_val
+                if val < 1:
+                    bet_values.append(round(val, 2))
+                elif val < 100:
+                    bet_values.append(round(val, 1))
+                else:
+                    bet_values.append(int(val))
+            bet_values = sorted(set(bet_values))
+        if min_bet <= balance <= max_bet and round(balance, 2) not in bet_values:
+            bet_values.append(round(balance, 2))
+        bet_values = sorted(set(bet_values))
+        for bet in bet_values:
+            text = f"{bet:.2f}".rstrip('0').rstrip('.') + '$'
             kb.button(text=text, callback_data=f"start-game:{bet}")
-        kb.button(text=f"{balance}$", callback_data=f"start-game:{balance}")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(3)

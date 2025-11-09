@@ -415,6 +415,18 @@ class Messages:
         "GAME_INFO": {
             "ru": "{game_icon} {game_name}",
             "en": "{game_icon} {game_name}"
+        },
+        "MAX_BET_CONFIG": {
+            "ru": (
+                "⚙️ Макс. ставка\n\n"
+                "💰 Текущее значение: {max_bet}$\n"
+                "📊 (1% от баланса казино)"
+            ),
+            "en": (
+                "⚙️ Max bet\n\n"
+                "💰 Current value: {max_bet}$\n"
+                "📊 (1% of casino balance)"
+            )
         }
     }
 
@@ -445,37 +457,37 @@ class Messages:
         },
         "GAME_WIN": {
             "ru": "🎉 Поздравляем, вам улыбнулась удача!\n\n{icon} Результат: {final_result}\n"
-                  "#💰 Ваша ставка: {user_bet}\n#"
+                  "#🎲 Ваша ставка: {user_bet}\n#"
                   "💵 Ваш большой выигрыш: {amount}$\n"
                   "Ваш шанс сделать это снова растет! Не остановитесь на достигнутом! 🚀",
             "en": "🎉 Congratulations, luck is on your side!\n\n{icon} Result: {final_result}\n"
-                  "#💰 Your bet: {user_bet}\n#"
+                  "#🎲 Your bet: {user_bet}\n#"
                   "💵 Your big prize: {amount}$\n"
                   "Your chance to do it again is growing! Don't stop now! 🚀"
         },
         "GAME_LOSE": {
             "ru": "😢 К сожалению, в этот раз не повезло\n\n{icon} Результат: {final_result}\n"
-                  "#💰 Ваша ставка: {user_bet}\n#"
+                  "#🎲 Ваша ставка: {user_bet}\n#"
                   "Не сдавайтесь — следующий раунд может изменить всё! Попробуйте снова! 🔥",
             "en": "😢 Unfortunately, not your lucky round\n\n{icon} Result: {final_result}\n"
-                  "#💰 Your bet: {user_bet}\n#"
+                  "#🎲 Your bet: {user_bet}\n#"
                   "Don't give up — the next round might change everything! Try again! 🔥"
         },
         "GAME_WIN_ANNOUNCEMENT": {
             "ru": "🔥 Внимание!\n\nИгрок {username} только что выиграл {amount}$!\n"
-                  "#💰 Ставка: {user_bet}\n#"
+                  "#🎲 Ставка: {user_bet}\n#"
                   "{icon} Результат: {final_result}\n\n"
                   "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
                   "🔥 Attention!\n\nPlayer {username} just won {amount}$!\n"
-                  "#💰 Bet: {user_bet}\n#"
+                  "#🎲 Bet: {user_bet}\n#"
                   "{icon} Result: {final_result}\n\n"
                   "Luck is on your side — join the game and try to win yourself! 🚀",
             "en": "🔥 Внимание!\n\nИгрок {username} только что выиграл {amount}$!\n"
-                  "#💰 Ставка: {user_bet}\n#"
+                  "#🎲 Ставка: {user_bet}\n#"
                   "{icon} Результат: {final_result}\n\n"
                   "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
                   "🔥 Attention!\n\nPlayer {username} just won {amount}$!\n"
-                  "#💰 Bet: {user_bet}\n#"
+                  "#🎲 Bet: {user_bet}\n#"
                   "{icon} Result: {final_result}\n\n"
                   "Luck is on your side — join the game and try to win yourself! 🚀"
         }
