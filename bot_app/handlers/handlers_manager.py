@@ -2,7 +2,6 @@ from aiogram import types
 from typing import Any
 
 from bot_app.keyboards import KeyboardManager
-from bot_app.games import InteractiveGameBase
 
 
 class HandlersManager:
@@ -130,7 +129,8 @@ class HandlersManager:
         selected_values = []
         if current_param.multi_select:
             selected_values = bot.bet_data_collector.get_multi_select_values(chat_id, current_param.param_type)
-        keyboard = KeyboardManager.get_bet_parameter_keyboard(current_param, language, bet_type, selected_values)
+        keyboard = KeyboardManager.get_bet_parameter_keyboard(current_param, language,
+                                                              bet_type, selected_values, current_param.multi_select)
         if message_id is None:
             message_id = bot.bet_data_collector.get_message_id(chat_id)
         if message_id:

@@ -32,6 +32,7 @@ class InteractiveGameBase(BaseGame, ABC):
 
     @staticmethod
     async def send_initial_message(bot, user_id: int, message_id: int, text: str, game_type: str):
+        """Отправить начальное сообщение с клавиатурой"""
         from bot_app.keyboards import KeyboardManager
         user_data = await bot.database_interface.get_user(user_id)
         language = user_data.get("language", "en")
@@ -47,9 +48,13 @@ class InteractiveGameBase(BaseGame, ABC):
         except Exception as e:
             bot.logger.error(f"Ошибка при отправке первого сообщения: {e}")
 
-    @staticmethod
-    def create_session(bet: float, bet_data: Optional[str] = None):
-        return {
+    def get_session(self, bot, user_id: int) -> Optional[Dict[str, Any]]:
+        """Получить сессию игрока из game_manager"""
+        return bot.game_manager.get_interactive_session(user_id, self.game_id)
+
+    def create_session_in_manager(self, bot, user_id: int, bet: float, bet_data: Optional[str] = None):
+        """Создать сессию в game_manager"""
+        session = {
             'bet': bet,
             'bet_data': bet_data,
             'balance': bet,
@@ -57,37 +62,12 @@ class InteractiveGameBase(BaseGame, ABC):
             'history': [],
             'state': {}
         }
-
-    def get_session(self, bot, user_id: int) -> Optional[Dict[str, Any]]:
-        """Получить сессию игрока из game_manager"""
-        return bot.game_manager.get_interactive_session(user_id, self.game_id)
-
-    def create_session_in_manager(self, bot, user_id: int, bet: float, bet_data: Optional[str] = None):
-        """Создать сессию в game_manager"""
-        session = self.create_session(bet, bet_data)
         bot.game_manager.create_interactive_session(user_id, self.game_id, session)
         return session
 
     def update_session(self, bot, user_id: int, **kwargs):
         """Обновить сессию в game_manager"""
         bot.game_manager.update_interactive_session(user_id, self.game_id, **kwargs)
-
-    def delete_session(self, bot, user_id: int):
-        """Удалить сессию из game_manager"""
-        bot.game_manager.delete_interactive_session(user_id, self.game_id)
-
-    def generate_result(self, bet_data: Optional[str] = None) -> Any:
-        """Не используется в интерактивной игре"""
-        pass
-
-    def evaluate_result(self, result: Any, bet: float, bet_data: Optional[str] = None) -> tuple[float, float]:
-        """Не используется в интерактивной игре"""
-        pass
-
-    async def create_animation(self, result: Any, bot, user_id: int, message_id: int,
-                               send_frame: Optional[Callable] = None, bet_data: Optional[str] = None) -> dict[str, Any]:
-        """Не используется в интерактивной игре"""
-        pass
 
     @abstractmethod
     async def get_final_result_text(self, bot, user_id: int) -> str:
@@ -119,4 +99,17 @@ class InteractiveGameBase(BaseGame, ABC):
     @abstractmethod
     async def get_game_result(self, bot, user_id: int) -> tuple[float, float]:
         """Получить выигрыш и множитель при завершении"""
+        pass
+
+    def generate_result(self, bet_data: Optional[str] = None) -> Any:
+        """Не используется в интерактивной игре"""
+        pass
+
+    def evaluate_result(self, result: Any, bet: float, bet_data: Optional[str] = None) -> tuple[float, float]:
+        """Не используется в интерактивной игре"""
+        pass
+
+    async def create_animation(self, result: Any, bot, user_id: int, message_id: int,
+                               send_frame: Optional[Callable] = None, bet_data: Optional[str] = None) -> dict[str, Any]:
+        """Не используется в интерактивной игре"""
         pass

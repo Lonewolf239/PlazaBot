@@ -276,7 +276,7 @@ class BotInterface:
                                                            await self.database_interface.get_language(chat_id))
         )
 
-    async def registration_menu(self, message: types.Message, registration_type=0, first_message="REGISTRATION",
+    async def registration_menu(self, message: types.Message, # registration_type=0, first_message="REGISTRATION",
                                 ignore_db=False):
         chat_id = message.chat.id
         user_data = await self.database_interface.get_user(chat_id)

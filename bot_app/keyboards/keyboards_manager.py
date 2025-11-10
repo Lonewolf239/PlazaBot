@@ -223,14 +223,15 @@ class KeyboardManager:
         """Клавиатура для интерактивной игры с кнопкой завершения"""
         kb = InlineKeyboardBuilder()
 
-        if game_type == "hilo":
+        if game_type.startswith("hilo"):
             kb.button(text="📈 Выше" if language == "ru" else "📈 Higher",
-                      callback_data="game_action:hilo:high")
+                      callback_data="game_action:hilo_started:high")
             kb.button(text="📉 Ниже" if language == "ru" else "📉 Lower",
-                      callback_data="game_action:hilo:low")
+                      callback_data="game_action:hilo_started:low")
             kb.adjust(2)
-            kb.button(text="🏁 Завершить" if language == "ru" else "🏁 End Game",
-                      callback_data="game_action:hilo:surrender")
+            if "started" in game_type:
+                kb.button(text="🏁 Завершить" if language == "ru" else "🏁 End Game",
+                          callback_data="game_action:hilo:surrender")
             kb.adjust(2, 1)
 
         return kb.as_markup()
@@ -433,7 +434,7 @@ class KeyboardManager:
 
     @staticmethod
     def get_bet_parameter_keyboard(parameter: BetParameter, language: str, bet_type: str,
-                                   selected_values: list = None) -> InlineKeyboardMarkup:
+                                   selected_values: list = None, need_select = False) -> InlineKeyboardMarkup:
         """Создать клавиатуру для выбора параметра с поддержкой multi-select"""
         if selected_values is None:
             selected_values = []
@@ -455,10 +456,12 @@ class KeyboardManager:
             adjust = int(item.get('adjust', 2))
             if isinstance(value, list):
                 for num in value:
-                    is_selected = str(num) in selected_values
-                    status_emoji = "✅" if is_selected else "⬜"
+                    status_emoji = ""
+                    if need_select:
+                        is_selected = str(num) in selected_values
+                        status_emoji = "✅ " if is_selected else "⬜ "
                     kb.button(
-                        text=f"{status_emoji} {num}",
+                        text=f"{status_emoji}{num}",
                         callback_data=f"select-bet-data:{parameter.param_type}:{num}"
                     )
             else:

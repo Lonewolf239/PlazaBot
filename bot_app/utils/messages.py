@@ -18,8 +18,10 @@ class Messages:
             "en": "❌ Error\n\nThe email address is invalid. Please check the format and try again."
         },
         "REGISTRATION_ERROR_CODE": {
-            "ru": "❌ Ошибка подтверждения\n\nКод подтверждения неверен. Пожалуйста, проверьте код и попробуйте ещё раз.",
-            "en": "❌ Verification Error\n\nThe confirmation code is incorrect. Please check the code and try again."
+            "ru": "❌ Ошибка подтверждения\n\n"
+                  "Код подтверждения неверен. Пожалуйста, проверьте код и попробуйте ещё раз.",
+            "en": "❌ Verification Error\n\n"
+                  "The confirmation code is incorrect. Please check the code and try again."
         },
         "REGISTRATION_STEP_TWO": {
             "ru": "✉️ Подтверждение почты\n\n"
@@ -493,6 +495,44 @@ class Messages:
         }
     }
 
+    INTERACTIVE_GAMES = {
+        "INTERACTIVE_GAME_NOT_FOUND": {
+            "ru": "❌ Игра не найдена",
+            "en": "❌ Game not found"
+        },
+        "ERROR_IN_MOVE": {
+            "ru": "❌ Ошибка хода",
+            "en": "❌ Error in movement"
+        },
+        "SESSION_EXPIRED": {
+            "ru": "❌ Сессия истекла",
+            "en": "❌ Session expired"
+        }
+    }
+
+    HILO_MESSAGES = {
+        "HILO_ROUND_STATE": {
+            "ru": "{icon} <b>HI-LO GAME</b>\n\n"
+                  "📍 Текущая карта: {card_display}\n"
+                  "🔥 <b>Серия:</b> {streak}\n"
+                  "💰 <b>Множитель:</b> ×{multiplier:.2f}",
+            "en": "{icon} <b>HI-LO GAME</b>\n\n"
+                  "📍 Current card: {card_display}\n"
+                  "🔥 <b>Streak:</b> {streak}\n"
+                  "💰 <b>Multiplier:</b> ×{multiplier:.2f}"
+        },
+        "HILO_FINAL_RESULT": {
+            "ru": "\n📍 Последняя карта: {last_card}\n"
+                  "📊 <b>СТАТИСТИКА:</b>\n"
+                  "🔥 Финальная серия: {streak}\n"
+                  "💰 Финальный множитель: ×{multiplier:.2f}\n",
+            "en": "\n📍 The last card: {last_card}\n"
+                  "📊 <b>STATISTICS:</b>\n"
+                  "🔥 Final streak: {streak}\n"
+                  "💰 Final multiplier: ×{multiplier:.2f}\n"
+        }
+    }
+
     CHANNEL_CONFIG = {
         "BOT_CONFIG": {
             "ru": (
@@ -599,6 +639,8 @@ class Messages:
 
         # ═════════════════════ Игры ════════════════════
         **GAMES,
+        **INTERACTIVE_GAMES,
+        **HILO_MESSAGES,
 
         # ════════════════ Настройка канала ═════════════
         **CHANNEL_CONFIG
