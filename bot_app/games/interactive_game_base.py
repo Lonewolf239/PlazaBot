@@ -70,7 +70,7 @@ class InteractiveGameBase(BaseGame, ABC):
         bot.game_manager.update_interactive_session(user_id, self.game_id, **kwargs)
 
     @abstractmethod
-    async def get_final_result_text(self, bot, user_id: int) -> str:
+    async def get_final_result_message(self, bot, user_id: int) -> Dict[str, Any]:
         """
         Получить финальный текст результата при завершении игры.
         Например:

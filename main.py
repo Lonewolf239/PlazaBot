@@ -86,7 +86,9 @@ async def lifespan(app: FastAPI):
     global db, bot, crypto_pay, dp, bot_task, clone_tasks
     db = DatabaseInterface(logger)
     await db.create()
-    await db.create_config([(0, "honest"), (1, "honest"), (2, "honest"), (3, "honest"), (4, "honest"), (5, "honest"),])
+    await db.create_config([(0, "honest"), (1, "honest"), (2, "honest"),
+                            (3, "honest"), (4, "honest"), (5, "honest"),
+                            (6, "honest")])
     bot = BotInterface(db, config.TOKEN, config.ADMIN_IDS, logger)
     if payment_config.TEST:
         crypto_pay = CryptoPay(payment_config.CRYPTOPAY_TEST_API_TOKEN, bot, db, Networks.TEST_NET)

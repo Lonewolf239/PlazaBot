@@ -1,8 +1,6 @@
 import asyncio
-from secrets import choice
-from random import shuffle
+from secrets import choice, SystemRandom
 from typing import Optional, Callable, Any
-
 from . import BaseGame, BetParameter, GameResult, GameStatus
 from .config import RouletteV2Config
 
@@ -231,7 +229,7 @@ your entire bet is multiplied!
         if count >= len(filtered_numbers):
             return filtered_numbers
         subset = filtered_numbers.copy()
-        shuffle(subset)
+        SystemRandom().shuffle(subset)
         return subset[:count]
 
     @staticmethod

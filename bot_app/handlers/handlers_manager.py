@@ -1,6 +1,8 @@
 from aiogram import types
 from typing import Any
 
+from aiogram.types import BufferedInputFile
+
 from bot_app.keyboards import KeyboardManager
 
 
@@ -239,6 +241,7 @@ class HandlersManager:
         started_at = session["started_at"]
         user_data = await bot.database_interface.get_user(user_id)
         final_result = result.animations_data["final_result"]
+        final_result_image = result.animations_data.get("final_result_image")
         icon = result.animations_data["icon"]
         user_bet = result.user_bet
         if result.is_win:
@@ -261,10 +264,23 @@ class HandlersManager:
             try:
                 channel_id = await bot.chat_id()
                 if channel_id and result.win_amount > result.bet_amount:
-                    await bot.send_message(channel_id,
-                                           await bot.get_text(user_id, "GAME_WIN_ANNOUNCEMENT", user_data, custom_data),
-                                           reply_markup=KeyboardManager.get_channel_announcement_keyboard(
-                                               (await bot.bot.get_me()).username))
+                    if final_result_image:
+                        await bot.bot.send_photo(channel_id,
+                                                 BufferedInputFile(
+                                                     file=final_result_image.getvalue(),
+                                                     filename='image.png'
+                                                 ),
+                                                 caption=await bot.get_text(user_id, "GAME_WIN_ANNOUNCEMENT", user_data,
+                                                                            custom_data),
+                                                 reply_markup=KeyboardManager.get_channel_announcement_keyboard(
+                                                     (await bot.bot.get_me()).username),
+                                                 parse_mode="HTML")
+                    else:
+                        await bot.send_message(channel_id,
+                                               await bot.get_text(user_id, "GAME_WIN_ANNOUNCEMENT", user_data,
+                                                                  custom_data),
+                                               reply_markup=KeyboardManager.get_channel_announcement_keyboard(
+                                                   (await bot.bot.get_me()).username))
             except Exception:
                 pass
             await bot.send_message(user_id, await bot.get_text(user_id, "GAME_WIN", user_data, custom_data),

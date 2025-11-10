@@ -1,5 +1,5 @@
 from aiogram import types
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, BufferedInputFile
 from bot_app.keyboards import KeyboardManager
 from bot_app.games.base_game import GameResult, GameStatus
 from bot_app.handlers import HandlersManager
@@ -20,6 +20,7 @@ class InteractiveGameHandlers:
         if not user_session:
             await callback_query.answer(
                 await bot.get_text(chat_id, "INTERACTIVE_GAME_NOT_FOUND", user_data), show_alert=True)
+            await bot.bot.delete_message(chat_id, message_id)
             return
         game_id = user_session.get('game_id')
         game = await bot.game_manager.get_game(game_id)
@@ -32,15 +33,26 @@ class InteractiveGameHandlers:
             is_game_over = result.get('game_over') or await game.is_game_over(bot, chat_id)
             if is_game_over:
                 game_result = await InteractiveGameHandlers._create_game_result(bot, chat_id, game, user_session)
-                final_text = await game.get_final_result_text(bot, chat_id)
+                final_message = await game.get_final_result_message(bot, chat_id)
                 try:
-                    await bot.bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_id,
-                        text=final_text,
-                        reply_markup=InlineKeyboardMarkup(inline_keyboard=[]),
-                        parse_mode="HTML"
-                    )
+                    image = final_message.get("image")
+                    if image:
+                        await bot.bot.delete_message(chat_id, message_id)
+                        await bot.bot.send_photo(chat_id,
+                                                 BufferedInputFile(
+                                                     file=image.getvalue(),
+                                                     filename='image.png'
+                                                 ),
+                                                 caption=final_message["text"],
+                                                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[]),
+                                                 parse_mode="HTML")
+                    else:
+                        await bot.bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_id,
+                            text=final_message["text"],
+                            reply_markup=InlineKeyboardMarkup(inline_keyboard=[]),
+                            parse_mode="HTML")
                 except Exception as e:
                     bot.logger.error(f"Ошибка при финальном редактировании: {e}")
                 await HandlersManager.on_game_finished(bot, game_result, user_session)
@@ -49,7 +61,10 @@ class InteractiveGameHandlers:
                 await callback_query.answer()
                 return
             round_state = await game.get_round_state(bot, chat_id)
-            keyboard = await KeyboardManager.get_interactive_game_keyboard(game_type, user_data.get("language", "en"))
+            game_session = game.get_session(bot, chat_id)
+            keyboard = await KeyboardManager.get_interactive_game_keyboard(game_type,
+                                                                           user_data.get("language", "en"),
+                                                                           game_session)
             try:
                 await bot.bot.edit_message_text(
                     chat_id=chat_id,
@@ -65,6 +80,7 @@ class InteractiveGameHandlers:
             bot.logger.error(f"Ошибка в игре: {e}", exc_info=True)
             await callback_query.answer(
                 await bot.get_text(chat_id, "ERROR_IN_MOVE", user_data), show_alert=True)
+            await bot.bot.delete_message(chat_id, message_id)
 
     @staticmethod
     async def _create_game_result(bot, chat_id: int, game, user_session) -> GameResult:
@@ -72,10 +88,11 @@ class InteractiveGameHandlers:
         win_amount, multiplier = await game.get_game_result(bot, chat_id)
         bet_amount = user_session['bet_amount']
         is_win = win_amount > bet_amount
-        game_final_result = await game.get_final_result_text(bot, chat_id)
+        game_final_result = await game.get_final_result_message(bot, chat_id)
         game_icon = game.icon
         animations_data = {
-            "final_result": game_final_result,
+            "final_result": game_final_result["text"],
+            "final_result_image": game_final_result.get("image"),
             "icon": game_icon,
             "multiplier": multiplier
         }

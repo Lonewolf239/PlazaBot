@@ -1,9 +1,7 @@
 import asyncio
-
 from secrets import randbelow, choice
 from collections import Counter
 from typing import Callable, Any, Optional
-
 from . import BaseGame, GameStatus, GameResult
 from .config import SlotConfig
 

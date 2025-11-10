@@ -1,4 +1,4 @@
-from typing import List, Any, Type, Dict
+from typing import List, Any, Type, Dict, Optional
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot_app.games import BaseGame, BetParameter
@@ -219,10 +219,10 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    async def get_interactive_game_keyboard(game_type: str, language: str) -> InlineKeyboardMarkup:
+    async def get_interactive_game_keyboard(game_type: str, language: str,
+                                            game_session: Optional[Dict] = None) -> InlineKeyboardMarkup:
         """Клавиатура для интерактивной игры с кнопкой завершения"""
         kb = InlineKeyboardBuilder()
-
         if game_type.startswith("hilo"):
             kb.button(text="📈 Выше" if language == "ru" else "📈 Higher",
                       callback_data="game_action:hilo_started:high")
@@ -233,6 +233,30 @@ class KeyboardManager:
                 kb.button(text="🏁 Завершить" if language == "ru" else "🏁 End Game",
                           callback_data="game_action:hilo:surrender")
             kb.adjust(2, 1)
+        elif game_type.startswith("mines"):
+            opened = set()
+            field = {}
+            if game_session and 'state' in game_session:
+                state = game_session['state']
+                opened = state.get('opened', set())
+                field = state.get('field', {})
+            for row in range(5):
+                for col in range(5):
+                    cell_num = row * 5 + col
+
+                    if cell_num in opened:
+                        coefficient = field.get(cell_num, 0.0)
+                        if coefficient == 0.0:
+                            cell_text = "💣"
+                        else:
+                            cell_text = f"{coefficient:.2f}x"
+                        kb.button(text=cell_text, callback_data=f"game_action:mines_started:opened_{cell_num}")
+                    else:
+                        kb.button(text="⬜", callback_data=f"game_action:mines_started:{cell_num}")
+            if "started" in game_type:
+                kb.button(text="💰 Забрать" if language == "ru" else "💰 Cash Out",
+                          callback_data="game_action:mines:cashout")
+            kb.adjust(5, 5, 5, 5, 5, 1)
 
         return kb.as_markup()
 
@@ -434,7 +458,7 @@ class KeyboardManager:
 
     @staticmethod
     def get_bet_parameter_keyboard(parameter: BetParameter, language: str, bet_type: str,
-                                   selected_values: list = None, need_select = False) -> InlineKeyboardMarkup:
+                                   selected_values: list = None, need_select=False) -> InlineKeyboardMarkup:
         """Создать клавиатуру для выбора параметра с поддержкой multi-select"""
         if selected_values is None:
             selected_values = []

@@ -1,4 +1,4 @@
-import random
+from secrets import choice
 from typing import Any, Optional, Callable, Dict
 from . import InteractiveGameBase, GameResult, GameStatus
 
@@ -86,7 +86,7 @@ Same card value = loss and game over
         if not self.get_session(bot, user_id):
             self.create_session_in_manager(bot, user_id, bet, bet_data)
         session = self.get_session(bot, user_id)
-        current_card = random.choice(self.config['card_values'])
+        current_card = choice(self.config['card_values'])
         session['state'] = {
             'current_card': current_card,
             'streak': 0,
@@ -129,7 +129,7 @@ Same card value = loss and game over
                 'surrendered': True
             }
         state = session['state']
-        new_card = random.choice(self.config['card_values'])
+        new_card = choice(self.config['card_values'])
         current_card = state['current_card']
         is_correct = False
         if action == 'high' and new_card > current_card:
@@ -223,7 +223,7 @@ Same card value = loss and game over
             return card_names[value]
         return f"{'🃏'} {value}"
 
-    async def get_final_result_text(self, bot, user_id: int) -> str:
+    async def get_final_result_message(self, bot, user_id: int) -> dict[str, Any]:
         """Финальный текст результата"""
         session = self.get_session(bot, user_id)
         state = session['state']
@@ -234,7 +234,7 @@ Same card value = loss and game over
         user_data = await bot.database_interface.get_user(user_id)
         custom_data = {"last_card": card_display, "streak": state['streak'],
                        "multiplier": state['multiplier'], "win_amount": win_amount}
-        return await bot.get_text(user_id, "HILO_FINAL_RESULT", user_data, custom_data)
+        return {"text": await bot.get_text(user_id, "HILO_FINAL_RESULT", user_data, custom_data)}
 
     async def get_game_data(self, result: Any, bet_data: Optional[str]) -> dict[str, Any]:
         """Получить структурированные данные игры для логирования"""

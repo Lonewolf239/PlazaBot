@@ -4,7 +4,7 @@ from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
 
 from .keyboards import KeyboardManager
-from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo
+from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines
 from .database import DatabaseInterface
 from .payments import CryptoPay
 from .referral import ReferralManager
@@ -18,6 +18,7 @@ PAGE_LIMIT = 16
 
 class BetDataCollector:
     """Управляет процессом сбора bet_data от пользователя"""
+
     def __init__(self):
         self._user_states: Dict[int, Dict[str, Any]] = {}
 
@@ -161,7 +162,8 @@ class BotInterface:
         2: RouletteV2,
         3: Coin,
         4: Dice,
-        5: HiLo
+        5: HiLo,
+        6: Mines
     }
     GameConfigs = {
         0: ["honest", "aggressive", "generous"],
@@ -170,6 +172,7 @@ class BotInterface:
         3: ["honest", "aggressive", "generous"],
         4: ["honest"],
         5: ["honest"],
+        6: ["honest", "aggressive", "generous"],
     }
 
     def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list, logger: logging.Logger):
@@ -276,7 +279,7 @@ class BotInterface:
                                                            await self.database_interface.get_language(chat_id))
         )
 
-    async def registration_menu(self, message: types.Message, # registration_type=0, first_message="REGISTRATION",
+    async def registration_menu(self, message: types.Message,  # registration_type=0, first_message="REGISTRATION",
                                 ignore_db=False):
         chat_id = message.chat.id
         user_data = await self.database_interface.get_user(chat_id)

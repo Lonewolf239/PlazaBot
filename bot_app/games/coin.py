@@ -1,5 +1,4 @@
 import asyncio
-
 from secrets import randbelow
 from typing import Optional, Callable, Any
 from . import BaseGame, GameStatus, GameResult, BetParameter
