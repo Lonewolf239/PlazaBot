@@ -219,6 +219,23 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
+    async def get_interactive_game_keyboard(game_type: str, language: str) -> InlineKeyboardMarkup:
+        """Клавиатура для интерактивной игры с кнопкой завершения"""
+        kb = InlineKeyboardBuilder()
+
+        if game_type == "hilo":
+            kb.button(text="📈 Выше" if language == "ru" else "📈 Higher",
+                      callback_data="game_action:hilo:high")
+            kb.button(text="📉 Ниже" if language == "ru" else "📉 Lower",
+                      callback_data="game_action:hilo:low")
+            kb.adjust(2)
+            kb.button(text="🏁 Завершить" if language == "ru" else "🏁 End Game",
+                      callback_data="game_action:hilo:surrender")
+            kb.adjust(2, 1)
+
+        return kb.as_markup()
+
+    @staticmethod
     def build_deposit_amount(currency: str, language_code: str) -> InlineKeyboardMarkup:
         from bot_app.payments import CryptoPay
         kb = InlineKeyboardBuilder()

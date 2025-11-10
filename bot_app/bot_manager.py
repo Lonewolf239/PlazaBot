@@ -3,15 +3,15 @@ from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
 
-from bot_app.keyboards import KeyboardManager
-from bot_app.games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice
-from bot_app.database import DatabaseInterface
-from bot_app.payments import CryptoPay
-from bot_app.referral import ReferralManager
-from bot_app.handlers import ReferralHandler, GameManager
-from bot_app.utils import Messages
-# from bot_app.utils import Email, Language
-from bot_app.handlers import HandlersManager
+from .keyboards import KeyboardManager
+from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo
+from .database import DatabaseInterface
+from .payments import CryptoPay
+from .referral import ReferralManager
+from .handlers import ReferralHandler, GameManager
+from .utils import Messages
+# from .utils import Email, Language
+from .handlers import HandlersManager, InteractiveGameHandlers
 
 PAGE_LIMIT = 16
 
@@ -160,7 +160,8 @@ class BotInterface:
         1: Roulette,
         2: RouletteV2,
         3: Coin,
-        4: Dice
+        4: Dice,
+        5: HiLo
     }
     GameConfigs = {
         0: ["honest", "aggressive", "generous"],
@@ -168,6 +169,7 @@ class BotInterface:
         2: ["honest", "aggressive", "generous"],
         3: ["honest", "aggressive", "generous"],
         4: ["honest"],
+        5: ["honest"],
     }
 
     def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list, logger: logging.Logger):
@@ -319,18 +321,6 @@ class BotInterface:
         #         return
         #     await self.send_message(chat_id, await self.get_text(chat_id, "REGISTRATION_ERROR_CODE"))
 
-    async def _process_referral_reward(self, user_id: int, amount: float,
-                                       action_type: str, bot_username: str = None):
-        if not bot_username:
-            bot_info = await self.bot.get_me()
-            bot_username = bot_info.username
-        await self.referral_manager.process_user_action(
-            user_id=user_id,
-            bot_id=bot_username,
-            action_type=action_type,
-            amount=abs(amount)
-        )
-
     async def on_start_command(self, message: types.Message):
         command = message.text[1:]
         chat_id = message.chat.id
@@ -389,7 +379,7 @@ class BotInterface:
             await self.registration_menu(message, 2)
 
         elif input_type == 10:
-            from bot_app.handlers.referral_handler import ReferralHandler
+            from .handlers.referral_handler import ReferralHandler
             await ReferralHandler.process_token_input(self, chat_id, input_text)
 
         elif input_type == 20:
@@ -419,6 +409,8 @@ class BotInterface:
         if command.startswith("select-bet-data"):
             need_delete = False
         elif command.startswith("finalize-bet-data"):
+            need_delete = False
+        elif command.startswith("game_action:"):
             need_delete = False
         elif command == "check-subscription":
             need_delete = False
@@ -484,8 +476,7 @@ class BotInterface:
             bet = float(command.split(':')[1])
             await HandlersManager.start_game(self, chat_id, user_data, bet)
         elif command.startswith("game_action:"):
-            action = command[len("game_action:"):]
-            from bot_app.handlers import InteractiveGameHandlers
+            action = callback_query.data[len("game_action:"):]
             await InteractiveGameHandlers.handle_game_action(self, callback_query, action)
 
         # ═════════════════ Настройки ═════════════════

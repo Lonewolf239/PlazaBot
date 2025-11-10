@@ -348,12 +348,14 @@ class DatabaseInterface:
     async def update_config(self, game_id: int, config: str):
         await self.execute("UPDATE game_configs SET config = ? WHERE game_id = ?", (config, game_id))
 
-    async def create_config(self, game_id: int, config: str):
-        result = await self.get_config(game_id)
-        if result:
-            return
-        await self.execute("INSERT INTO game_configs (game_id, config) VALUES (?, ?)",
-                           (game_id, config))
+    async def create_config(self, games_data: list[tuple[int, str]]):
+        for data in games_data:
+            game_id, config = data
+            result = await self.get_config(game_id)
+            if result:
+                continue
+            await self.execute("INSERT INTO game_configs (game_id, config) VALUES (?, ?)",
+                               (game_id, config))
 
     async def create_user(self, user_id: int, username: str, language: str) -> bool:
         """

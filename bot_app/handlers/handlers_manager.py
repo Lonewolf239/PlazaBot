@@ -2,6 +2,7 @@ from aiogram import types
 from typing import Any
 
 from bot_app.keyboards import KeyboardManager
+from bot_app.games import InteractiveGameBase
 
 
 class HandlersManager:

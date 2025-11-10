@@ -5,3 +5,4 @@ from .roulette import Roulette
 from .roulette_v2 import RouletteV2
 from .coin import Coin
 from .dice import Dice
+from .hi_lo import HiLo

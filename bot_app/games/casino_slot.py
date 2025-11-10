@@ -129,7 +129,7 @@ Jackpot (3× 7️⃣) — the biggest prize!
             user_bet=None,
             multiplier=multiplier,
             is_win=win_amount > 0,
-            game_data=self._get_game_data(result, bet_data),
+            game_data=self.get_game_data(result, bet_data),
             animations_data=animation_data,
             bet_data=bet_data
         )
@@ -225,7 +225,7 @@ Jackpot (3× 7️⃣) — the biggest prize!
             "icon": self.icon
         }
 
-    def _get_game_data(self, result: list[str], bet_data: Optional[str] = None) -> dict[str, Any]:
+    def get_game_data(self, result: list[str], bet_data: Optional[str] = None) -> dict[str, Any]:
         """Создает структуру game_data для слота"""
         counts = Counter(result)
         symbols_info = {

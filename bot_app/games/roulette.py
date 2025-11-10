@@ -308,7 +308,7 @@ Zero (0) - bank wins on any bet except betting directly on 0
         win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
         animation_data = await self.create_animation(result, bot, user_id,
                                                      message_id, send_frame)
-        game_data = self._get_game_data(result, bet_data)
+        game_data = self.get_game_data(result, bet_data)
         game_result = GameResult(
             status=GameStatus.FINISHED,
             win_amount=win_amount,
@@ -488,7 +488,7 @@ Zero (0) - bank wins on any bet except betting directly on 0
             """
         return frame
 
-    def _get_game_data(self, result: int, bet_data: Optional[str] = None) -> dict[str, Any]:
+    def get_game_data(self, result: int, bet_data: Optional[str] = None) -> dict[str, Any]:
         """Создает структуру game_data для рулетки"""
         bet_parts = bet_data.split(";")
         bet_type = bet_parts[0].split(':')[1]

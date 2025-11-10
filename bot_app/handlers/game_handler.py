@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 
 from bot_app.database import DatabaseInterface
-from bot_app.games import BaseGame, GameResult
+from bot_app.games import BaseGame, GameResult, InteractiveGameBase
 
 
 class GameManager:
@@ -18,6 +18,7 @@ class GameManager:
             'on_game_end': [],
             'on_game_error': []
         }
+        self.interactive_game_sessions: Dict[int, Dict[int, Dict[str, Any]]] = {}
 
     def register_game(self, game_id: int, game_class: Type[BaseGame]) -> None:
         if game_id in self.games:
@@ -33,6 +34,7 @@ class GameManager:
         if game_id not in self.games:
             self.logger.error(f"Game {game_id} not registered")
             return None
+
         game_class = self.games[game_id]
         config = await self.db_interface.get_config(game_id)
         max_bet = await self.db_interface.get_max_bet()
@@ -82,11 +84,9 @@ class GameManager:
         if user_id in self.active_sessions:
             self.logger.warning(f"Пользователь {user_id} уже играет")
             return None
-
         game = await self.get_game(game_id)
         if not game:
             return None
-
         session = {
             'user_id': user_id,
             'game_id': game_id,
@@ -96,18 +96,23 @@ class GameManager:
         self.active_sessions[user_id] = session
         try:
             await self._call_callbacks('on_game_start', session)
-            result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
-            await self._call_callbacks('on_game_end', result, session)
-            self.logger.info(f"Пользователь {user_id} завершил игру {game_id}. Выигрыш: {result.win_amount}")
-            return result
-
+            if not isinstance(game, InteractiveGameBase):
+                result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
+                await self._call_callbacks('on_game_end', result, session)
+                self.logger.info(f"Пользователь {user_id} завершил игру {game_id}")
+                self.active_sessions.pop(user_id, None)
+                return result
+            else:
+                if hasattr(game, 'set_game_id'):
+                    game.set_game_id(game_id)
+                self.logger.info(f"Интерактивная игра {game_id} начата для {user_id}")
+                result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
+                return result
         except Exception as e:
             self.logger.error(f"Ошибка при запуске игры: {e}", exc_info=True)
             await self._call_callbacks('on_game_error', e, session)
-            return None
-
-        finally:
             self.active_sessions.pop(user_id, None)
+            return None
 
     def is_user_playing(self, user_id: int) -> bool:
         """Проверить, играет ли пользователь"""
@@ -116,3 +121,25 @@ class GameManager:
     def get_user_session(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Получить активную сессию пользователя"""
         return self.active_sessions.get(user_id)
+
+    def create_interactive_session(self, user_id: int, game_id: int, data: dict):
+        """Создать сессию интерактивной игры"""
+        if game_id not in self.interactive_game_sessions:
+            self.interactive_game_sessions[game_id] = {}
+        self.interactive_game_sessions[game_id][user_id] = data
+
+    def get_interactive_session(self, user_id: int, game_id: int) -> Optional[dict]:
+        """Получить сессию интерактивной игры"""
+        return self.interactive_game_sessions.get(game_id, {}).get(user_id)
+
+    def update_interactive_session(self, user_id: int, game_id: int, **kwargs):
+        """Обновить сессию интерактивной игры"""
+        if game_id in self.interactive_game_sessions and user_id in self.interactive_game_sessions[game_id]:
+            self.interactive_game_sessions[game_id][user_id].update(kwargs)
+
+    def delete_interactive_session(self, user_id: int, game_id: int):
+        """Удалить сессию интерактивной игры"""
+        if game_id in self.interactive_game_sessions:
+            self.interactive_game_sessions[game_id].pop(user_id, None)
+            if not self.interactive_game_sessions[game_id]:
+                del self.interactive_game_sessions[game_id]

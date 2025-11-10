@@ -172,7 +172,7 @@ class BaseGame(ABC):
         pass
 
     @abstractmethod
-    def _get_game_data(self, result: Any, bet_data: Optional[str]) -> dict[str, Any]:
+    def get_game_data(self, result: Any, bet_data: Optional[str]) -> dict[str, Any]:
         """
         Создает структуру game_data для результата.
 

@@ -223,7 +223,7 @@ Make a bet, choose a type and value — your winnings depend on your choice!
         dice1, dice2 = self.generate_result(bet_data)
         win_amount, multiplier = self.evaluate_result((dice1, dice2), bet, bet_data)
         animation_data = await self.create_animation((dice1, dice2), bot, user_id, message_id, send_frame)
-        game_data = self._get_game_data((dice1, dice2), bet_data)
+        game_data = self.get_game_data((dice1, dice2), bet_data)
         game_result = GameResult(
             status=GameStatus.FINISHED,
             win_amount=win_amount,
@@ -330,7 +330,7 @@ Make a bet, choose a type and value — your winnings depend on your choice!
             'icon': self.icon
         }
 
-    def _get_game_data(self, result: tuple[int, int], bet_data: Optional[str] = None) -> dict[str, Any]:
+    def get_game_data(self, result: tuple[int, int], bet_data: Optional[str] = None) -> dict[str, Any]:
         """Создает структуру game_data для костей"""
         if not bet_data:
             return {

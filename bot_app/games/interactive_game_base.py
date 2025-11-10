@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Any, Dict
-from bot_app.games import BaseGame
+from typing import Optional, Any, Dict, Callable
+from . import BaseGame
 from enum import Enum
 
 
@@ -17,11 +17,39 @@ class InteractiveGameBase(BaseGame, ABC):
     def __init__(self, max_bet: float, config_name: str = "honest"):
         super().__init__(max_bet, config_name)
         self.interactive_status = InteractiveGameStatus.WAITING_INPUT
-        self.user_sessions: Dict[int, Dict[str, Any]] = {}
+        self._game_id: Optional[int] = None
 
-    def create_session(self, user_id: int, bet: float, bet_data: Optional[str] = None):
-        """Создать сессию игры для пользователя"""
-        self.user_sessions[user_id] = {
+    def set_game_id(self, game_id: int):
+        """Установить game_id для управления сессиями"""
+        self._game_id = game_id
+
+    @property
+    def game_id(self) -> int:
+        """Получить game_id"""
+        if self._game_id is None:
+            raise RuntimeError("game_id не установлен. Убедитесь, что вызван set_game_id()")
+        return self._game_id
+
+    @staticmethod
+    async def send_initial_message(bot, user_id: int, message_id: int, text: str, game_type: str):
+        from bot_app.keyboards import KeyboardManager
+        user_data = await bot.database_interface.get_user(user_id)
+        language = user_data.get("language", "en")
+        keyboard = await KeyboardManager.get_interactive_game_keyboard(game_type, language)
+        try:
+            await bot.bot.edit_message_text(
+                chat_id=user_id,
+                message_id=message_id,
+                text=text,
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            bot.logger.error(f"Ошибка при отправке первого сообщения: {e}")
+
+    @staticmethod
+    def create_session(bet: float, bet_data: Optional[str] = None):
+        return {
             'bet': bet,
             'bet_data': bet_data,
             'balance': bet,
@@ -30,27 +58,53 @@ class InteractiveGameBase(BaseGame, ABC):
             'state': {}
         }
 
-    def get_session(self, user_id: int) -> Optional[Dict[str, Any]]:
-        """Получить сессию пользователя"""
-        return self.user_sessions.get(user_id)
+    def get_session(self, bot, user_id: int) -> Optional[Dict[str, Any]]:
+        """Получить сессию игрока из game_manager"""
+        return bot.game_manager.get_interactive_session(user_id, self.game_id)
 
-    def update_session(self, user_id: int, **kwargs):
-        """Обновить данные сессии"""
-        if user_id in self.user_sessions:
-            self.user_sessions[user_id].update(kwargs)
+    def create_session_in_manager(self, bot, user_id: int, bet: float, bet_data: Optional[str] = None):
+        """Создать сессию в game_manager"""
+        session = self.create_session(bet, bet_data)
+        bot.game_manager.create_interactive_session(user_id, self.game_id, session)
+        return session
 
-    def delete_session(self, user_id: int):
-        """Удалить сессию"""
-        if user_id in self.user_sessions:
-            del self.user_sessions[user_id]
+    def update_session(self, bot, user_id: int, **kwargs):
+        """Обновить сессию в game_manager"""
+        bot.game_manager.update_interactive_session(user_id, self.game_id, **kwargs)
+
+    def delete_session(self, bot, user_id: int):
+        """Удалить сессию из game_manager"""
+        bot.game_manager.delete_interactive_session(user_id, self.game_id)
+
+    def generate_result(self, bet_data: Optional[str] = None) -> Any:
+        """Не используется в интерактивной игре"""
+        pass
+
+    def evaluate_result(self, result: Any, bet: float, bet_data: Optional[str] = None) -> tuple[float, float]:
+        """Не используется в интерактивной игре"""
+        pass
+
+    async def create_animation(self, result: Any, bot, user_id: int, message_id: int,
+                               send_frame: Optional[Callable] = None, bet_data: Optional[str] = None) -> dict[str, Any]:
+        """Не используется в интерактивной игре"""
+        pass
 
     @abstractmethod
-    async def get_round_state(self, user_id: int) -> str:
+    async def get_final_result_text(self, bot, user_id: int) -> str:
+        """
+        Получить финальный текст результата при завершении игры.
+        Например:
+        return "🏁 Финальная серия: 5 🔥\n💰 Выигрыш: ×32.0"
+        """
+        pass
+
+    @abstractmethod
+    async def get_round_state(self, bot, user_id: int) -> str:
         """Получить текущее состояние раунда для вывода"""
         pass
 
     @abstractmethod
-    async def process_action(self, user_id: int, action: str) -> Dict[str, Any]:
+    async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
         """
         Обработать действие пользователя.
         Возвращает результат действия
@@ -58,11 +112,11 @@ class InteractiveGameBase(BaseGame, ABC):
         pass
 
     @abstractmethod
-    async def is_game_over(self, user_id: int) -> bool:
+    async def is_game_over(self, bot, user_id: int) -> bool:
         """Проверить, завершена ли игра"""
         pass
 
     @abstractmethod
-    async def get_game_result(self, user_id: int) -> tuple[float, float]:
+    async def get_game_result(self, bot, user_id: int) -> tuple[float, float]:
         """Получить выигрыш и множитель при завершении"""
         pass

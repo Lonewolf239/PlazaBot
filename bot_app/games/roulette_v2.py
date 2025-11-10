@@ -18,42 +18,7 @@ class RouletteV2(BaseGame):
         self.load_config()
         self.icon = "🎯"
         self._name = {"ru": "Рулетка V2", "en": "Roulette V2"}
-        self._rules = {
-            "ru": (
-                "ℹ️ Правила Рулетки V2\n\n"
-                "🎯 <b>КАК ИГРАТЬ</b>\n"
-                "Выбери от 1 до 6 чисел от 0 до 89.\n"
-                "Каждое число стоит одну ставку.\n\n"
-                "💰 <b>МНОЖИТЕЛИ ВЫИГРЫША</b>\n"
-                "1 число → 15x\n"
-                "2 числа → 14x\n"
-                "3 числа → 13x\n"
-                "4 числа → 12x\n"
-                "5 чисел → 11x\n"
-                "6 чисел → 10x\n\n"
-                "✅ <b>ВЫИГРЫШ</b>\n"
-                "Если хотя бы одно число совпадает,\n"
-                "вся ставка умножается на множитель!\n\n"
-                "🍀 <b>Удачи!</b>"
-            ),
-            "en": (
-                "ℹ️ Roulette V2 Rules\n\n"
-                "🎯 <b>HOW TO PLAY</b>\n"
-                "Select 1 to 6 numbers from 0 to 89.\n"
-                "Each number costs one bet.\n\n"
-                "💰 <b>MULTIPLIERS</b>\n"
-                "1 number → 15x\n"
-                "2 numbers → 14x\n"
-                "3 numbers → 13x\n"
-                "4 numbers → 12x\n"
-                "5 numbers → 11x\n"
-                "6 numbers → 10x\n\n"
-                "✅ <b>WIN</b>\n"
-                "If any selected number matches,\n"
-                "your entire bet is multiplied!\n\n"
-                "🍀 <b>Good luck!</b>"
-            )
-        }
+        self._rules = self.generate_rules()
         self.numbers = list(range(90))
         self.need_bet_data = True
         bet_value_param = BetParameter(
@@ -158,7 +123,7 @@ your entire bet is multiplied!
         result = self.generate_result()
         win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
         animation_data = await self.create_animation(result, bot, user_id, message_id, send_frame, bet_data)
-        game_data = self._get_game_data(result, bet_data)
+        game_data = self.get_game_data(result, bet_data)
         game_result = GameResult(
             status=GameStatus.FINISHED,
             win_amount=win_amount,
@@ -300,7 +265,7 @@ your entire bet is multiplied!
             table += row + "\n"
         return table
 
-    def _get_game_data(self, result: int, bet_data: Optional[str] = None) -> dict[str, Any]:
+    def get_game_data(self, result: int, bet_data: Optional[str] = None) -> dict[str, Any]:
         """Создает структуру game_data для рулетки"""
         bet_value = bet_data.split(':')[1]
         selected_numbers = bet_value.split(',')
