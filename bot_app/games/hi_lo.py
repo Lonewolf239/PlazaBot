@@ -13,6 +13,7 @@ class HiLo(InteractiveGameBase):
         self._name = {"ru": "Hi-Lo", "en": "Hi-Lo"}
         self._rules = self.generate_rules()
         self.need_bet_data = False
+        self.game_type = "hilo"
 
     def load_config(self):
         """Загрузить конфигурацию игры"""
@@ -193,12 +194,12 @@ Same card value = loss and game over
         win_amount = bet * multiplier
         return win_amount, multiplier
 
-    async def get_round_state(self, bot, user_id: int) -> str:
+    async def get_round_state(self, bot, user_id: int) -> dict[str, Any]:
         """Получить текущее состояние раунда для отображения"""
         session = self.get_session(bot, user_id)
         return await self._format_round_state(bot, user_id, session)
 
-    async def _format_round_state(self, bot, user_id: int, session: Dict[str, Any]) -> str:
+    async def _format_round_state(self, bot, user_id: int, session: Dict[str, Any]) -> dict[str, Any]:
         """Форматировать состояние раунда в текст"""
         state = session['state']
         current_card = state['current_card']
@@ -208,7 +209,7 @@ Same card value = loss and game over
         user_data = await bot.database_interface.get_user(user_id)
         custom_data = {"icon": self.icon, "card_display": card_display,
                        "streak": streak, "multiplier": multiplier}
-        return await bot.get_text(user_id, "HILO_ROUND_STATE", user_data, custom_data)
+        return {"text": await bot.get_text(user_id, "HILO_ROUND_STATE", user_data, custom_data)}
 
     @staticmethod
     def _get_card_display(value: int) -> str:

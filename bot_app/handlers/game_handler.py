@@ -1,9 +1,8 @@
 from typing import Dict, Optional, Type, Callable, Any
 from datetime import datetime
 import logging
-
-from bot_app.database import DatabaseInterface
-from bot_app.games import BaseGame, GameResult, InteractiveGameBase
+from ..database import DatabaseInterface
+from ..games import BaseGame, GameResult, InteractiveGameBase, GameStatus
 
 
 class GameManager:
@@ -107,6 +106,9 @@ class GameManager:
                     game.set_game_id(game_id)
                 self.logger.info(f"Интерактивная игра {game_id} начата для {user_id}")
                 result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
+                if result.status == GameStatus.FINISHED:
+                    from . import InteractiveGameHandlers
+                    await InteractiveGameHandlers.finish_game(bot, user_id, message_id, game, result.session)
                 return result
         except Exception as e:
             self.logger.error(f"Ошибка при запуске игры: {e}", exc_info=True)

@@ -1,13 +1,12 @@
 from typing import Any
 
-from bot_app.keyboards import KeyboardManager
-
 
 class ReferralHandler:
     """Обработчик команд рефералки"""
     @staticmethod
     async def referral_menu(bot, chat_id: int, user_data: dict):
         """Главное меню рефералки"""
+        from bot_app.keyboards import KeyboardManager
         language = user_data.get("language", "en")
         text = await bot.get_text(chat_id, "REFERRAL_MENU", user_data)
         await bot.send_message(
@@ -24,6 +23,7 @@ class ReferralHandler:
     @staticmethod
     async def create_clone_bot(bot, chat_id: int, user_data: dict[str, Any]):
         """Начинает процесс создания клон-бота"""
+        from bot_app.keyboards import KeyboardManager
         text = await bot.get_text(chat_id, "REFERRAL_CLONE_BOT_STEP1", user_data)
         await bot.database_interface.update_user(chat_id, block_input=True, input_type=10)
         await bot.send_message(chat_id, text,

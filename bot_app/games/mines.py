@@ -18,6 +18,7 @@ class Mines(InteractiveGameBase):
         self.need_bet_data = False
         self.GRID_SIZE = 5
         self.TOTAL_CELLS = self.GRID_SIZE * self.GRID_SIZE
+        self.game_type = "mines"
 
     def load_config(self):
         """Загружает конфигурацию в зависимости от выбранного режима"""
@@ -239,12 +240,12 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
         win_amount = session['bet'] * multiplier
         return win_amount, multiplier
 
-    async def get_round_state(self, bot, user_id: int) -> str:
+    async def get_round_state(self, bot, user_id: int) -> dict[str, Any]:
         """Получить текущее состояние раунда для отображения"""
         session = self.get_session(bot, user_id)
         return await self._format_round_state(bot, user_id, session)
 
-    async def _format_round_state(self, bot, user_id: int, session: Dict[str, Any]) -> str:
+    async def _format_round_state(self, bot, user_id: int, session: Dict[str, Any]) -> dict[str, Any]:
         """Форматировать состояние раунда в текст"""
         state = session['state']
         opened_count = len(state['opened'])
@@ -253,7 +254,7 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
         user_data = await bot.database_interface.get_user(user_id)
         custom_data = {"icon": self.icon, "opened_count": opened_count,
                        "multiplier": f"{multiplier:.2f}", "potential_win": f"{potential_win:.2f}"}
-        return await bot.get_text(user_id, "MINES_ROUND_STATE", user_data, custom_data)
+        return {"text": await bot.get_text(user_id, "MINES_ROUND_STATE", user_data, custom_data)}
 
     def _get_field_display(self, state: Dict[str, Any]) -> BytesIO:
         """

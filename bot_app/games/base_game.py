@@ -24,6 +24,7 @@ class GameResult:
     game_data: dict[str, Any]
     animations_data: Optional[dict[str, Any]] = None
     bet_data: Optional[str] = None
+    session: dict[str, Any] = None
 
 
 @dataclass

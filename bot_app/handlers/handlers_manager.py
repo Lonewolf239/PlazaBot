@@ -1,9 +1,6 @@
 from aiogram import types
 from typing import Any
-
 from aiogram.types import BufferedInputFile, InputMediaPhoto
-
-from bot_app.keyboards import KeyboardManager
 
 
 class HandlersManager:
@@ -22,6 +19,7 @@ class HandlersManager:
 
     @staticmethod
     async def check_subscription(bot, chat_id: int, first_name: str) -> bool:
+        from bot_app.keyboards import KeyboardManager
         try:
             user_data = await bot.database_interface.get_user(chat_id)
             if not user_data:
@@ -84,6 +82,7 @@ class HandlersManager:
     @staticmethod
     async def select_bet(bot, chat_id: int, user_data: dict[str, Any]):
         """Выбор ставки или начало сбора bet_data"""
+        from bot_app.keyboards import KeyboardManager
         if bot.game_manager.is_user_playing(chat_id):
             await bot.send_message(chat_id, await bot.get_text(chat_id, "USER_ALREADY_PLAYING", user_data))
             await bot.main_menu(chat_id)
@@ -111,6 +110,7 @@ class HandlersManager:
     @staticmethod
     async def _show_next_bet_parameter(bot, chat_id: int, user_data: dict[str, Any], message_id: int = None):
         """Показать следующий параметр для выбора"""
+        from bot_app.keyboards import KeyboardManager
         current_param = bot.bet_data_collector.get_current_parameter(chat_id)
         if not current_param:
             await HandlersManager._show_final_bet_selection(bot, chat_id, user_data, message_id)
@@ -152,6 +152,7 @@ class HandlersManager:
     @staticmethod
     async def _show_final_bet_selection(bot, chat_id: int, user_data: dict[str, Any], message_id: int = None):
         """Показать финальный выбор ставки после сбора всех параметров"""
+        from bot_app.keyboards import KeyboardManager
         language = user_data.get("language", "en")
         game = await bot.game_manager.get_game(int(user_data.get("selected_game", "0")))
         progress = bot.bet_data_collector.get_progress_text(chat_id, language)
@@ -255,6 +256,7 @@ class HandlersManager:
 
     @staticmethod
     async def on_game_finished(bot, result, session):
+        from bot_app.keyboards import KeyboardManager
         user_id = int(session["user_id"])
         game_id = int(session["game_id"])
         started_at = session["started_at"]
@@ -314,6 +316,7 @@ class HandlersManager:
     # ═════════════════ Настройки ═════════════════
     @staticmethod
     async def settings(bot, chat_id: int, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         text = await bot.get_text(chat_id, "SETTINGS", user_data)
         text = text.replace("semga05@mail.ru", await bot.get_text(chat_id, "NO_EMAIL"))
         await bot.send_message(chat_id, text,
@@ -321,11 +324,13 @@ class HandlersManager:
 
     @staticmethod
     async def change_language(bot, chat_id: int):
+        from bot_app.keyboards import KeyboardManager
         await bot.send_message(chat_id, await bot.get_text(chat_id, "CHANGE_LANGUAGE"),
                                reply_markup=KeyboardManager.get_language_keyboard())
 
     @staticmethod
     async def change_game(bot, chat_id: int, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         await bot.send_message(chat_id, await bot.get_text(chat_id, "CHANGE_GAME", user_data),
                                reply_markup=KeyboardManager.get_change_game_keyboard(
                                    bot.game_manager.get_available_games(),
@@ -350,12 +355,14 @@ class HandlersManager:
     # ═══════════════════ Баланс ══════════════════
     @staticmethod
     async def balance(bot, chat_id: int, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         await bot.send_message(chat_id, await bot.get_text(chat_id, "BALANCE", user_data),
                                reply_markup=KeyboardManager.get_balance_keyboard(user_data.get("language", "en")))
 
     @staticmethod
     async def get_currency(bot, chat_id: int, user_data: dict[str, Any],
                            operation_type: str, available_currencies: list[str]):
+        from bot_app.keyboards import KeyboardManager
         currency_list = []
         if operation_type == "withdraw":
             balance_str = user_data.get("balance", "0").strip()
@@ -393,6 +400,7 @@ class HandlersManager:
 
     @staticmethod
     async def get_amount(bot, chat_id: int, user_data: dict[str, Any], currency: str, operation_type: str):
+        from bot_app.keyboards import KeyboardManager
         ok, markup = KeyboardManager.get_amount_keyboard(
             user_data.get("language", "en"), currency,
             operation_type, user_data.get("balance", "0.0"))
@@ -401,6 +409,7 @@ class HandlersManager:
 
     @staticmethod
     async def do_deposit(bot, chat_id: int, user_data: dict[str, Any], currency: str, amount: float):
+        from bot_app.keyboards import KeyboardManager
         deposit = await bot.crypto_pay.initiate_deposit(chat_id, amount, currency)
         if deposit["status"] == "payment_pending":
             await bot.send_message(chat_id, await bot.get_text(chat_id, "PAYMENT_LINK", user_data),
@@ -436,6 +445,7 @@ class HandlersManager:
     @staticmethod
     async def cancel_deposit_confirm(bot, chat_id: int, user_data: dict[str, Any],
                                      internal_tx_id: str, message_id: int):
+        from bot_app.keyboards import KeyboardManager
         await bot.send_message(chat_id, await bot.get_text(chat_id, "CANCEL_DEPOSIT_CONFIRM", user_data),
                                reply_markup=KeyboardManager.get_confirm_keyboard(
                                    f"cancel-deposit:{internal_tx_id}:{message_id}",
@@ -460,6 +470,7 @@ class HandlersManager:
     # ════════════════ Админ-панель ═══════════════
     @staticmethod
     async def admin_panel(bot, chat_id: int, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         if chat_id not in bot.admin_ids:
             return
         await bot.send_message(chat_id, await bot.get_text(chat_id, "ADMIN_PANEL", user_data),
@@ -467,6 +478,7 @@ class HandlersManager:
 
     @staticmethod
     async def admin_summary(bot, chat_id: int, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         needed, count, avg_bal, max_bal, min_bal = await bot.database_interface.get_needed(bot.admin_ids)
         text = (
             f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_COUNT", user_data)}: {count}\n"
@@ -482,6 +494,7 @@ class HandlersManager:
 
     @staticmethod
     async def admin_list_players(bot, chat_id: int, command: str, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         page = int(command.split(':')[1]) if ':' in command else 1
         text, lines, add_next_page = await bot.get_users_page(page)
         await bot.send_message(chat_id, text,
@@ -490,6 +503,7 @@ class HandlersManager:
 
     @staticmethod
     async def admin_show_logs(bot, chat_id: int, command: str, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         page = int(command.split(':')[1]) if ':' in command else 1
         text, add_next_page = await bot.get_logs_page(page)
         await bot.send_message(chat_id, text,
@@ -498,6 +512,7 @@ class HandlersManager:
 
     @staticmethod
     async def admin_show_tables(bot, chat_id: int, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         ok, tables = await bot.database_interface.get_tables()
         if not ok:
             await bot.send_message(chat_id, tables[0],
@@ -570,6 +585,7 @@ class HandlersManager:
 
     @staticmethod
     async def admin_game_settings(bot, chat_id: int, user_data: dict[str, Any], game_id: int = None):
+        from bot_app.keyboards import KeyboardManager
         language_code = user_data.get("language", "en")
         if game_id is None:
             await bot.send_message(chat_id, await bot.get_text(chat_id, "GAME_SETTINGS", user_data),
@@ -595,6 +611,7 @@ class HandlersManager:
 
     @staticmethod
     async def admin_game_config(bot, chat_id: int, user_data: dict[str, Any], game_id: int = None):
+        from bot_app.keyboards import KeyboardManager
         language_code = user_data.get("language", "en")
         if game_id is None:
             await bot.send_message(chat_id, await bot.get_text(chat_id, "GAME_CONFIG_SELECT", user_data),
@@ -607,6 +624,7 @@ class HandlersManager:
 
     @staticmethod
     async def admin_bot_config(bot, chat_id: int, user_data: dict[str, Any], command: str):
+        from bot_app.keyboards import KeyboardManager
         language_code = user_data.get("language", "en")
         command_parts = command.split(':')
         if len(command_parts) > 1:
@@ -648,6 +666,7 @@ class HandlersManager:
 
     @staticmethod
     async def rules(bot, chat_id: int, user_data: dict[str, Any]):
+        from bot_app.keyboards import KeyboardManager
         game = await bot.game_manager.get_game(int(user_data.get("selected_game", 0)))
         await bot.send_message(chat_id, game.rules(user_data.get("language", "en")),
                                reply_markup=KeyboardManager.get_back_keyboard(user_data.get("language", "en")))

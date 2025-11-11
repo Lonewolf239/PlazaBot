@@ -2,10 +2,9 @@ import logging
 from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
-
 import config
 from .keyboards import KeyboardManager
-from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines
+from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines, Blackjack
 from .database import DatabaseInterface
 from .payments import CryptoPay
 from .referral import ReferralManager
@@ -19,7 +18,6 @@ PAGE_LIMIT = 16
 
 class BetDataCollector:
     """Управляет процессом сбора bet_data от пользователя"""
-
     def __init__(self):
         self._user_states: Dict[int, Dict[str, Any]] = {}
 
@@ -164,7 +162,9 @@ class BotInterface:
         3: Coin,
         4: Dice,
         5: HiLo,
-        6: Mines
+        6: Mines,
+        7: Blackjack,
+        # 200: Crash
     }
     GameConfigs = {
         0: ["honest", "aggressive", "generous"],
@@ -174,6 +174,8 @@ class BotInterface:
         4: ["honest"],
         5: ["honest"],
         6: ["honest", "aggressive", "generous"],
+        7: ["honest"],
+        # 200: ["honest"],
     }
 
     def __init__(self, db_interface: DatabaseInterface, token: str, admin_ids: list, logger: logging.Logger):

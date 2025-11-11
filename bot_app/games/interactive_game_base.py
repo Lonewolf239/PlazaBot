@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Any, Dict, Callable
+
+from aiogram.types import InputMediaPhoto, BufferedInputFile
+
 from . import BaseGame
 from enum import Enum
 
@@ -18,6 +21,7 @@ class InteractiveGameBase(BaseGame, ABC):
         super().__init__(max_bet, config_name)
         self.interactive_status = InteractiveGameStatus.WAITING_INPUT
         self._game_id: Optional[int] = None
+        self.game_type = ""
 
     def set_game_id(self, game_id: int):
         """Установить game_id для управления сессиями"""
@@ -31,13 +35,30 @@ class InteractiveGameBase(BaseGame, ABC):
         return self._game_id
 
     @staticmethod
-    async def send_initial_message(bot, user_id: int, message_id: int, text: str, game_type: str):
+    async def send_initial_message(bot, user_id: int, message_id: int, frame: dict[str, Any], game_type: str):
         """Отправить начальное сообщение с клавиатурой"""
         from bot_app.keyboards import KeyboardManager
         user_data = await bot.database_interface.get_user(user_id)
         language = user_data.get("language", "en")
         keyboard = await KeyboardManager.get_interactive_game_keyboard(game_type, language)
+        text = frame.get("text")
+        image = frame.get("image")
         try:
+            if image:
+                await bot.bot.edit_message_media(
+                    chat_id=user_id,
+                    message_id=message_id,
+                    media=InputMediaPhoto(
+                        media=BufferedInputFile(
+                            file=image.getvalue(),
+                            filename='frame.png'
+                        ),
+                        caption=text,
+                        parse_mode="HTML"
+                    ),
+                    reply_markup=keyboard
+                )
+                return
             await bot.bot.edit_message_text(
                 chat_id=user_id,
                 message_id=message_id,

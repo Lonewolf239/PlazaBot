@@ -7,3 +7,24 @@ from .coin import Coin
 from .dice import Dice
 from .hi_lo import HiLo
 from .mines import Mines
+from .crash import Crash
+from .blackjack import Blackjack
+
+__all__ = [
+    'BaseGame',
+    'GameResult',
+    'GameStatus',
+    'BetDataFlow',
+    'BetParameter',
+    'InteractiveGameBase',
+    'InteractiveGameStatus',
+    'CasinoSlot',
+    'Roulette',
+    'RouletteV2',
+    'Coin',
+    'Dice',
+    'HiLo',
+    'Mines',
+    'Crash',
+    'Blackjack'
+]

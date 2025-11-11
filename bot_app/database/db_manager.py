@@ -4,7 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 import aiosqlite
 from typing import Optional, List, Dict, Any, Tuple
-from bot_app.utils import Hacher
+from ..utils import Hacher
 
 
 class DatabaseInterface:

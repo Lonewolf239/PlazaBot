@@ -247,7 +247,6 @@ class KeyboardManager:
             for row in range(5):
                 for col in range(5):
                     cell_num = row * 5 + col
-
                     if cell_num in opened:
                         coefficient = field.get(cell_num, 0.0)
                         if coefficient == 0.0:
@@ -261,7 +260,16 @@ class KeyboardManager:
                 kb.button(text="💰 Забрать" if language == "ru" else "💰 Cash Out",
                           callback_data="game_action:mines:cashout")
             kb.adjust(5, 5, 5, 5, 5, 1)
-
+        elif game_type == "crash":
+            kb.button(text="💰 Забрать" if language == "ru" else "💰 Cash Out",
+                      callback_data="game_action:crash:cashout")
+            kb.adjust(1, 1)
+        if game_type.startswith("blackjack"):
+            kb.button(text="🎴 Hit" if language == "en" else "🎴 Ещё",
+                      callback_data="game_action:blackjack:hit")
+            kb.button(text="🛑 Stand" if language == "en" else "🛑 Стоп",
+                      callback_data="game_action:blackjack:stand")
+            kb.adjust(2)
         return kb.as_markup()
 
     @staticmethod
