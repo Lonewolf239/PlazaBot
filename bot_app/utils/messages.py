@@ -479,7 +479,7 @@ class Messages:
             "ru": "<b>🔥 Внимание!</b>\n\nИгрок {username} <b>только что выиграл {amount}$</b>!\n"
                   "#🎲 Ставка: {user_bet}\n#"
                   "{icon} Результат: {final_result}\n\n"
-                  "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
+                  "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n"
                   "<b>🔥 Attention!</b>\n\nPlayer {username} <b>just won {amount}$</b>!\n"
                   "#🎲 Bet: {user_bet}\n#"
                   "{icon} Result: {final_result}\n\n"
@@ -487,7 +487,7 @@ class Messages:
             "en": "<b>🔥 Внимание!</b>\n\nИгрок {username} <b>только что выиграл {amount}$</b>!\n"
                   "#🎲 Ставка: {user_bet}\n#"
                   "{icon} Результат: {final_result}\n\n"
-                  "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
+                  "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n"
                   "<b>🔥 Attention!</b>\n\nPlayer {username} <b>just won {amount}$</b>!\n"
                   "#🎲 Bet: {user_bet}\n#"
                   "{icon} Result: {final_result}\n\n"
@@ -553,6 +553,12 @@ class Messages:
     }
 
     CHANNEL_CONFIG = {
+        "BOT_START_IN_CHAT": {
+            "en": "❌ Этот бот работает только в личных сообщениях!\n"
+                  "Пожалуйста, напишите мне в личку для запуска.\n\n\n"
+                  "❌ This bot only works in private messages!\n"
+                  "Please message me privately to launch it."
+        },
         "BOT_CONFIG": {
             "ru": (
                 "⚙️ Настройка бота для уведомлений\n\n"

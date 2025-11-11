@@ -41,7 +41,8 @@ class Messages:
             "bot_config": {"ru": "Настройка бота", "en": "Bot setup"},
             "set_bot_config": {"ru": "Изменить", "en": "Change"},
             "remove_bot_config": {"ru": "Удалить", "en": "Remove"},
-            "max_bet": {"ru": "Макс ставка", "en": "Max Bet"}
+            "max_bet": {"ru": "Макс ставка", "en": "Max Bet"},
+            "startup_channel": {"ru": "Отправить приветствие", "en": "Send a greeting"}
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
@@ -55,7 +56,8 @@ class Messages:
             "try_again": {"ru": "Попробовать снова", "en": "Try again"},
             "prev_page": {"ru": "", "en": ""},
             "next_page": {"ru": "", "en": ""},
-            "did_deb": {"en": "Играй сейчас/Play Now"}
+            "did_deb": {"en": "Играй сейчас/Play Now"},
+            "bot_open": {"en": "Открыть бота/Open the bot"}
         }
     }
 
@@ -95,7 +97,8 @@ class Messages:
             "bot_config": "⚙️",
             "set_bot_config": "⚙️",
             "remove_bot_config": "🗑️",
-            "max_bet": "🔧"
+            "max_bet": "🔧",
+            "startup_channel": "💬"
         },
         "REFERRAL": {
             "create": "➕",
@@ -109,7 +112,8 @@ class Messages:
             "try_again": "🔄",
             "prev_page": "◀️",
             "next_page": "▶️",
-            "did_deb": "🎮"
+            "did_deb": "🎮",
+            "bot_open": "🤖"
         }
     }
 
@@ -134,7 +138,7 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    def get_main_keyboard(game_icon: str, admin: bool, language_code: str) -> InlineKeyboardMarkup:
+    def get_main_keyboard(game_icon: str, admin: bool, language_code: str, support_url: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=f"{game_icon}{Messages.get_text('MAIN_MENU', 'games', language_code)}",
                   callback_data="select-bet")
@@ -146,7 +150,7 @@ class KeyboardManager:
                   callback_data="balance")
         kb.button(text=Messages.get_text("MAIN_MENU", "rules", language_code),
                   callback_data="rules")
-        kb.button(text=Messages.get_text("MAIN_MENU", "help", language_code), url="https://t.me/plaza_support_BOT")
+        kb.button(text=Messages.get_text("MAIN_MENU", "help", language_code), url=f"https://t.me/{support_url}")
         kb.button(text=Messages.get_text("MAIN_MENU", "referral", language_code), callback_data="referral-menu")
         if admin:
             kb.button(text=Messages.get_text("MAIN_MENU", "admin", language_code),
@@ -373,6 +377,8 @@ class KeyboardManager:
                   callback_data="admin-bot-config")
         kb.button(text=Messages.get_text("ADMIN", "max_bet", language_code),
                   callback_data="update-max-bet")
+        kb.button(text=Messages.get_text("ADMIN", "startup_channel", language_code),
+                  callback_data="startup-channel-message")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(2)
@@ -577,6 +583,15 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
+    async def get_bot_open_keyboard(bot) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        bot_username = (await bot.get_me()).username
+        kb.button(text=Messages.get_text("OTHERS", "bot_open", "en"),
+                  url=f"https://t.me/{bot_username}?start=start")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
     def get_referral_keyboard(language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=Messages.get_text("REFERRAL", "create", language_code),
@@ -587,6 +602,25 @@ class KeyboardManager:
                   callback_data="back")
         kb.adjust(1)
         return kb.as_markup()
+
+    @staticmethod
+    def get_channel_startup_keyboard(bot_username: str, support_bot_username: str):
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text=Messages.get_text("OTHERS", "bot_open", "en"),
+                        url=f"https://t.me/{bot_username}?start=start"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="📞 Техподдержка / Support",
+                        url=f"https://t.me/{support_bot_username}?start=start"
+                    )
+                ]
+            ]
+        )
 
     @staticmethod
     def get_referral_cancel_keyboard(language_code: str) -> InlineKeyboardMarkup:

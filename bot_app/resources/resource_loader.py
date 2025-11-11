@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from typing import Optional
-from PIL import Image
+from PIL import Image, ImageFont
 
 
 class ResourceLoader:
@@ -48,3 +48,24 @@ class ResourceLoader:
         paste_x = x + (cell_size - overlay_width) // 2
         paste_y = y + (cell_size - overlay_height) // 2
         base_img.paste(overlay_img, (paste_x, paste_y), overlay_img)
+
+    @staticmethod
+    def load_fonts():
+        """Загружает шрифты с fallback механизмом"""
+        try:
+            return {
+                'medium': ImageFont.truetype("arial.ttf", 28),
+                'small': ImageFont.truetype("arial.ttf", 20),
+            }
+        except IOError:
+            try:
+                return {
+                    'medium': ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28),
+                    'small': ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20),
+                }
+            except IOError:
+                default = ImageFont.load_default()
+                return {
+                    'medium': default,
+                    'small': default,
+                }

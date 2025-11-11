@@ -1,18 +1,12 @@
+from pathlib import Path
+from dotenv import load_dotenv
 import os
 
-# TODO: fix
-# RETURN_URL = os.getenv("RETURN_URL")
-
-# CRYPTOPAY_API_TOKEN = os.getenv("CRYPTOPAY_API_TOKEN")
-
-# CRYPTOPAY_WEBHOOK = os.getenv("CRYPTOPAY_WEBHOOK")
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 TEST = True
-
-RETURN_URL = "https://t.me/PlazaCasinoBOT"
-
-CRYPTOPAY_API_TOKEN = "484140:AACr4PuFCF8lNX5RLSOAhexLQeFOtKT1soT"
-
-CRYPTOPAY_TEST_API_TOKEN = "50298:AAZrqQUAE8XuykSKvj9YRYJZaDlPM85UmVc"
-
-CRYPTOPAY_WEBHOOK = "AACr4PuFCF8lNX5RLSOAhexLQeFOtKT1soT"
+RETURN_URL = os.getenv("RETURN_URL")
+CRYPTOPAY_API_TOKEN = os.getenv("CRYPTOPAY_API_TOKEN")
+CRYPTOPAY_TEST_API_TOKEN = os.getenv("CRYPTOPAY_TEST_API_TOKEN")
+CRYPTOPAY_WEBHOOK = os.getenv("CRYPTOPAY_WEBHOOK")

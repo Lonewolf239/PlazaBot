@@ -1,8 +1,11 @@
 import asyncio
+from io import BytesIO
 from secrets import choice, SystemRandom
 from typing import Optional, Callable, Any
+from PIL import Image, ImageDraw
 from . import BaseGame, BetParameter, GameResult, GameStatus
 from .config import RouletteV2Config
+from ..resources import ResourceLoader
 
 
 class RouletteV2(BaseGame):
@@ -73,7 +76,7 @@ class RouletteV2(BaseGame):
 Выбери от 1 до 6 чисел от 0 до 89.
 Каждое число стоит одну ставку.
 
-<b>💰 <b>МНОЖИТЕЛИ ВЫИГРЫША</b>
+<b>💰 МНОЖИТЕЛИ ВЫИГРЫША</b>
 • 1 число → 15x
 • 2 числа → 14x
 • 3 числа → 13x
@@ -137,10 +140,6 @@ your entire bet is multiplied!
         return await self._finalize_game(game_result)
 
     def generate_result(self, bet_data: Optional[str] = None) -> int:
-        """
-        Симулирует кручение колеса рулетки с учётом конфигурации
-        Использует вероятности и смещения цвета из config
-        """
         return choice(self.numbers)
 
     def evaluate_result(self, result: int, bet: float, bet_data: Optional[str] = None) -> tuple[float, float]:
@@ -173,26 +172,26 @@ your entire bet is multiplied!
                 selected_numbers = set()
         animation_frames = []
         frame_times = []
-        start_frame = "🎯 ...\n"
-        start_frame += self._generate_table(list(range(90)), selected_numbers=selected_numbers)
+        start_frame = "🎯 ..."
+        frame_image = self._get_field_display(list(range(90)), selected_numbers=selected_numbers)
         if send_frame:
-            await send_frame(bot, user_id, message_id, {"text": start_frame})
+            await send_frame(bot, user_id, message_id, {"text": start_frame, "image": frame_image})
         frame_times.append(0.5)
         animation_frames.append(start_frame)
         animation_stages = [
-            (15, 0.25),
-            (11, 0.25),
-            (9, 0.3),
-            (8, 0.3),
-            (8, 0.35),
-            (7, 0.35),
-            (6, 0.4),
-            (6, 0.4),
-            (6, 0.5),
-            (5, 0.5),
-            (4, 0.6),
-            (3, 0.6),
-            (1, 0.7)
+            (15, 0.65),
+            (11, 0.65),
+            (9, 0.65),
+            (8, 0.65),
+            (8, 0.65),
+            (7, 0.65),
+            (6, 0.65),
+            (6, 0.65),
+            (6, 0.65),
+            (5, 0.65),
+            (4, 0.65),
+            (3, 0.65),
+            (1, 0.65)
         ]
         animation_numbers = [number for number in self.numbers]
         spinner_chars = ['◐', '◓', '◑', '◒']
@@ -203,24 +202,90 @@ your entire bet is multiplied!
             i += 1
             deleted_numbers = sorted(self._get_random_subset(animation_numbers, num_count, result))
             animation_numbers = [n for n in animation_numbers if n not in deleted_numbers]
-            frame = f"🎯 {spinner} ...\n"
-            frame += self._generate_table(animation_numbers, selected_numbers=selected_numbers)
+            frame = f"🎯 {spinner} ..."
+            frame_image = self._get_field_display(animation_numbers, selected_numbers=selected_numbers)
             animation_frames.append(frame)
             frame_times.append(delay)
             if send_frame:
-                await send_frame(bot, user_id, message_id, {"text": frame})
-        final_frame = f"🎯 ✓ {result:2d}\n"
-        final_frame += self._generate_table(animation_numbers, result, selected_numbers=selected_numbers)
+                await send_frame(bot, user_id, message_id, {"text": frame, "image": frame_image})
+        final_frame = f"🎯 ✓ {result:2d}"
+        frame_image = self._get_field_display(animation_numbers, result, selected_numbers=selected_numbers)
         if send_frame:
-            await send_frame(bot, user_id, message_id, {"text": final_frame})
+            await send_frame(bot, user_id, message_id, {"text": final_frame, "image": frame_image})
         frame_times.append(1.5)
         animation_frames.append(final_frame)
         return {
             'total_frames': len(animation_frames),
             'final_result': f"{result:2d}",
+            'final_result_image': frame_image,
             'animation_duration': sum(frame_times),
             "icon": self.icon
         }
+
+    @staticmethod
+    def _get_field_display(visible_numbers: list, result: int = None, selected_numbers: set = None) -> BytesIO:
+        """
+        Генерирует изображение поля рулетки (9x10 сетка с числами).
+        Возвращает BytesIO объект, совместимый с bot.send_photo().
+        """
+        if selected_numbers is None:
+            selected_numbers = set()
+        STYLE = {
+            'bg_color': '#030302',
+            'cell_unopened': '#01090c',
+            'cell_opened': '#121921',
+            'cell_selected': '#0f1f0f',
+            'cell_result': '#1a1a00',
+            'cell_border': '#334353',
+            'cell_result_border': '#FFD700',
+            'cell_selected_border': '#4CAF50',
+            'text_normal': '#888888',
+            'text_selected': '#76FF03',
+            'text_result': '#FFD700',
+            'cell_size': 60,
+            'padding': 8,
+            'border_width': 1,
+        }
+        COLS = 10
+        ROWS = 9
+        img_width = COLS * STYLE['cell_size'] + (COLS + 1) * STYLE['padding']
+        img_height = ROWS * STYLE['cell_size'] + (ROWS + 1) * STYLE['padding']
+        img = Image.new('RGB', (img_width, img_height), color=STYLE['bg_color'])
+        draw = ImageDraw.Draw(img)
+        font = ResourceLoader.load_fonts()["small"]
+        visible_set = set(visible_numbers)
+        for cell in range(90):
+            row = cell // COLS
+            col = cell % COLS
+            x = col * STYLE['cell_size'] + (col + 1) * STYLE['padding']
+            y = row * STYLE['cell_size'] + (row + 1) * STYLE['padding']
+            is_visible = cell in visible_set
+            is_selected = cell in selected_numbers and is_visible
+            is_result = result is not None and cell == result
+            text_color = STYLE['text_normal']
+            cell_border = STYLE['cell_border']
+            text = f"{cell:2d}"
+            if is_selected:
+                cell_border = STYLE['cell_selected_border']
+                cell_bg_color = STYLE['cell_selected']
+                text_color = STYLE['text_selected']
+            elif is_result:
+                cell_border = STYLE['cell_result_border']
+                cell_bg_color = STYLE['cell_result']
+                text_color = STYLE['text_result']
+            elif is_visible:
+                cell_bg_color = STYLE['cell_opened']
+            else:
+                text = "X"
+                cell_bg_color = STYLE['cell_unopened']
+            draw.rectangle([x, y, x + STYLE['cell_size'], y + STYLE['cell_size']],
+                           fill=cell_bg_color, outline=cell_border, width=STYLE['border_width'])
+            draw.text((x + STYLE['cell_size'] // 2, y + STYLE['cell_size'] // 2), text,
+                      fill=text_color, font=font, anchor='mm')
+        img_byte_arr = BytesIO()
+        img.save(img_byte_arr, format='PNG')
+        img_byte_arr.seek(0)
+        return img_byte_arr
 
     @staticmethod
     def _get_random_subset(numbers: list, count: int, excluded_number: int) -> list:
@@ -231,37 +296,6 @@ your entire bet is multiplied!
         subset = filtered_numbers.copy()
         SystemRandom().shuffle(subset)
         return subset[:count]
-
-    @staticmethod
-    def _generate_table(visible_numbers: list, result: int = None, selected_numbers: set = None) -> str:
-        """
-        Генерирует стабильную таблицу 9х10 (всегда одинакового размера).
-        Все невидимые позиции заполняются ⚫, чтобы таблица не прыгала.
-        Выбранные числа заменяются на зелёные смайлики.
-
-        :param visible_numbers: Видимые числа в таблице
-        :param result: Финальный результат (выделяется 🎯)
-        :param selected_numbers: Множество выбранных пользователем чисел
-        """
-        if selected_numbers is None:
-            selected_numbers = set()
-        cols = 10
-        table = ""
-        visible_set = set(visible_numbers)
-        for i in range(0, 90, cols):
-            row = ""
-            for j in range(cols):
-                num = i + j
-                if result and num == result:
-                    row += "🎯 "
-                elif num in selected_numbers and num in visible_set:
-                    row += "✅ "
-                elif num in visible_set:
-                    row += f"{num:2d} "
-                else:
-                    row += "⬛️ "
-            table += row + "\n"
-        return table
 
     def get_game_data(self, result: int, bet_data: Optional[str] = None) -> dict[str, Any]:
         """Создает структуру game_data для рулетки"""

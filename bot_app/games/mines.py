@@ -1,6 +1,6 @@
 from secrets import randbelow
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from typing import Any, Optional, Callable, Dict
 from . import InteractiveGameBase, GameResult, GameStatus
 from .config import MinesConfig
@@ -283,7 +283,7 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
                                              size=int(STYLE['cell_size'] * STYLE['mine_scale']))
         explosion_img = ResourceLoader.load_image("mines", "explosion.png",
                                                   size=int(STYLE['cell_size'] * STYLE['mine_scale']))
-        fonts = self._load_fonts()
+        fonts = ResourceLoader.load_fonts()
         font_medium = fonts['medium']
         font_small = fonts['small']
         for cell in range(self.TOTAL_CELLS):
@@ -324,27 +324,6 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
         img.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
         return img_byte_arr
-
-    @staticmethod
-    def _load_fonts():
-        """Загружает шрифты с fallback механизмом"""
-        try:
-            return {
-                'medium': ImageFont.truetype("arial.ttf", 28),
-                'small': ImageFont.truetype("arial.ttf", 20),
-            }
-        except IOError:
-            try:
-                return {
-                    'medium': ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28),
-                    'small': ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20),
-                }
-            except IOError:
-                default = ImageFont.load_default()
-                return {
-                    'medium': default,
-                    'small': default,
-                }
 
     async def get_final_result_message(self, bot, user_id: int) -> dict[str, Any]:
         """Финальный текст результата"""

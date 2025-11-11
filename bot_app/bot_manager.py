@@ -3,6 +3,7 @@ from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
 
+import config
 from .keyboards import KeyboardManager
 from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines
 from .database import DatabaseInterface
@@ -267,6 +268,56 @@ class BotInterface:
         except Exception:
             return None
 
+    async def send_startup_channel_message(self, chat_id: int, channel_id: int) -> bool:
+        try:
+            russian_message = (
+                "🎰 <b>Добро пожаловать в Plaza Casino!</b>\n\n"
+                "💎 <b>Об игре:</b>\n"
+                "Честное казино с прозрачными правилами и равными вероятностями. "
+                "Каждая ставка рассчитывается справедливо и честно.\n\n"
+                "💰 <b>Как начать:</b>\n"
+                "1️⃣ Откройте бота\n"
+                "2️⃣ Выберите игру\n"
+                "3️⃣ Пополните баланс\n"
+                "4️⃣ Делайте ставки и выигрывайте!\n\n"
+                "🛡️ <b>Надёжность:</b>\n"
+                "✅ Защищённые платежи\n"
+                "✅ Мгновенные выплаты\n"
+                "✅ Поддержка 24/7\n\n"
+                "🍀 Удачи в игре!"
+            )
+            english_message = (
+                "🎰 <b>Welcome to Plaza Casino!</b>\n\n"
+                "💎 <b>About the Game:</b>\n"
+                "Fair casino with transparent rules and equal odds. "
+                "Every bet is calculated fairly and honestly.\n\n"
+                "💰 <b>How to Start:</b>\n"
+                "1️⃣ Open the bot\n"
+                "2️⃣ Select a game\n"
+                "3️⃣ Top up your balance\n"
+                "4️⃣ Place bets and win!\n\n"
+                "🛡️ <b>Reliability:</b>\n"
+                "✅ Secure payments\n"
+                "✅ Instant payouts\n"
+                "✅ 24/7 support\n\n"
+                "🍀 Good luck!"
+            )
+            full_message = f"{russian_message}\n\n\n{english_message}"
+            await self.bot.send_message(
+                chat_id=channel_id,
+                text=full_message,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+                reply_markup=KeyboardManager.get_channel_startup_keyboard((await self.bot.get_me()).username,
+                                                                          config.SUPPORT_BOT)
+            )
+            await self.main_menu(chat_id)
+            self.logger.info(f"✅ Стартовое сообщение отправлено в канал {channel_id}")
+            return True
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка при отправке стартового сообщения: {str(e)}")
+            return False
+
     async def main_menu(self, chat_id: int):
         selected_game = await self.get_game(chat_id)
         game = await self.game_manager.get_game(selected_game)
@@ -276,7 +327,8 @@ class BotInterface:
             parse_mode="HTML",
             reply_markup=KeyboardManager.get_main_keyboard(game.icon,
                                                            chat_id in self.admin_ids,
-                                                           await self.database_interface.get_language(chat_id))
+                                                           await self.database_interface.get_language(chat_id),
+                                                           config.SUPPORT_BOT)
         )
 
     async def registration_menu(self, message: types.Message,  # registration_type=0, first_message="REGISTRATION",
@@ -327,6 +379,12 @@ class BotInterface:
     async def on_start_command(self, message: types.Message):
         command = message.text[1:]
         chat_id = message.chat.id
+        if str(chat_id).startswith('-'):
+            await message.reply(
+                text=Messages.TEXT["BOT_START_IN_CHAT"].get("en"),
+                reply_markup=await KeyboardManager.get_bot_open_keyboard(self.bot)
+            )
+            return
         bot_info = await self.bot.get_me()
         current_bot_id = bot_info.username
         is_clone = await self.database_interface.is_clone_bot(current_bot_id)
@@ -369,6 +427,8 @@ class BotInterface:
 
     async def on_text(self, message: types.Message):
         chat_id = message.chat.id
+        if str(chat_id).startswith('-'):
+            return
         input_type = await self.database_interface.get_input_type(chat_id)
         input_text = message.text.strip()
 
@@ -399,12 +459,20 @@ class BotInterface:
             await self.send_message(chat_id, await self.get_text(chat_id, "CHANNEL_CONFIG_SUCCESS"))
             await self.main_menu(chat_id)
 
+        elif input_type == 30:
+            if not input_text.startswith('-'):
+                input_text = '-' + input_text
+            await self.send_startup_channel_message(chat_id, input_text)
+            await self.database_interface.update_user(chat_id, block_input=False, input_type=0)
+
     async def on_inline_button(self, callback_query: types.CallbackQuery):
         command = callback_query.data
         if not command:
             return
 
         chat_id = callback_query.message.chat.id
+        if str(chat_id).startswith('-'):
+            return
         user_data = await self.database_interface.get_user(chat_id)
 
         need_delete = True
@@ -579,6 +647,8 @@ class BotInterface:
             await HandlersManager.admin_bot_config(self, chat_id, user_data, command)
         elif command == "update-max-bet":
             await HandlersManager.update_max_bet(self, chat_id, user_data)
+        elif command == "startup-channel-message":
+            await HandlersManager.get_startup_channel_message(self, chat_id, user_data)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":

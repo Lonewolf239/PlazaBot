@@ -64,14 +64,13 @@ class HandlersManager:
             bet_data = bot.bet_data_collector.format_bet_data(chat_id)
             bet_dict = {}
             bet_parts = bet_data.split(";")
-            if len(bet_parts) > 1:
-                for part in bet_parts:
-                    key, value = part.split(":", 1)
-                    bet_dict[key] = value
-                bet_values = bet_dict.get("bet_value", "")
-                bet_values_list = [v.strip() for v in bet_values.split(",") if v.strip()]
-                count_values = len(bet_values_list)
-                total_required = bet * count_values
+            for part in bet_parts:
+                key, value = part.split(":", 1)
+                bet_dict[key] = value
+            bet_values = bet_dict.get("bet_value", "")
+            bet_values_list = [v.strip() for v in bet_values.split(",") if v.strip()]
+            count_values = len(bet_values_list)
+            total_required = bet * count_values
             if total_required > user_balance:
                 await bot.send_message(chat_id, await bot.get_text(chat_id, "INSUFFICIENT_BALANCE", user_data))
                 await bot.main_menu(chat_id)
@@ -635,6 +634,11 @@ class HandlersManager:
         custom_data = {"max_bet": max_bet}
         await bot.send_message(chat_id, await bot.get_text(chat_id, "MAX_BET_CONFIG", user_data, custom_data))
         await HandlersManager.admin_panel(bot, chat_id, user_data)
+
+    @staticmethod
+    async def get_startup_channel_message(bot, chat_id, user_data):
+        await bot.database_interface.update_user(chat_id, block_input=False, input_type=30)
+        await bot.send_message(chat_id, await bot.get_text(chat_id, "BOT_CONFIG_ENTER_ID", user_data))
 
     @staticmethod
     async def admin_user(bot, chat_id: int, command: str, user_data: dict[str, Any]):
