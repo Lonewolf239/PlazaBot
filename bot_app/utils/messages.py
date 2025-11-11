@@ -458,35 +458,35 @@ class Messages:
             "en": "🎮 Game starting..."
         },
         "GAME_WIN": {
-            "ru": "<b>🎉 Поздравляем, вам улыбнулась удача!</b>\n\n{icon} Результат:\n{final_result}\n"
+            "ru": "<b>🎉 Поздравляем, вам улыбнулась удача!</b>\n\n{icon} Результат: {final_result}\n"
                   "#🎲 Ваша ставка: {user_bet}\n#"
                   "💵 Ваш большой выигрыш: {amount}$\n"
                   "Ваш шанс сделать это снова растет! Не остановитесь на достигнутом! 🚀",
-            "en": "<b>🎉 Congratulations, luck is on your side!</b>\n\n{icon} Result:\n{final_result}\n"
+            "en": "<b>🎉 Congratulations, luck is on your side!</b>\n\n{icon} Result: {final_result}\n"
                   "#🎲 Your bet: {user_bet}\n#"
                   "💵 Your big prize: {amount}$\n"
                   "Your chance to do it again is growing! Don't stop now! 🚀"
         },
         "GAME_LOSE": {
-            "ru": "😢 К сожалению, в этот раз не повезло\n\n{icon} Результат:\n{final_result}\n"
-                  "#🎲 Ваша ставка:\n{user_bet}\n#"
+            "ru": "😢 К сожалению, в этот раз не повезло\n\n{icon} Результат: {final_result}\n"
+                  "#🎲 Ваша ставка: {user_bet}\n#"
                   "Не сдавайтесь — следующий раунд может изменить всё! <b>Попробуйте снова! 🔥</b>",
-            "en": "😢 Unfortunately, not your lucky round\n\n{icon} Result:\n{final_result}\n"
-                  "#🎲 Your bet:\n{user_bet}\n#"
+            "en": "😢 Unfortunately, not your lucky round\n\n{icon} Result: {final_result}\n"
+                  "#🎲 Your bet: {user_bet}\n#"
                   "Don't give up — the next round might change everything! <b>Try again! 🔥</b>"
         },
         "GAME_WIN_ANNOUNCEMENT": {
             "ru": "<b>🔥 Внимание!</b>\n\nИгрок {username} <b>только что выиграл {amount}$</b>!\n"
-                  "#🎲 Ставка:\n{user_bet}\n#"
-                  "{icon} Результат:\n{final_result}\n\n"
+                  "#🎲 Ставка: {user_bet}\n#"
+                  "{icon} Результат: {final_result}\n\n"
                   "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
                   "<b>🔥 Attention!</b>\n\nPlayer {username} <b>just won {amount}$</b>!\n"
                   "#🎲 Bet: {user_bet}\n#"
                   "{icon} Result: {final_result}\n\n"
                   "Luck is on your side — join the game and try to win yourself! 🚀",
             "en": "<b>🔥 Внимание!</b>\n\nИгрок {username} <b>только что выиграл {amount}$</b>!\n"
-                  "#🎲 Ставка:\n{user_bet}\n#"
-                  "{icon} Результат:\n{final_result}\n\n"
+                  "#🎲 Ставка: {user_bet}\n#"
+                  "{icon} Результат: {final_result}\n\n"
                   "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n\n"
                   "<b>🔥 Attention!</b>\n\nPlayer {username} <b>just won {amount}$</b>!\n"
                   "#🎲 Bet: {user_bet}\n#"
@@ -520,10 +520,10 @@ class Messages:
                   "💰 <b>Multiplier:</b> ×{multiplier:.2f}\n"
         },
         "HILO_FINAL_RESULT": {
-            "ru": "📍 Последняя карта: {last_card}\n"
+            "ru": "\n{icon} Последняя карта: {last_card}\n"
                   "🔥 Финальная серия: {streak}\n"
                   "💰 Финальный множитель: ×{multiplier:.2f}\n",
-            "en": "📍 The last card: {last_card}\n"
+            "en": "\n{icon} The last card: {last_card}\n"
                   "🔥 Final streak: {streak}\n"
                   "💰 Final multiplier: ×{multiplier:.2f}\n"
         }
@@ -543,12 +543,12 @@ class Messages:
                   "💡 Choose a cell or cash out!"
         },
         "MINES_LOST": {
-            "ru": "{icon} <b>БУМ! Вы подорвались!</b>\n💥 Открыто ячеек: {opened_count}\n",
-            "en": "{icon} <b>BOOM! You hit a bomb!</b>\n💥 Cells opened: {opened_count}\n"
+            "ru": "\n{icon} <b>БУМ! Вы подорвались!</b>\n💥 Открыто ячеек: {opened_count}\n",
+            "en": "\n{icon} <b>BOOM! You hit a bomb!</b>\n💥 Cells opened: {opened_count}\n"
         },
         "MINES_WIN": {
-            "ru": "✅ Открыто ячеек: {opened_count}\n💰 Множитель: ×{multiplier}\n🏆 Выигрыш: {win_amount}$\n",
-            "en": "✅ Cells opened: {opened_count}\n💰 Multiplier: ×{multiplier}\n🏆 Win: {win_amount}$\n"
+            "ru": "\n✅ Открыто ячеек: {opened_count}\n💰 Множитель: ×{multiplier}\n🏆 Выигрыш: {win_amount}$\n",
+            "en": "\n✅ Cells opened: {opened_count}\n💰 Multiplier: ×{multiplier}\n🏆 Win: {win_amount}$\n"
         }
     }
 

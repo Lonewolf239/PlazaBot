@@ -173,7 +173,7 @@ If the chosen side lands, you win!
         start_frame = self.start_output
 
         if send_frame:
-            await send_frame(bot, user_id, message_id, start_frame)
+            await send_frame(bot, user_id, message_id, {"text": start_frame})
         animation_frames.append(start_frame)
 
         spinner_chars = ['◐', '◓', '◑', '◒']
@@ -185,7 +185,7 @@ If the chosen side lands, you win!
             frame = f"🪙 {spinner} {side}"
 
             if send_frame:
-                await send_frame(bot, user_id, message_id, frame)
+                await send_frame(bot, user_id, message_id, {"text": frame})
             animation_frames.append(frame)
             frame_times.append(frame_time)
             await asyncio.sleep(frame_time)
@@ -194,7 +194,7 @@ If the chosen side lands, you win!
         final_frame = f"✨ {result_side} ✨"
 
         if send_frame:
-            await send_frame(bot, user_id, message_id, final_frame)
+            await send_frame(bot, user_id, message_id, {"text": final_frame})
         animation_frames.append(final_frame)
 
         return {

@@ -295,14 +295,6 @@ Make a bet, choose a type and value — your winnings depend on your choice!
     async def create_animation(self, result: tuple[int, int], bot, user_id: int, message_id: int,
                                send_frame: Optional[Callable] = None,
                                bet_data: Optional[str] = None) -> dict[str, Any]:
-        if not send_frame:
-            dice1, dice2 = result
-            return {
-                'total_frames': 0,
-                'final_result': (dice1, dice2),
-                'animation_duration': 0,
-                'icon': self.icon
-            }
         animation_frames = self.animation_settings.get('frames', 20)
         frame_delay = self.animation_settings.get('delay', 0.1)
         dice1_values = [randbelow(6) + 1 for _ in range(animation_frames)]
@@ -312,14 +304,14 @@ Make a bet, choose a type and value — your winnings depend on your choice!
                           f"= {dice1_values[i] + dice2_values[i]}  "
                           f"{'🎉' if i == animation_frames - 1 else '🔄'}")
             if send_frame:
-                await send_frame(bot, user_id, message_id, frame_text)
+                await send_frame(bot, user_id, message_id, {"text": frame_text})
             if frame_delay > 0:
                 await asyncio.sleep(frame_delay)
         dice1_final, dice2_final = result
         final_sum = dice1_final + dice2_final
         final_text = f"🎲 {dice1_final} + 🎲 {dice2_final} = {final_sum} 🎉"
         if send_frame:
-            await send_frame(bot, user_id, message_id, final_text)
+            await send_frame(bot, user_id, message_id, {"text": final_text})
         return {
             'total_frames': animation_frames,
             'final_result': result,

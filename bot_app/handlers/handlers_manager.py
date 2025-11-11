@@ -1,7 +1,7 @@
 from aiogram import types
 from typing import Any
 
-from aiogram.types import BufferedInputFile
+from aiogram.types import BufferedInputFile, InputMediaPhoto
 
 from bot_app.keyboards import KeyboardManager
 
@@ -218,9 +218,29 @@ class HandlersManager:
             await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data, message_id)
 
     @staticmethod
-    async def send_frame(bot, chat_id: int, message_id: int, frame: str):
+    async def send_frame(bot, chat_id: int, message_id: int, frame: dict[str, Any]):
         try:
-            await bot.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=frame)
+            image = frame.get("image")
+            if image:
+                await bot.bot.edit_message_media(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    media=InputMediaPhoto(
+                        media=BufferedInputFile(
+                            file=image.getvalue(),
+                            filename='frame.png'
+                        ),
+                        caption=frame.get("text"),
+                        parse_mode="HTML"
+                    )
+                )
+            else:
+                await bot.bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text=frame.get("text"),
+                    parse_mode="HTML"
+                )
         except Exception as e:
             bot.logger.error(f"Ошибка при редактировании сообщения: {e}")
 

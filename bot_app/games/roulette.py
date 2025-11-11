@@ -380,7 +380,7 @@ Zero (0) - bank wins on any bet except betting directly on 0
         frame_times = []
         start_frame = self.start_output
         if send_frame:
-            await send_frame(bot, user_id, message_id, start_frame)
+            await send_frame(bot, user_id, message_id, {"text": start_frame})
         animation_frames.append(start_frame)
         wheel = self.numbers * 8
         target_indices = [i for i, num in enumerate(wheel) if num == result]
@@ -416,7 +416,7 @@ Zero (0) - bank wins on any bet except betting directly on 0
             wheel_display['bottom_2'] = positions[4]
             frame = self._build_roulette_frame(wheel_display)
             if send_frame:
-                await send_frame(bot, user_id, message_id, frame)
+                await send_frame(bot, user_id, message_id, {"text": frame})
             animation_frames.append(frame)
             frame_times.append(current_time)
             total_animation_time += current_time
@@ -435,7 +435,7 @@ Zero (0) - bank wins on any bet except betting directly on 0
         wheel_display['bottom_2'] = positions[4]
         final_frame = self._build_roulette_frame(wheel_display, highlight_result=True)
         if send_frame:
-            await send_frame(bot, user_id, message_id, final_frame)
+            await send_frame(bot, user_id, message_id, {"text": final_frame})
         animation_frames.append(final_frame)
         return {
             'total_frames': len(animation_frames),

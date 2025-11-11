@@ -176,7 +176,7 @@ your entire bet is multiplied!
         start_frame = "🎯 ...\n"
         start_frame += self._generate_table(list(range(90)), selected_numbers=selected_numbers)
         if send_frame:
-            await send_frame(bot, user_id, message_id, start_frame)
+            await send_frame(bot, user_id, message_id, {"text": start_frame})
         frame_times.append(0.5)
         animation_frames.append(start_frame)
         animation_stages = [
@@ -208,11 +208,11 @@ your entire bet is multiplied!
             animation_frames.append(frame)
             frame_times.append(delay)
             if send_frame:
-                await send_frame(bot, user_id, message_id, frame)
+                await send_frame(bot, user_id, message_id, {"text": frame})
         final_frame = f"🎯 ✓ {result:2d}\n"
         final_frame += self._generate_table(animation_numbers, result, selected_numbers=selected_numbers)
         if send_frame:
-            await send_frame(bot, user_id, message_id, final_frame)
+            await send_frame(bot, user_id, message_id, {"text": final_frame})
         frame_times.append(1.5)
         animation_frames.append(final_frame)
         return {

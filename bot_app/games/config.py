@@ -271,34 +271,25 @@ class MinesConfig:
     """
 
     HONEST = {
-        'name': 'Честный Тапер (Баланс)',
+        'name': 'Честный',
         'description': 'Идеальный баланс: справедливые шансы для игроков, стабильная прибыль казино',
-        'bombs_count': 10,
+        'bombs_count': 7,
         'min_coef': 0.01,
         'max_coef': 1.5,
-        'rtp': 95,
-        'house_edge': 5,
-        'target_audience': 'Сбалансированная игра для всех'
     }
 
     AGGRESSIVE = {
-        'name': 'Казино-ориентированный Тапер (92% RTP)',
+        'name': 'Казино-ориентированный',
         'description': 'Увеличенный доход казино, честные шансы для игроков',
-        'bombs_count': 15,
+        'bombs_count': 10,
         'min_coef': 0.01,
         'max_coef': 1.8,
-        'rtp': 92,
-        'house_edge': 8,
-        'target_audience': 'Максимальная прибыль казино'
     }
 
     GENEROUS = {
-        'name': 'Щедрый Тапер (97% RTP)',
+        'name': 'Щедрый',
         'description': 'Максимальный стимул для игроков с честными шансами',
-        'bombs_count': 5,
+        'bombs_count': 4,
         'min_coef': 0.01,
         'max_coef': 1.2,
-        'rtp': 97,
-        'house_edge': 3,
-        'target_audience': 'Привлечение новых игроков, лояльность'
     }

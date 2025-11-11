@@ -1,5 +1,5 @@
 from aiogram import types
-from aiogram.types import InlineKeyboardMarkup, BufferedInputFile
+from aiogram.types import InlineKeyboardMarkup, InputMediaPhoto, BufferedInputFile
 from bot_app.keyboards import KeyboardManager
 from bot_app.games.base_game import GameResult, GameStatus
 from bot_app.handlers import HandlersManager
@@ -7,6 +7,7 @@ from bot_app.handlers import HandlersManager
 
 class InteractiveGameHandlers:
     """Обработчики для интерактивных игр"""
+
     @staticmethod
     async def handle_game_action(bot, callback_query: types.CallbackQuery, action: str):
         """Обработать действие в интерактивной игре"""
@@ -37,15 +38,16 @@ class InteractiveGameHandlers:
                 try:
                     image = final_message.get("image")
                     if image:
-                        await bot.bot.delete_message(chat_id, message_id)
-                        await bot.bot.send_photo(chat_id,
-                                                 BufferedInputFile(
-                                                     file=image.getvalue(),
-                                                     filename='image.png'
-                                                 ),
-                                                 caption=final_message["text"],
-                                                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[]),
-                                                 parse_mode="HTML")
+                        await bot.bot.edit_message_media(
+                            chat_id=chat_id,
+                            message_id=message_id,
+                            media=InputMediaPhoto(
+                                media=BufferedInputFile(
+                                    file=image.getvalue(),
+                                    filename='image.png'),
+                                caption=final_message["text"],
+                                parse_mode="HTML"),
+                            reply_markup=InlineKeyboardMarkup(inline_keyboard=[]))
                     else:
                         await bot.bot.edit_message_text(
                             chat_id=chat_id,

@@ -5,6 +5,7 @@ from . import InteractiveGameBase, GameResult, GameStatus
 
 class HiLo(InteractiveGameBase):
     """Hi-Lo игра — угадай выше или ниже будет следующая карта"""
+
     def __init__(self, max_bet: float, config_name: str = "honest"):
         super().__init__(max_bet, config_name)
         self.load_config()
@@ -95,8 +96,7 @@ Same card value = loss and game over
         }
         self.update_session(bot, user_id, state=session['state'])
         round_state = await self._format_round_state(bot, user_id, session)
-        if send_frame:
-            await self.send_initial_message(bot, user_id, message_id, round_state, "hilo")
+        await self.send_initial_message(bot, user_id, message_id, round_state, "hilo")
         return GameResult(
             status=GameStatus.RUNNING,
             win_amount=0,
@@ -232,7 +232,7 @@ Same card value = loss and game over
         bet = session['bet']
         win_amount = bet * state['multiplier']
         user_data = await bot.database_interface.get_user(user_id)
-        custom_data = {"last_card": card_display, "streak": state['streak'],
+        custom_data = {"icon": self.icon, "last_card": card_display, "streak": state['streak'],
                        "multiplier": state['multiplier'], "win_amount": win_amount}
         return {"text": await bot.get_text(user_id, "HILO_FINAL_RESULT", user_data, custom_data)}
 

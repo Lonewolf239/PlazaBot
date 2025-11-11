@@ -28,7 +28,7 @@ class Mines(InteractiveGameBase):
             self.config = MinesConfig.HONEST
 
     def get_config_info(self) -> str:
-        return (f"Бомб: {self.config['bombs_count']} | Коэффициенты в ячейках: "
+        return (f"Бомб: {self.config['bombs_count']}\nКоэффициенты в ячейках: "
                 f"{self.config['min_coef']}x-{self.config['max_coef']}x")
 
     def generate_rules(self) -> dict:
@@ -144,8 +144,7 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
         }
         self.update_session(bot, user_id, state=session['state'])
         round_state = await self.get_round_state(bot, user_id)
-        if send_frame:
-            await self.send_initial_message(bot, user_id, message_id, round_state, "mines")
+        await self.send_initial_message(bot, user_id, message_id, round_state, "mines")
         return GameResult(
             status=GameStatus.RUNNING,
             win_amount=0,

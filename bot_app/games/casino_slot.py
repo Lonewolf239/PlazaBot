@@ -195,7 +195,7 @@ Jackpot (3× 7️⃣) — the biggest prize!
         """
         animation_frames = []
         if send_frame:
-            await send_frame(bot, user_id, message_id, self.start_output)
+            await send_frame(bot, user_id, message_id, {"text": self.start_output})
             animation_frames.append(self.start_output)
         reels = [self.reel_order * 5, self.reel_order * 7, self.reel_order * 9]
         positions = [randbelow(len(reels[r])) for r in range(3)]
@@ -211,7 +211,7 @@ Jackpot (3× 7️⃣) — the biggest prize!
                     frame_symbols.append(result[reel_index])
             frame = "🎰 " + " | ".join(frame_symbols)
             if send_frame:
-                await send_frame(bot, user_id, message_id, frame)
+                await send_frame(bot, user_id, message_id, {"text": frame})
             animation_frames.append(frame)
             self.frame_time += step * 0.002
             if step < total_steps + 6:
