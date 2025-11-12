@@ -238,7 +238,7 @@ class HandlersManager:
         game_id = int(session["game_id"])
         bet_amount = float(session["bet_amount"])
         started_at = session["started_at"]
-        await bot.referral_manager.process_user_action(user_id, (await bot.bot.get_me()).id, "bet", bet_amount)
+        await bot.referral_manager.process_user_action(user_id, (await bot.bot.get_me()).username, "bet", bet_amount)
         await bot.database_interface.update_balance(user_id, -bet_amount,
                                                     "bet", f"Bet in game: {game_id}, started_at: {started_at}")
 
@@ -268,7 +268,7 @@ class HandlersManager:
                 user_id, result.win_amount, "win",
                 f"Game finished: {game_id}, multiplier: {result.multiplier}x, started_at: {started_at}"
             )
-            await bot.referral_manager.process_user_action(user_id, (await bot.bot.get_me()).id,
+            await bot.referral_manager.process_user_action(user_id, (await bot.bot.get_me()).username,
                                                            "win", result.win_amount)
             try:
                 channel_id = await bot.chat_id()

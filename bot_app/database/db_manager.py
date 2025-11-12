@@ -552,10 +552,7 @@ class DatabaseInterface:
 
     async def is_clone_bot(self, bot_id: str) -> bool:
         """Проверяет, является ли бот клоном"""
-        result = await self.fetch_one(
-            "SELECT is_clone_bot FROM clone_bot_instances WHERE bot_id = ?",
-            (bot_id,)
-        )
+        result = await self.fetch_one("SELECT is_clone_bot FROM clone_bot_instances WHERE bot_id = ?", (bot_id,))
         return result.get("is_clone_bot", False) if result else False
 
     async def register_clone_bot(self, bot_id: str, creator_user_id: int) -> bool:
@@ -574,10 +571,8 @@ class DatabaseInterface:
 
     async def get_clone_bot_creator(self, bot_id: str) -> Optional[int]:
         """Получает creator_user_id из таблицы clone_bot_instances"""
-        result = await self.fetch_one(
-            "SELECT creator_user_id FROM clone_bot_instances WHERE bot_id = ?",
-            (bot_id,)
-        )
+        result = await self.fetch_one("SELECT creator_user_id FROM clone_bot_instances WHERE bot_id = ?",
+                                      (bot_id,))
         return result.get("creator_user_id") if result else None
 
     async def get_selected_game(self, user_id: int) -> Optional[int]:

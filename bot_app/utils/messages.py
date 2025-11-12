@@ -328,15 +328,13 @@ class Messages:
         "REFERRAL_MY_REFERRALS": {
             "ru": (
                 "👥 <b>Ваши рефералы</b>\n\n"
-                "📊 <b>Общая статистика:</b>\n"
                 "👤 Всего привлечено: <code>{total_refs}</code>\n"
-                "💰 Получено наград: <code>{rewarded}$</code>"
+                "💰 <b>Получено наград: <code>{total_earned_sum}$</code></b>"
             ),
             "en": (
                 "👥 <b>Your Referrals</b>\n\n"
-                "📊 <b>Overall Statistics:</b>\n"
                 "👤 Total attracted: <code>{total_refs}</code>\n"
-                "💰 Rewards earned: <code>{rewarded}$</code>"
+                "💰 <b>Rewards earned: <code>{total_earned_sum}$</code></b>"
             )
         },
         "REFERRAL_MY_BOTS": {

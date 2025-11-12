@@ -28,12 +28,7 @@ class ReferralHandler:
 
     @staticmethod
     async def process_token_input(bot, chat_id: int, token: str):
-        """
-        Обрабатывает введенный токен
-        :param bot: BotInterface
-        :param chat_id: ID пользователя
-        :param token: Токен бота
-        """
+        """Обрабатывает введенный токен"""
         test_bot = None
         try:
             from aiogram import Bot
@@ -54,7 +49,7 @@ class ReferralHandler:
                 text = await bot.get_text(chat_id, "REFERRAL_CLONE_BOT_SUCCESS",
                                           custom_data={'bot_name': f'@{bot_info.username}', 'ref_link': ref_link})
                 await bot.database_interface.update_user(chat_id, block_input=False, input_type=0)
-                await bot.send_message(chat_id, text)
+                await bot.send_text(chat_id, text)
                 from aiogram import Dispatcher
                 from main import register_bot_handlers
                 clone_dp = Dispatcher()
@@ -96,11 +91,14 @@ class ReferralHandler:
         stats = await bot.database_interface.fetch_one(
             """SELECT
             COUNT(*) as total_refs,
-            SUM(CASE WHEN reward_given = 1 THEN 1 ELSE 0 END) as rewarded
+            SUM(CASE WHEN reward_given = 1 THEN 1 ELSE 0 END) as rewarded,
+            COALESCE(SUM(CASE WHEN reward_given = 1 THEN total_earned ELSE 0 END), 0) as total_earned_sum
             FROM referrals
             WHERE referrer_user_id = ?""",
             (chat_id,)
         )
-        text = await bot.get_text(chat_id, "REFERRAL_MY_REFERRALS", user_data, custom_data=stats)
+        custom_data = {"total_refs": stats.get("total_refs", 0),
+                       "total_earned_sum": f"{stats.get("total_earned_sum", 0):.2f}"}
+        text = await bot.get_text(chat_id, "REFERRAL_MY_REFERRALS", user_data, custom_data=custom_data)
         await bot.send_message(chat_id, text)
         await bot.main_menu(chat_id, message_id)
