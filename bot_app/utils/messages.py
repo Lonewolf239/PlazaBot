@@ -564,13 +564,15 @@ class Messages:
                 "⚙️ Настройка бота для уведомлений\n\n"
                 "📢 Здесь вы можете подключить бота к каналу\n"
                 "для автоматической публикации уведомлений о выигрышах\n\n"
-                "📌 Подключённый канал: {channel_username}"
+                "📌 Подключённый канал: {channel_username}\n"
+                "📌 Подключённый новостной канал: {news_channel_username}"
             ),
             "en": (
                 "⚙️ Bot notification setup\n\n"
                 "📢 Here you can connect the bot to a channel\n"
                 "for automatic win announcements\n\n"
-                "📌 Connected channel: {channel_username}"
+                "📌 Connected channel: {channel_username}\n"
+                "📌 Connected news channel: {news_channel_username}"
             )
         },
         "BOT_CONFIG_ENTER_ID": {
@@ -643,6 +645,125 @@ class Messages:
         }
     }
 
+    NEWS_MESSAGE_SEND = {
+        "NEWS_CHANNEL_NOT_CONNECTED": {
+            "ru": (
+                "⚠️ Новостной канал не подключён\n\n"
+                "📰 Новостной канал не настроен для отправки уведомлений.\n"
+                "Подключите его в административной панели для автоматической публикации новостей.\n\n"
+                "🔧 Как подключить:\n"
+                "1️⃣ Откройте админ панель\n"
+                "2️⃣ Перейдите в раздел настройки каналов\n"
+                "3️⃣ Укажите ID новостного канала\n"
+                "4️⃣ Убедитесь, что бот добавлен как администратор"
+            ),
+            "en": (
+                "⚠️ News channel not connected\n\n"
+                "📰 News channel is not configured for sending notifications.\n"
+                "Connect it in the admin panel for automatic news publication.\n\n"
+                "🔧 How to connect:\n"
+                "1️⃣ Open admin panel\n"
+                "2️⃣ Go to channel settings section\n"
+                "3️⃣ Specify the news channel ID\n"
+                "4️⃣ Make sure bot is added as administrator"
+            )
+        },
+        "NEWS_CHANNEL_SEND_ERROR": {
+            "ru": (
+                "❌ Не удалось отправить сообщение в новостной канал\n\n"
+                "🔍 Возможные причины ошибки:\n"
+                "• Неверный ID новостного канала\n"
+                "• Бот не добавлен в новостной канал как администратор\n"
+                "• Канал недоступен или удалён\n"
+                "• Бот не имеет прав на публикацию сообщений\n\n"
+                "📝 Для решения проблемы:\n"
+                "1️⃣ Проверьте, что ID канала указан правильно\n"
+                "2️⃣ Убедитесь, что бот добавлен в канал с правами администратора\n"
+                "3️⃣ Дайте боту права на отправку сообщений\n"
+                "4️⃣ Попробуйте заново настроить новостной канал в админ панели"
+            ),
+            "en": (
+                "❌ Failed to send message to news channel\n\n"
+                "🔍 Possible error causes:\n"
+                "• Invalid news channel ID\n"
+                "• Bot not added to news channel as administrator\n"
+                "• Channel is unavailable or deleted\n"
+                "• Bot does not have permission to post messages\n\n"
+                "📝 To resolve the issue:\n"
+                "1️⃣ Check that the channel ID is correct\n"
+                "2️⃣ Make sure bot is added to channel with admin rights\n"
+                "3️⃣ Grant bot permissions to send messages\n"
+                "4️⃣ Try reconfiguring the news channel in admin panel"
+            )
+        },
+        "NEWS_CHANNEL_SEND_SUCCESS": {
+            "ru": "✅ Сообщение успешно отправлено!",
+            "en": "✅ Message sent successfully!"
+        },
+        "SEND_MESSAGE_TYPE_CHOICE": {
+            "ru": (
+                "📤 Выберите тип отправляемого сообщения\n\n"
+                "🚀 Стартовое — приветственное сообщение для новых пользователей\n"
+                "📝 Кастомное — ваше собственное сообщение"
+            ),
+            "en": (
+                "📤 Select the type of message to send\n\n"
+                "🚀 Startup — greeting message for new users\n"
+                "📝 Custom — your own message"
+            )
+        },
+        "ENTER_MESSAGE_TEXT": {
+            "ru": (
+                "📝 Введите текст сообщения для отправки\n\n"
+                "💡 Вы можете использовать HTML-форматирование:\n"
+                "<code>&lt;b&gt;жирный текст&lt;/b&gt;</code>\n"
+                "<code>&lt;i&gt;курсив&lt;/i&gt;</code>\n"
+                "<code>&lt;u&gt;подчёркивание&lt;/u&gt;</code>\n"
+                "<code>&lt;a href=\"URL\"&gt;ссылка&lt;/a&gt;</code>"
+            ),
+            "en": (
+                "📝 Enter the message text to send\n\n"
+                "💡 You can use HTML formatting:\n"
+                "<code>&lt;b&gt;bold text&lt;/b&gt;</code>\n"
+                "<code>&lt;i&gt;italic&lt;/i&gt;</code>\n"
+                "<code>&lt;u&gt;underline&lt;/u&gt;</code>\n"
+                "<code>&lt;a href=\"URL\"&gt;link&lt;/a&gt;</code>"
+            )
+        },
+        "ENTER_MESSAGE_BUTTONS": {
+            "ru": (
+                "🔘 Введите кнопки для сообщения (опционально)\n\n"
+                "📋 Формат: <code>Название кнопки|URL</code>\n"
+                "Каждая кнопка на новой строке.\n\n"
+                "📌 Пример:\n"
+                "<code>Перейти на сайт|https://example.com</code>\n"
+                "<code>Поддержка|https://t.me/support</code>\n\n"
+                "⚠️ Отправьте <code>[NONE]</code>, если кнопки не требуются"
+            ),
+            "en": (
+                "🔘 Enter buttons for the message (optional)\n\n"
+                "📋 Format: <code>Button Name | URL</code>\n"
+                "Each button on a new line.\n\n"
+                "📌 Example:\n"
+                "<code>Visit Website | https://example.com</code>\n"
+                "<code>Support | https://t.me/support</code>\n\n"
+                "⚠️ Send <code>[NONE]</code> if buttons are not needed"
+            )
+        },
+        "CUSTOM_MESSAGE_CANCELLED": {
+            "ru": (
+                "❌ Отправка кастомного сообщения отменена\n\n"
+                "📨 Операция была прервана.\n"
+                "Вы можете повторить попытку позже или выбрать другое действие."
+            ),
+            "en": (
+                "❌ Custom message sending cancelled\n\n"
+                "📨 The operation has been interrupted.\n"
+                "You can try again later or select another action."
+            )
+        }
+    }
+
     TEXT = {
         # ═════════════════ Регистрация ═════════════════
         **REGISTRATION,
@@ -669,5 +790,8 @@ class Messages:
         **MINES_MESSAGES,
 
         # ════════════════ Настройка канала ═════════════
-        **CHANNEL_CONFIG
+        **CHANNEL_CONFIG,
+
+        # ══════════════ Отправка новостей ══════════════
+        **NEWS_MESSAGE_SEND
     }

@@ -1,6 +1,7 @@
 from .base_game import BaseGame, GameResult, GameStatus, BetDataFlow, BetParameter
 from .interactive_game_base import InteractiveGameBase, InteractiveGameStatus
 from .casino_slot import CasinoSlot
+from .casino_slot_v2 import CasinoSlotV2
 from .roulette import Roulette
 from .roulette_v2 import RouletteV2
 from .coin import Coin
@@ -19,6 +20,7 @@ __all__ = [
     'InteractiveGameBase',
     'InteractiveGameStatus',
     'CasinoSlot',
+    'CasinoSlotV2',
     'Roulette',
     'RouletteV2',
     'Coin',

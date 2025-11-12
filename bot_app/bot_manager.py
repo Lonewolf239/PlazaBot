@@ -1,10 +1,13 @@
 import logging
+from io import BytesIO
+
 from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
-from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove, InputMediaPhoto, BufferedInputFile
 import config
 from .keyboards import KeyboardManager
-from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines, Blackjack
+from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines, Blackjack, \
+    CasinoSlotV2
 from .database import DatabaseInterface
 from .payments import CryptoPay
 from .referral import ReferralManager
@@ -18,6 +21,7 @@ PAGE_LIMIT = 16
 
 class BetDataCollector:
     """Управляет процессом сбора bet_data от пользователя"""
+
     def __init__(self):
         self._user_states: Dict[int, Dict[str, Any]] = {}
 
@@ -30,17 +34,6 @@ class BetDataCollector:
             'multi_select_data': {},
             "message_id": None
         }
-
-    def set_message_id(self, chat_id: int, message_id: int):
-        """Сохранить message_id для редактирования"""
-        if chat_id in self._user_states:
-            self._user_states[chat_id]["message_id"] = message_id
-
-    def get_message_id(self, chat_id: int) -> int:
-        """Получить сохраненный message_id"""
-        if chat_id not in self._user_states:
-            return None
-        return self._user_states[chat_id].get("message_id")
 
     def add_value(self, chat_id: int, param_type: str, value: str) -> bool:
         """Добавить или переключить значение параметра"""
@@ -157,13 +150,14 @@ class BetDataCollector:
 class BotInterface:
     CasinoGames = {
         0: CasinoSlot,
-        1: Roulette,
-        2: RouletteV2,
-        3: Coin,
-        4: Dice,
-        5: HiLo,
-        6: Mines,
-        7: Blackjack,
+        1: CasinoSlotV2,
+        2: Roulette,
+        3: RouletteV2,
+        4: Coin,
+        5: Dice,
+        6: HiLo,
+        7: Mines,
+        8: Blackjack,
         # 200: Crash
     }
     GameConfigs = {
@@ -171,10 +165,11 @@ class BotInterface:
         1: ["honest", "aggressive", "generous"],
         2: ["honest", "aggressive", "generous"],
         3: ["honest", "aggressive", "generous"],
-        4: ["honest"],
+        4: ["honest", "aggressive", "generous"],
         5: ["honest"],
-        6: ["honest", "aggressive", "generous"],
-        7: ["honest"],
+        6: ["honest"],
+        7: ["honest", "aggressive", "generous"],
+        8: ["honest"],
         # 200: ["honest"],
     }
 
@@ -256,7 +251,7 @@ class BotInterface:
             return "en"
 
     async def bot_config(self):
-        bot_id = self.bot.id
+        bot_id = (await self.bot.get_me()).id
         bot_config = await self.database_interface.get_bot_config(bot_id)
         return bot_config
 
@@ -270,67 +265,18 @@ class BotInterface:
         except Exception:
             return None
 
-    async def send_startup_channel_message(self, chat_id: int, channel_id: int) -> bool:
-        try:
-            russian_message = (
-                "🎰 <b>Добро пожаловать в Plaza Casino!</b>\n\n"
-                "💎 <b>Об игре:</b>\n"
-                "Честное казино с прозрачными правилами и равными вероятностями. "
-                "Каждая ставка рассчитывается справедливо и честно.\n\n"
-                "💰 <b>Как начать:</b>\n"
-                "1️⃣ Откройте бота\n"
-                "2️⃣ Выберите игру\n"
-                "3️⃣ Пополните баланс\n"
-                "4️⃣ Делайте ставки и выигрывайте!\n\n"
-                "🛡️ <b>Надёжность:</b>\n"
-                "✅ Защищённые платежи\n"
-                "✅ Мгновенные выплаты\n"
-                "✅ Поддержка 24/7\n\n"
-                "🍀 Удачи в игре!"
-            )
-            english_message = (
-                "🎰 <b>Welcome to Plaza Casino!</b>\n\n"
-                "💎 <b>About the Game:</b>\n"
-                "Fair casino with transparent rules and equal odds. "
-                "Every bet is calculated fairly and honestly.\n\n"
-                "💰 <b>How to Start:</b>\n"
-                "1️⃣ Open the bot\n"
-                "2️⃣ Select a game\n"
-                "3️⃣ Top up your balance\n"
-                "4️⃣ Place bets and win!\n\n"
-                "🛡️ <b>Reliability:</b>\n"
-                "✅ Secure payments\n"
-                "✅ Instant payouts\n"
-                "✅ 24/7 support\n\n"
-                "🍀 Good luck!"
-            )
-            full_message = f"{russian_message}\n\n\n{english_message}"
-            await self.bot.send_message(
-                chat_id=channel_id,
-                text=full_message,
-                parse_mode="HTML",
-                disable_web_page_preview=True,
-                reply_markup=KeyboardManager.get_channel_startup_keyboard((await self.bot.get_me()).username,
-                                                                          config.SUPPORT_BOT)
-            )
-            await self.main_menu(chat_id)
-            self.logger.info(f"✅ Стартовое сообщение отправлено в канал {channel_id}")
-            return True
-        except Exception as e:
-            self.logger.error(f"❌ Ошибка при отправке стартового сообщения: {str(e)}")
-            return False
-
-    async def main_menu(self, chat_id: int):
+    async def main_menu(self, chat_id: int, message_id: int = None):
         selected_game = await self.get_game(chat_id)
         game = await self.game_manager.get_game(selected_game)
-        await self.send_message(
+        news_channel_username = await self.database_interface.get_news_channel_username((await self.bot.get_me()).id)
+        await self.edit_message(
             chat_id,
             await self.get_text(chat_id, "MAIN_MENU"),
-            parse_mode="HTML",
+            message_id=message_id,
             reply_markup=KeyboardManager.get_main_keyboard(game.icon,
                                                            chat_id in self.admin_ids,
                                                            await self.database_interface.get_language(chat_id),
-                                                           config.SUPPORT_BOT)
+                                                           config.SUPPORT_BOT, news_channel_username)
         )
 
     async def registration_menu(self, message: types.Message,  # registration_type=0, first_message="REGISTRATION",
@@ -432,9 +378,10 @@ class BotInterface:
         if str(chat_id).startswith('-'):
             return
         input_type = await self.database_interface.get_input_type(chat_id)
+        message_id = message.message_id
         input_text = message.text.strip()
 
-        await self.bot.delete_message(chat_id, message.message_id)
+        await self.bot.delete_message(chat_id, message_id)
         if input_type == 0:
             return
 
@@ -447,7 +394,7 @@ class BotInterface:
             from .handlers.referral_handler import ReferralHandler
             await ReferralHandler.process_token_input(self, chat_id, input_text)
 
-        elif input_type == 20:
+        elif input_type == 20 or input_type == 21:
             if not input_text.startswith('-'):
                 input_text = '-' + input_text
             channel_username = await self.get_channel_username(input_text)
@@ -455,17 +402,24 @@ class BotInterface:
                 await self.send_message(chat_id, await self.get_text(chat_id, "CHANNEL_CONFIG_ERROR"))
                 return
             await self.database_interface.update_user(chat_id, block_input=False, input_type=0)
-            await self.database_interface.set_bot_config((await self.bot.get_me()).id, chat_id=input_text,
-                                                         chat_username=channel_username)
+            if input_type == 20:
+                await self.database_interface.set_bot_config((await self.bot.get_me()).id, chat_id=input_text,
+                                                             chat_username=channel_username)
+            else:
+                await self.database_interface.set_bot_config((await self.bot.get_me()).id, news_chat_id=input_text,
+                                                             news_channel_username=channel_username)
             await self.send_message(input_text, await self.get_text(chat_id, "CHANNEL_TEST_MESSAGE"))
             await self.send_message(chat_id, await self.get_text(chat_id, "CHANNEL_CONFIG_SUCCESS"))
             await self.main_menu(chat_id)
-
-        elif input_type == 30:
-            if not input_text.startswith('-'):
-                input_text = '-' + input_text
-            await self.send_startup_channel_message(chat_id, input_text)
-            await self.database_interface.update_user(chat_id, block_input=False, input_type=0)
+        elif input_type == 30 or input_type == 31:
+            user_data = await self.database_interface.get_user(chat_id)
+            if input_type == 30:
+                await self.database_interface.add_custom_message(chat_id, input_text)
+                await HandlersManager.get_custom_message(self, chat_id, user_data, 1)
+            elif input_type == 31:
+                custom_markup = KeyboardManager.get_markup_from_text(user_data.get("language", "en"), input_text)
+                custom_message = await self.database_interface.get_custom_messages(chat_id)
+                await HandlersManager.get_custom_message(self, chat_id, user_data, 2, custom_message, custom_markup)
 
     async def on_inline_button(self, callback_query: types.CallbackQuery):
         command = callback_query.data
@@ -473,33 +427,14 @@ class BotInterface:
             return
 
         chat_id = callback_query.message.chat.id
+
+        if command == "delete":
+            await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            return
+
         if str(chat_id).startswith('-'):
             return
         user_data = await self.database_interface.get_user(chat_id)
-
-        need_delete = True
-
-        if command.startswith("select-bet-data"):
-            need_delete = False
-        elif command.startswith("finalize-bet-data"):
-            need_delete = False
-        elif command.startswith("game_action:"):
-            need_delete = False
-        elif command == "check-subscription":
-            need_delete = False
-
-        # TODO: удалить после реализации вебхуков
-        elif command.startswith("check-deposit"):
-            need_delete = False
-
-        elif command.startswith("cancel-deposit"):
-            need_delete = False
-
-        if need_delete:
-            await self.bot.delete_message(chat_id, callback_query.message.message_id)
-
-        if command == "delete":
-            return
 
         block_input = user_data.get("block_input", False)
 
@@ -509,14 +444,17 @@ class BotInterface:
             await HandlersManager.register_cancel(self, chat_id)
             return
         elif command == "referral-cancel":
-            await ReferralHandler.referral_cancel(self, chat_id)
+            await ReferralHandler.referral_cancel(self, chat_id, callback_query.message.message_id)
+            return
+        elif command == "custom-message-cancel":
+            await HandlersManager.custom_message_cancel(self, chat_id, user_data, callback_query.message.message_id)
             return
 
         if block_input:
             return
 
         if command == "back":
-            await self.main_menu(chat_id)
+            await self.main_menu(chat_id, callback_query.message.message_id)
 
         # ════════════════ Регистрация ════════════════
         elif command == "register_back":
@@ -525,7 +463,7 @@ class BotInterface:
             await HandlersManager.register_back(self, callback_query)
         elif command == "check-subscription":
             if await HandlersManager.check_subscription(self, chat_id, user_data["username"]):
-                await self.main_menu(chat_id)
+                await self.main_menu(chat_id, callback_query.message.message_id)
             await self.bot.delete_message(chat_id, callback_query.message.message_id)
             return
 
@@ -535,55 +473,60 @@ class BotInterface:
             if len(parts) == 3:
                 bet_data_type = parts[1]
                 value = parts[2]
-                await HandlersManager.select_bet_data(self, chat_id, user_data, bet_data_type, value)
+                await HandlersManager.select_bet_data(self, chat_id, user_data, bet_data_type, value,
+                                                      callback_query.message.message_id)
             await callback_query.answer()
         elif command.startswith("finalize-bet-data"):
             parts = command.split(':')
             if len(parts) == 2:
                 bet_data_type = parts[1]
-                await HandlersManager.finalize_bet_data(self, chat_id, user_data, bet_data_type)
+                await HandlersManager.finalize_bet_data(self, chat_id, user_data, bet_data_type,
+                                                        callback_query.message.message_id)
             await callback_query.answer()
         elif command == "select-bet":
-            await HandlersManager.select_bet(self, chat_id, user_data)
+            await HandlersManager.select_bet(self, chat_id, user_data, callback_query.message.message_id)
         elif command.startswith("start-game"):
             bet = float(command.split(':')[1])
-            await HandlersManager.start_game(self, chat_id, user_data, bet)
+            await HandlersManager.start_game(self, chat_id, user_data, bet, callback_query.message.message_id)
         elif command.startswith("game_action:"):
             action = callback_query.data[len("game_action:"):]
             await InteractiveGameHandlers.handle_game_action(self, callback_query, action)
 
         # ═════════════════ Настройки ═════════════════
-        elif command == "settings":
-            await HandlersManager.settings(self, chat_id, user_data)
         elif command == "change-game":
-            await HandlersManager.change_game(self, chat_id, user_data)
+            await HandlersManager.change_game(self, chat_id, user_data, callback_query.message.message_id)
         elif command.startswith("set-game"):
-            await HandlersManager.set_game(self, chat_id, command)
+            await HandlersManager.set_game(self, chat_id, command, callback_query.message.message_id)
         elif command == "change-language":
-            await HandlersManager.change_language(self, chat_id)
+            await HandlersManager.change_language(self, chat_id, callback_query.message.message_id)
         elif command == "change-email":
             await HandlersManager.change_email(self, callback_query)
         elif command.startswith("language"):
-            await HandlersManager.language(self, chat_id, command)
+            await HandlersManager.language(self, chat_id, command, callback_query.message.message_id)
 
         # ═══════════════════ Баланс ══════════════════
         elif command == "balance":
-            await HandlersManager.balance(self, chat_id, user_data)
+            await HandlersManager.balance(self, chat_id, user_data, callback_query.message.message_id)
         elif command == "balance-deposit":
-            await HandlersManager.get_currency(self, chat_id, user_data, "deposit", self.crypto_pay.supported_codes)
+            await HandlersManager.get_currency(self, chat_id, user_data, "deposit", self.crypto_pay.supported_codes,
+                                               callback_query.message.message_id)
         elif command == "balance-withdraw":
             await HandlersManager.get_currency(self, chat_id, user_data, "withdraw",
-                                               await self.crypto_pay.get_currencies_with_balance())
+                                               await self.crypto_pay.get_currencies_with_balance(),
+                                               callback_query.message.message_id)
         elif command.startswith("deposit-select-currency"):
             currency = command.split(':')[1]
-            await HandlersManager.get_amount(self, chat_id, user_data, currency, "deposit")
+            await HandlersManager.get_amount(self, chat_id, user_data, currency, "deposit",
+                                             callback_query.message.message_id)
         elif command.startswith("withdraw-select-currency"):
             currency = command.split(':')[1]
-            await HandlersManager.get_amount(self, chat_id, user_data, currency, "withdraw")
+            await HandlersManager.get_amount(self, chat_id, user_data, currency, "withdraw",
+                                             callback_query.message.message_id)
         elif command.startswith("do-deposit"):
             currency = command.split(':')[1]
             amount = float(command.split(':')[2])
-            await HandlersManager.do_deposit(self, chat_id, user_data, currency, amount)
+            await HandlersManager.do_deposit(self, chat_id, user_data, currency, amount,
+                                             callback_query.message.message_id)
 
         # TODO: удалить после реализации вебхуков
         elif command.startswith("check-deposit"):
@@ -611,7 +554,8 @@ class BotInterface:
         elif command.startswith("do-withdraw"):
             currency = command.split(':')[1]
             amount = float(command.split(':')[2])
-            await HandlersManager.do_withdraw(self, chat_id, user_data, currency, amount)
+            await HandlersManager.do_withdraw(self, chat_id, user_data, currency, amount,
+                                              callback_query.message.message_id)
 
         # ════════════════ Пользователь ═══════════════
         elif command == "profile":
@@ -621,48 +565,67 @@ class BotInterface:
 
         # ════════════════ Админ-панель ═══════════════
         elif command == "admin-panel":
-            await HandlersManager.admin_panel(self, chat_id, user_data)
+            await HandlersManager.admin_panel(self, chat_id, user_data,
+                                              callback_query.message.message_id)
         elif command == "admin-summary":
-            await HandlersManager.admin_summary(self, chat_id, user_data)
+            await HandlersManager.admin_summary(self, chat_id, user_data,
+                                                callback_query.message.message_id)
         elif command.startswith("admin-list-players"):
-            await HandlersManager.admin_list_players(self, chat_id, command, user_data)
+            await HandlersManager.admin_list_players(self, chat_id, command, user_data,
+                                                     callback_query.message.message_id)
         elif command.startswith("admin-show-logs"):
-            await HandlersManager.admin_show_logs(self, chat_id, command, user_data)
+            await HandlersManager.admin_show_logs(self, chat_id, command, user_data,
+                                                  callback_query.message.message_id)
         elif command.startswith("admin-user"):
-            await HandlersManager.admin_user(self, chat_id, command, user_data)
+            await HandlersManager.admin_user(self, chat_id, command, user_data,
+                                             callback_query.message.message_id)
         elif command == "admin-show-tables":
-            await HandlersManager.admin_show_tables(self, chat_id, user_data)
+            await HandlersManager.admin_show_tables(self, chat_id, user_data,
+                                                    callback_query.message.message_id)
         elif command.startswith("admin-tables"):
             table = command.split(':')[1]
-            await HandlersManager.admin_show_table(self, chat_id, table, user_data)
+            await HandlersManager.admin_show_table(self, chat_id, table, user_data,
+                                                   callback_query.message.message_id)
         elif command == "admin-issue-balance":
-            await HandlersManager.admin_issue_balance(self, chat_id, user_data)
+            await HandlersManager.admin_issue_balance(self, chat_id, user_data,
+                                                      callback_query.message.message_id)
         elif command == "admin-reset-balance":
-            await HandlersManager.admin_reset_balance(self, chat_id, user_data)
+            await HandlersManager.admin_reset_balance(self, chat_id, user_data,
+                                                      callback_query.message.message_id)
         elif command == "admin-get-balance":
-            await HandlersManager.admin_get_balance(self, chat_id, user_data)
+            await HandlersManager.admin_get_balance(self, chat_id, user_data,
+                                                    callback_query.message.message_id)
         elif command.startswith("admin-game-settings"):
-            await HandlersManager.admin_game_settings_handler(self, chat_id, user_data, command)
+            await HandlersManager.admin_game_settings_handler(self, chat_id, user_data, command,
+                                                              callback_query.message.message_id)
         elif command.startswith("admin-game-config"):
-            await HandlersManager.admin_game_config_handler(self, chat_id, user_data, command)
+            await HandlersManager.admin_game_config_handler(self, chat_id, user_data, command,
+                                                            callback_query.message.message_id)
         elif command.startswith("admin-bot-config"):
-            await HandlersManager.admin_bot_config(self, chat_id, user_data, command)
+            await HandlersManager.admin_bot_config(self, chat_id, user_data, command,
+                                                   callback_query.message.message_id)
         elif command == "update-max-bet":
-            await HandlersManager.update_max_bet(self, chat_id, user_data)
-        elif command == "startup-channel-message":
-            await HandlersManager.get_startup_channel_message(self, chat_id, user_data)
+            await HandlersManager.update_max_bet(self, chat_id, user_data,
+                                                 callback_query.message.message_id)
+        elif command.startswith("channel-message"):
+            await HandlersManager.channel_message_menu(self, chat_id, user_data, command,
+                                                       callback_query.message.message_id)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":
-            await ReferralHandler.referral_menu(self, chat_id, user_data)
+            await ReferralHandler.referral_menu(self, chat_id, user_data, callback_query.message.message_id)
         elif command == "referral-create":
             await ReferralHandler.create_clone_bot(self, chat_id, user_data)
         elif command == "referral-stats":
-            await ReferralHandler.my_referrals(self, chat_id, user_data)
+            await ReferralHandler.my_referrals(self, chat_id, user_data,
+                                               callback_query.message.message_id)
 
         # ═══════════════════ Прочее ══════════════════
         elif command == "rules":
-            await HandlersManager.rules(self, chat_id, user_data)
+            await HandlersManager.rules(self, chat_id, user_data, callback_query.message.message_id)
+        elif command == "custom-message-send":
+            await HandlersManager.send_custom_message(self, chat_id, user_data, callback_query.message)
+        await callback_query.answer()
 
     @staticmethod
     def get_page(rows, page: int):
@@ -735,7 +698,7 @@ class BotInterface:
         userinfo += "\n" + await self.format_games_statistics(chat_id, user_data, for_admin)
         await self.send_message(chat_id, userinfo, reply_markup=KeyboardManager.get_delete_keyboard())
 
-    async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML",
+    async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML", image: BytesIO = None,
                            reply_markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardRemove]] = None,
                            disable_web_page_preview: Optional[bool] = True, add_delete_keyboard=True):
         """
@@ -744,10 +707,50 @@ class BotInterface:
         """
         if reply_markup is None and add_delete_keyboard:
             reply_markup = KeyboardManager.get_delete_keyboard()
+        if image:
+            return await self.bot.send_photo(
+                chat_id,
+                photo=BufferedInputFile(file=image.getvalue(), filename='frame.png'),
+                parse_mode=parse_mode,
+                reply_markup=reply_markup)
         return await self.bot.send_message(
             chat_id=chat_id,
             text=text,
             parse_mode=parse_mode,
             reply_markup=reply_markup,
-            disable_web_page_preview=disable_web_page_preview
-        )
+            disable_web_page_preview=disable_web_page_preview)
+
+    async def edit_message(self, chat_id: int, text: str, message_id: Optional[int] = None,
+                           image: Optional[BytesIO] = None,
+                           reply_markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardRemove]] = None,
+                           add_delete_keyboard: Optional[bool] = True):
+        if reply_markup is None and add_delete_keyboard:
+            reply_markup = KeyboardManager.get_delete_keyboard()
+        try:
+            if message_id:
+                if image:
+                    return await self.bot.edit_message_media(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        media=InputMediaPhoto(
+                            media=BufferedInputFile(
+                                file=image.getvalue(),
+                                filename='frame.png'
+                            ),
+                            caption=text,
+                            parse_mode="HTML",
+                            reply_markup=reply_markup
+                        )
+                    )
+                else:
+                    return await self.bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=text,
+                        parse_mode="HTML",
+                        reply_markup=reply_markup
+                    )
+            else:
+                await self.send_message(chat_id, text, reply_markup=reply_markup)
+        except Exception as e:
+            self.logger.error(f"Ошибка при редактировании сообщения: {e}")

@@ -1,5 +1,5 @@
 from typing import List, Any, Type, Dict, Optional
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot_app.games import BaseGame, BetParameter
 
@@ -13,6 +13,7 @@ class Messages:
             "balance": {"ru": "Баланс", "en": "Balance"},
             "rules": {"ru": "Правила игры", "en": "Rules"},
             "help": {"ru": "Поддержка", "en": "Help"},
+            "news": {"ru": "Новостной канал", "en": "News channel"},
             "referral": {"ru": "Рефералка", "en": "Referral"},
             "admin": {"ru": "Админ-панель", "en": "Admin Panel"}
         },
@@ -39,10 +40,13 @@ class Messages:
             "game_settings": {"ru": "Настройки игры", "en": "Game Settings"},
             "game_config": {"ru": "Конфиг игры", "en": "Game Config"},
             "bot_config": {"ru": "Настройка бота", "en": "Bot setup"},
-            "set_bot_config": {"ru": "Изменить", "en": "Change"},
+            "set_bot_channel_config": {"ru": "Изменить канал", "en": "Change channel"},
+            "set_bot_news_channel_config": {"ru": "Изменить новостной", "en": "Change news"},
             "remove_bot_config": {"ru": "Удалить", "en": "Remove"},
             "max_bet": {"ru": "Макс ставка", "en": "Max Bet"},
-            "startup_channel": {"ru": "Отправить приветствие", "en": "Send a greeting"}
+            "message_channel": {"ru": "Отправить сообщение", "en": "Send a message"},
+            "custom_message": {"ru": "Кастомное сообщение", "en": "Custom message"},
+            "startup_channel": {"ru": "Отправить стартовое", "en": "Send start"}
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
@@ -69,6 +73,7 @@ class Messages:
             "balance": "💳",
             "rules": "📖",
             "help": "🆘",
+            "news": "📢",
             "referral": "🔗",
             "admin": "👨‍💻"
         },
@@ -95,10 +100,13 @@ class Messages:
             "game_settings": "🛠️",
             "game_config": "🧩",
             "bot_config": "⚙️",
-            "set_bot_config": "⚙️",
+            "set_bot_channel_config": "⚙️",
+            "set_bot_news_channel_config": "⚙️",
             "remove_bot_config": "🗑️",
             "max_bet": "🔧",
-            "startup_channel": "💬"
+            "message_channel": "💬",
+            "custom_message": "📝",
+            "startup_channel": "🚀"
         },
         "REFERRAL": {
             "create": "➕",
@@ -138,45 +146,74 @@ class KeyboardManager:
         return kb.as_markup()
 
     @staticmethod
-    def get_main_keyboard(game_icon: str, admin: bool, language_code: str, support_url: str) -> InlineKeyboardMarkup:
-        kb = InlineKeyboardBuilder()
-        kb.button(text=f"{game_icon}{Messages.get_text('MAIN_MENU', 'games', language_code)}",
-                  callback_data="select-bet")
-        kb.button(text=Messages.get_text("MAIN_MENU", "profile", language_code),
-                  callback_data="profile")
-        kb.button(text=Messages.get_text("MAIN_MENU", "settings", language_code),
-                  callback_data="settings")
-        kb.button(text=Messages.get_text("MAIN_MENU", "balance", language_code),
-                  callback_data="balance")
-        kb.button(text=Messages.get_text("MAIN_MENU", "rules", language_code),
-                  callback_data="rules")
-        kb.button(text=Messages.get_text("MAIN_MENU", "help", language_code), url=f"https://t.me/{support_url}")
-        kb.button(text=Messages.get_text("MAIN_MENU", "referral", language_code), callback_data="referral-menu")
+    def get_main_keyboard(game_icon: str, admin: bool, language_code: str, support_url: str,
+                          news_channel_username: str = None) -> InlineKeyboardMarkup:
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    text=f"{game_icon}{Messages.get_text('MAIN_MENU', 'games', language_code)}",
+                    callback_data="select-bet"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=Messages.get_text("MAIN_MENU", "profile", language_code),
+                    callback_data="profile"
+                ),
+                InlineKeyboardButton(
+                    text=Messages.get_text("MAIN_MENU", "balance", language_code),
+                    callback_data="balance"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=Messages.get_text("SETTINGS", "game", language_code),
+                    callback_data="change-game"
+                ),
+                InlineKeyboardButton(
+                    text=Messages.get_text("SETTINGS", "language", language_code),
+                    callback_data="change-language"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=Messages.get_text("MAIN_MENU", "rules", language_code),
+                    callback_data="rules"
+                ),
+                InlineKeyboardButton(
+                    text=Messages.get_text("MAIN_MENU", "referral", language_code),
+                    callback_data="referral-menu"
+                )
+            ]
+        ]
+        help_keyboard_row = [
+            InlineKeyboardButton(
+                text=Messages.get_text("MAIN_MENU", "help", language_code),
+                url=f"https://t.me/{support_url}"
+            )
+        ]
+        if news_channel_username:
+            help_keyboard_row.append(
+                InlineKeyboardButton(
+                    text=Messages.get_text("MAIN_MENU", "news", language_code),
+                    url=f"https://t.me/{news_channel_username}"
+                )
+            )
+        keyboard.append(help_keyboard_row)
         if admin:
-            kb.button(text=Messages.get_text("MAIN_MENU", "admin", language_code),
-                      callback_data="admin-panel")
-        kb.adjust(2, 2, 2, 1, 1)
-        return kb.as_markup()
+            keyboard.append([
+                InlineKeyboardButton(
+                    text=Messages.get_text("MAIN_MENU", "admin", language_code),
+                    callback_data="admin-panel"
+                )
+            ])
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     @staticmethod
     def get_register_cancel_keyboard(language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
                   callback_data="register_cancel")
-        kb.adjust(1)
-        return kb.as_markup()
-
-    @staticmethod
-    def get_settings_keyboard(language_code: str) -> InlineKeyboardMarkup:
-        kb = InlineKeyboardBuilder()
-        kb.button(text=Messages.get_text("SETTINGS", "game", language_code),
-                  callback_data="change-game")
-        kb.button(text=Messages.get_text("SETTINGS", "language", language_code),
-                  callback_data="change-language")
-        # kb.button(text=Messages.get_text("SETTINGS", "email", language_code),
-        #           callback_data="change-email")
-        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
-                  callback_data="back")
         kb.adjust(1)
         return kb.as_markup()
 
@@ -385,12 +422,91 @@ class KeyboardManager:
                   callback_data="admin-bot-config")
         kb.button(text=Messages.get_text("ADMIN", "max_bet", language_code),
                   callback_data="update-max-bet")
-        kb.button(text=Messages.get_text("ADMIN", "startup_channel", language_code),
-                  callback_data="startup-channel-message")
+        kb.button(text=Messages.get_text("ADMIN", "message_channel", language_code),
+                  callback_data="channel-message")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(2)
         return kb.as_markup()
+
+    @staticmethod
+    def get_news_keyboard(language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("ADMIN", "startup_channel", language_code),
+                  callback_data="channel-message:startup")
+        kb.button(text=Messages.get_text("ADMIN", "custom_message", language_code),
+                  callback_data="channel-message:custom")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="back")
+        kb.adjust(2)
+        return kb.as_markup()
+
+    @staticmethod
+    def get_custom_message_cancel(language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
+                  callback_data="custom-message-cancel")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
+    def build_keyboard_from_text(text: str) -> InlineKeyboardBuilder:
+        kb = InlineKeyboardBuilder()
+        if text == "[NONE]":
+            return kb
+        lines = text.strip().split('\n')
+        try:
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                if '|' not in line:
+                    return kb
+                parts = line.split('|', 1)
+                if len(parts) != 2:
+                    return kb
+                button_text = parts[0].strip()
+                button_url = parts[1].strip()
+                if not button_text or not button_url:
+                    return kb
+                if not (button_url.startswith('http://') or
+                        button_url.startswith('https://') or
+                        button_url.startswith('tg://')):
+                    return kb
+                kb.button(text=button_text, url=button_url)
+            if not kb.buttons:
+                return kb
+            return kb
+        except Exception:
+            return kb
+
+    @staticmethod
+    def get_markup_from_text(language_code: str, text: str) -> InlineKeyboardMarkup:
+        kb = KeyboardManager.build_keyboard_from_text(text)
+        kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
+                  callback_data="custom-message-cancel")
+        kb.button(text=Messages.get_text("ADMIN", "message_channel", language_code),
+                  callback_data="custom-message-send")
+        kb.adjust(1)
+        return kb.as_markup()
+
+    @staticmethod
+    def remove_control_buttons(message: Message) -> InlineKeyboardMarkup:
+        """
+        Извлекает клавиатуру из сообщения и удаляет кнопки управления
+        """
+        if not message.reply_markup:
+            return None
+        current_markup = message.reply_markup
+        new_keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+        for row in current_markup.inline_keyboard:
+            new_row = []
+            for button in row:
+                if button.callback_data not in ["custom-message-cancel", "custom-message-send"]:
+                    new_row.append(button)
+            if new_row:
+                new_keyboard.inline_keyboard.append(new_row)
+        return new_keyboard
 
     @staticmethod
     def get_logs_keyboard(language_code: str, page: int = 1, add_next_page: bool = True) -> InlineKeyboardMarkup:
@@ -461,13 +577,15 @@ class KeyboardManager:
     @staticmethod
     def get_bot_config(language_code: str) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        kb.button(text=Messages.get_text("ADMIN", "set_bot_config", language_code),
-                  callback_data="admin-bot-config:set")
+        kb.button(text=Messages.get_text("ADMIN", "set_bot_channel_config", language_code),
+                  callback_data="admin-bot-config:set_channel")
+        kb.button(text=Messages.get_text("ADMIN", "set_bot_news_channel_config", language_code),
+                  callback_data="admin-bot-config:set_news")
         kb.button(text=Messages.get_text("ADMIN", "remove_bot_config", language_code),
                   callback_data="admin-bot-config:remove")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="admin-panel")
-        kb.adjust(2, 1)
+        kb.adjust(2)
         return kb.as_markup()
 
     @staticmethod

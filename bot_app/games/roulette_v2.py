@@ -18,7 +18,7 @@ class RouletteV2(BaseGame):
         super().__init__(max_bet, config_name)
         self.load_config()
         self.icon = "🎯"
-        self._name = {"ru": "Рулетка V2", "en": "Roulette V2"}
+        self._name = {"ru": "Лотерея", "en": "Lottery"}
         self._rules = self.generate_rules()
         self.numbers = list(range(90))
         self.need_bet_data = True
@@ -70,7 +70,7 @@ class RouletteV2(BaseGame):
     def generate_rules(self) -> dict:
         """Генерирует HTML-версию правил"""
         rules_ru = f"""
-<b>{self.icon} Правила Рулетки V2</b>
+<b>{self.icon} Правила Лотереи</b>
 
 <b>🎯 КАК ИГРАТЬ</b>
 Выбери от 1 до 6 чисел от 0 до 89.
@@ -91,7 +91,7 @@ class RouletteV2(BaseGame):
 <b>🍀 Удачи!</b>
 """
         rules_en = f"""
-<b>{self.icon} Roulette V2 Rules</b>
+<b>{self.icon} Lottery Rules</b>
 
 <b>🎯 HOW TO PLAY</b>
 Select 1 to 6 numbers from 0 to 89.

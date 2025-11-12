@@ -89,7 +89,8 @@ async def lifespan(app: FastAPI):
     await db.create_config([  # (200, "honest")
         (0, "honest"), (1, "honest"), (2, "honest"),
         (3, "honest"), (4, "honest"), (5, "honest"),
-        (6, "honest"), (7, "honest"), (8, "honest")
+        (6, "honest"), (7, "honest"), (8, "honest"),
+        (9, "honest")
     ])
     bot = BotInterface(db, config.TOKEN, config.ADMIN_IDS, logger)
     if payment_config.TEST:

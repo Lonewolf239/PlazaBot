@@ -143,10 +143,19 @@ class DatabaseInterface:
                 """)
 
                 await db.execute("""
+                    CREATE TABLE IF NOT EXISTS custom_messages (
+                        message_id INTEGER PRIMARY KEY,
+                        message_text TEXT
+                    )
+                """)
+
+                await db.execute("""
                     CREATE TABLE IF NOT EXISTS bot_configs (
                         bot_id INTEGER PRIMARY KEY,
                         chat_id INTEGER,
-                        chat_username TEXT
+                        chat_username TEXT,
+                        news_chat_id INTEGER,
+                        news_channel_username TEXT
                     )
                 """)
 
@@ -286,6 +295,25 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при инициализации базы данных: {e}")
             raise
 
+    async def add_custom_message(self, message_id: int, message_text: str):
+        await self.execute("INSERT INTO custom_messages (message_id, message_text) "
+                           "VALUES (?, ?) ON CONFLICT(message_id) DO UPDATE SET message_text = excluded.message_text",
+                           (message_id, message_text))
+
+    async def get_custom_messages(self, message_id: int):
+        data = await self.fetch_one("SELECT message_text FROM custom_messages WHERE message_id = ?", (message_id,))
+        if data:
+            message_text = data["message_text"]
+            await self.execute("DELETE FROM custom_messages WHERE message_id = ?", (message_id,))
+            return message_text
+        return None
+
+    async def get_news_channel_username(self, bot_id: int):
+        data = await self.get_bot_config(bot_id)
+        if data:
+            return data.get("news_channel_username", None)
+        return None
+
     async def get_max_bet(self):
         data = await self.fetch_one("SELECT max_bet FROM bank_config WHERE bank_id = 1", ())
         if data:
@@ -307,14 +335,16 @@ class DatabaseInterface:
         return None
 
     async def clear_bot_config(self, bot_id: int):
-        query = "UPDATE bot_configs SET chat_id = NULL, chat_username = NULL WHERE bot_id = ?"
+        query = ("UPDATE bot_configs SET chat_id = NULL, chat_username = NULL, "
+                 "news_chat_id = NULL, news_channel_username = NULL WHERE bot_id = ?")
         try:
             await self.execute(query, (bot_id,))
             await self.log_info(f"У бота {bot_id} успешно очищены chat_id и chat_username")
         except Exception as e:
             await self.log_error(f"Ошибка при очистке бота {bot_id}: {e}")
 
-    async def set_bot_config(self, bot_id: int, chat_id: str = None, chat_username: str = None):
+    async def set_bot_config(self, bot_id: int, chat_id: str = None, chat_username: str = None,
+                             news_chat_id: str = None, news_channel_username: str = None):
         fields = []
         params = []
 
@@ -324,6 +354,12 @@ class DatabaseInterface:
         if chat_username is not None:
             fields.append("chat_username = ?")
             params.append(chat_username)
+        if news_chat_id is not None:
+            fields.append("news_chat_id = ?")
+            params.append(news_chat_id)
+        if news_channel_username is not None:
+            fields.append("news_channel_username = ?")
+            params.append(news_channel_username)
 
         if not fields:
             return False

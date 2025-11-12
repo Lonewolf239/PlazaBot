@@ -4,21 +4,17 @@ from typing import Any
 class ReferralHandler:
     """Обработчик команд рефералки"""
     @staticmethod
-    async def referral_menu(bot, chat_id: int, user_data: dict):
+    async def referral_menu(bot, chat_id: int, user_data: dict, message_id: int):
         """Главное меню рефералки"""
         from bot_app.keyboards import KeyboardManager
         language = user_data.get("language", "en")
         text = await bot.get_text(chat_id, "REFERRAL_MENU", user_data)
-        await bot.send_message(
-            chat_id,
-            text,
-            reply_markup=KeyboardManager.get_referral_keyboard(language)
-        )
+        await bot.edit_message(chat_id, text, message_id, reply_markup=KeyboardManager.get_referral_keyboard(language))
 
     @staticmethod
-    async def referral_cancel(bot, chat_id: int):
+    async def referral_cancel(bot, chat_id: int, message_id: int):
         await bot.database_interface.update_user(chat_id, block_input=False, input_type=0)
-        await bot.main_menu(chat_id)
+        await bot.main_menu(chat_id, message_id)
 
     @staticmethod
     async def create_clone_bot(bot, chat_id: int, user_data: dict[str, Any]):
@@ -95,7 +91,7 @@ class ReferralHandler:
                     bot.logger.error(f"Ошибка при закрытии test_bot в finally: {e}")
 
     @staticmethod
-    async def my_referrals(bot, chat_id: int, user_data: dict[str, Any]):
+    async def my_referrals(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
         """Показывает статистику рефералов"""
         stats = await bot.database_interface.fetch_one(
             """SELECT
@@ -107,4 +103,4 @@ class ReferralHandler:
         )
         text = await bot.get_text(chat_id, "REFERRAL_MY_REFERRALS", user_data, custom_data=stats)
         await bot.send_message(chat_id, text)
-        await bot.main_menu(chat_id)
+        await bot.main_menu(chat_id, message_id)
