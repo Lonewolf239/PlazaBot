@@ -6,7 +6,7 @@ from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove, InputMediaPhoto, BufferedInputFile
 import config
 from .keyboards import KeyboardManager
-from .games import CasinoSlot, Roulette, RouletteV2, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines, Blackjack, \
+from .games import CasinoSlot, Roulette, Lottery, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines, Blackjack, \
     CasinoSlotV2
 from .database import DatabaseInterface
 from .payments import CryptoPay
@@ -150,14 +150,14 @@ class BetDataCollector:
 class BotInterface:
     CasinoGames = {
         0: CasinoSlot,
-        1: Roulette,
-        2: RouletteV2,
-        3: Coin,
-        4: Dice,
-        5: HiLo,
-        6: Mines,
-        7: Blackjack,
-        8: CasinoSlotV2,
+        1: CasinoSlotV2,
+        2: Roulette,
+        3: Lottery,
+        4: Coin,
+        5: Dice,
+        6: HiLo,
+        7: Mines,
+        8: Blackjack,
         # 200: Crash
     }
     GameConfigs = {
@@ -165,11 +165,11 @@ class BotInterface:
         1: ["honest", "aggressive", "generous"],
         2: ["honest", "aggressive", "generous"],
         3: ["honest", "aggressive", "generous"],
-        4: ["honest"],
+        4: ["honest", "aggressive", "generous"],
         5: ["honest"],
-        6: ["honest", "aggressive", "generous"],
-        7: ["honest"],
-        8: ["honest", "aggressive", "generous"],
+        6: ["honest"],
+        7: ["honest", "aggressive", "generous"],
+        8: ["honest"],
         # 200: ["honest"],
     }
 

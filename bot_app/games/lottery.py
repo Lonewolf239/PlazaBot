@@ -8,7 +8,7 @@ from .config import RouletteV2Config
 from ..resources import ResourceLoader
 
 
-class RouletteV2(BaseGame):
+class Lottery(BaseGame):
     def __init__(self, max_bet: float, config_name: str = "honest"):
         """
         Инициализация рулетки

@@ -3,7 +3,7 @@ from .interactive_game_base import InteractiveGameBase, InteractiveGameStatus
 from .casino_slot import CasinoSlot
 from .casino_slot_v2 import CasinoSlotV2
 from .roulette import Roulette
-from .roulette_v2 import RouletteV2
+from .lottery import Lottery
 from .coin import Coin
 from .dice import Dice
 from .hi_lo import HiLo
@@ -22,7 +22,7 @@ __all__ = [
     'CasinoSlot',
     'CasinoSlotV2',
     'Roulette',
-    'RouletteV2',
+    'Lottery',
     'Coin',
     'Dice',
     'HiLo',
