@@ -506,7 +506,7 @@ Stand: Stop and pass turn to dealer
         language = user_data.get("language", "ru")
         return await self._format_round_state(bot, user_id, session, language)
 
-    async def _format_round_state(self, bot, user_id: int, session: Dict, language: str = "ru") -> dict[str, Any]:
+    async def _format_round_state(self, bot, user_id: int, session: Dict, language: str = "en") -> dict[str, Any]:
         """Форматировать состояние раунда для отображения с изображением"""
         state = session.get('state', {})
         user_data = await bot.database_interface.get_user(user_id)
