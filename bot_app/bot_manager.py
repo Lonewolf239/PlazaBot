@@ -150,7 +150,6 @@ class BetDataCollector:
 class BotInterface:
     CasinoGames = {
         0: CasinoSlot,
-        # 1: CasinoSlotV2,
         1: Roulette,
         2: RouletteV2,
         3: Coin,
@@ -158,11 +157,11 @@ class BotInterface:
         5: HiLo,
         6: Mines,
         7: Blackjack,
+        8: CasinoSlotV2,
         # 200: Crash
     }
     GameConfigs = {
         0: ["honest", "aggressive", "generous"],
-        # 1: ["honest", "aggressive", "generous"],
         1: ["honest", "aggressive", "generous"],
         2: ["honest", "aggressive", "generous"],
         3: ["honest", "aggressive", "generous"],
@@ -170,6 +169,7 @@ class BotInterface:
         5: ["honest"],
         6: ["honest", "aggressive", "generous"],
         7: ["honest"],
+        8: ["honest", "aggressive", "generous"],
         # 200: ["honest"],
     }
 
