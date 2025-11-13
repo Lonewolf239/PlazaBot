@@ -783,6 +783,34 @@ class Messages:
                 "📨 The operation has been interrupted.\n"
                 "You can try again later or select another action."
             )
+        },
+        "CHOICE_OF_DRAW": {
+            "ru": (
+                "<b>🎁 Розыгрыш</b>\n\n"
+                "💰 Выберите количество чеков и сумму для розыгрыша"
+            ),
+            "en": (
+                "🎁 <b>Giveaway</b>\n\n"
+                "💰 Select the number of checks and amount for the giveaway"
+            )
+        },
+        "ERROR_CREATE_GIVEAWAY": {
+            "ru": (
+                "<b>❌ Ошибка при создании розыгрыша</b>\n\n"
+                "🔍 Возможные причины:\n"
+                "- Некорректные параметры розыгрыша\n"
+                "- Недостаточно средств на счёте\n"
+                "- Ошибка при подключении к платёжной системе\n"
+                "- Превышено максимальное количество чеков"
+            ),
+            "en": (
+                "<b>❌ Error creating giveaway</b>\n\n"
+                "🔍 Possible reasons:\n"
+                "- Invalid giveaway parameters\n"
+                "- Insufficient funds in account\n"
+                "- Error connecting to payment system\n"
+                "- Exceeded maximum number of checks"
+            )
         }
     }
 

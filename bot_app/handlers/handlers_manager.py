@@ -818,12 +818,16 @@ Every bet is calculated fairly and honestly.
             await bot.send_message(chat_id, message, reply_markup=markup)
 
     @staticmethod
-    async def send_custom_message(bot, chat_id, user_data, message: Message):
-        from ..keyboards import KeyboardManager
+    async def translate_text(ru_message_text: str):
         from googletrans import Translator
         translator = Translator()
+        return (await translator.translate(ru_message_text, src='ru', dest='en')).text
+
+    @staticmethod
+    async def send_custom_message(bot, chat_id, user_data, message: Message):
+        from ..keyboards import KeyboardManager
         ru_message_text = message.html_text if message.text else message.html_caption
-        en_message_text = (await translator.translate(ru_message_text, src='ru', dest='en')).text
+        en_message_text = await HandlersManager.translate_text(ru_message_text)
         message_markup = KeyboardManager.remove_control_buttons(message)
         message_text = f"🇷🇺\n{ru_message_text}\n\n\n🇺🇸\n{en_message_text}"
         await HandlersManager.send_news_message(bot, chat_id, message_text,
@@ -875,3 +879,55 @@ Every bet is calculated fairly and honestly.
         game = await bot.game_manager.get_game(int(user_data.get("selected_game", 0)))
         await bot.edit_message(chat_id, game.rules(user_data.get("language", "en")), message_id,
                                reply_markup=KeyboardManager.get_back_keyboard(user_data.get("language", "en")))
+
+    @staticmethod
+    async def giveaway(bot, chat_id: int, user_data: dict[str, Any], command: str, message_id: int):
+        from aiocryptopay.models.check import Check
+        from ..keyboards import KeyboardManager
+        bot_config = await bot.database_interface.get_bot_config((await bot.bot.get_me()).id)
+        if len(command.split(':')) == 1:
+            await bot.edit_message(chat_id, await bot.get_text(chat_id, "CHOICE_OF_DRAW", user_data), message_id,
+                                   reply_markup=KeyboardManager.get_giveaway_keyboard(user_data.get("language", "en")))
+            return
+        if bot_config:
+            news_chat_id = bot_config.get("news_chat_id")
+            if news_chat_id:
+                try:
+                    quantity, amount = int(command.split(':')[1]), float(command.split(':')[2])
+                    ru_text = f"""
+<b>🎁 Розыгрыш</b>
+
+<b>💰 Всего в розыгрыше:</b>
+• Количество чеков: {quantity}
+• Сумма за чек: {amount} USDT
+• Общая сумма: {quantity * amount} USDT
+
+<b>🎉 Как участвовать:</b>
+1️⃣ Нажмите на любую кнопку ниже
+2️⃣ Каждый чек можно использовать только один раз
+
+<b>⏱️ Поспешите!</b> Призы распределяются быстро. 🔥
+"""
+                    en_text = f"""
+<b>🎁 Giveaway</b>
+
+<b>💰 Total in giveaway:</b>
+• Number of checks: {quantity}
+• Amount per check: {amount} USDT
+• Total amount: {quantity * amount} USDT
+
+<b>🎉 How to participate:</b>
+1️⃣ Click on any button below
+2️⃣ Each check can only be used once
+
+<b>⏱️ Hurry up!</b> Prizes are distributed quickly. 🔥
+"""
+                    message_text = f"🇷🇺{ru_text}\n\n\n🇺🇸{en_text}"
+                    giveaways: list[Check] = await bot.crypto_pay.create_giveaway(quantity, amount)
+                    giveaways_buttons = "|".join(f"{g.amount};{g.bot_check_url}" for g in giveaways) + "|"
+                    markup = KeyboardManager.build_giveaways_keyboard(giveaways_buttons)
+                    await HandlersManager.send_news_message(bot, chat_id, message_text, markup, user_data, message_id)
+                except Exception:
+                    await bot.send_message(chat_id, await bot.get_text(chat_id, "ERROR_CREATE_GIVEAWAY", user_data))
+            else:
+                await bot.send_message(chat_id, await bot.get_text(chat_id, "NEWS_CHANNEL_NOT_CONNECTED"))

@@ -50,13 +50,15 @@ class Messages:
             "message_channel": {"ru": "Отправить сообщение", "en": "Send a message"},
             "custom_message": {"ru": "Кастомное сообщение", "en": "Custom message"},
             "startup_channel": {"ru": "Отправить стартовое", "en": "Send start"},
-            "create_leaderboard": {"ru": "Создать таблицу лидеров", "en": "Create a leaderboard"}
+            "create_leaderboard": {"ru": "Создать лидеров", "en": "Create a leaderboard"},
+            "create_giveaway": {"ru": "Создать розыгрыш", "en": "Create a giveaway"}
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
             "stats": {"ru": "Статистика рефералки", "en": "Referral Stats"}
         },
         "OTHERS": {
+            "giveaway": {"ru": "", "en": ""},
             "cancel": {"ru": "Отмена", "en": "Cancel"},
             "back": {"ru": "Назад", "en": "Back"},
             "confirm_yes": {"ru": "Да", "en": "Yes"},
@@ -115,13 +117,15 @@ class Messages:
             "message_channel": "💬",
             "custom_message": "📝",
             "startup_channel": "🚀",
-            "create_leaderboard": "🏆"
+            "create_leaderboard": "🏆",
+            "create_giveaway": "🎁"
         },
         "REFERRAL": {
             "create": "➕",
             "stats": "👥"
         },
         "OTHERS": {
+            "giveaway": "🎁",
             "cancel": "❌",
             "back": "◀️",
             "confirm_yes": "✅",
@@ -429,18 +433,20 @@ class KeyboardManager:
                   callback_data="admin-reset-balance")
         kb.button(text=Messages.get_text("ADMIN", "get_balance", language_code),
                   callback_data="admin-get-balance")
+        kb.button(text=Messages.get_text("ADMIN", "max_bet", language_code),
+                  callback_data="update-max-bet")
         kb.button(text=Messages.get_text("ADMIN", "game_settings", language_code),
                   callback_data="admin-game-settings")
         kb.button(text=Messages.get_text("ADMIN", "game_config", language_code),
                   callback_data="admin-game-config")
         kb.button(text=Messages.get_text("ADMIN", "bot_config", language_code),
                   callback_data="admin-bot-config")
-        kb.button(text=Messages.get_text("ADMIN", "max_bet", language_code),
-                  callback_data="update-max-bet")
         kb.button(text=Messages.get_text("ADMIN", "message_channel", language_code),
                   callback_data="channel-message")
         kb.button(text=Messages.get_text("ADMIN", "create_leaderboard", language_code),
                   callback_data="create-leaderboard")
+        kb.button(text=Messages.get_text("ADMIN", "create_giveaway", language_code),
+                  callback_data="giveaway")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(2)
@@ -565,6 +571,44 @@ class KeyboardManager:
             nav_buttons.append(InlineKeyboardButton(text=" ", callback_data="noop"))
         kb.row(*nav_buttons)
         return kb.as_markup()
+
+    @staticmethod
+    def get_giveaway_keyboard(language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 0.5 USDT x 3",
+                  callback_data="giveaway:3:0.5")
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 1 USDT x 5",
+                  callback_data="giveaway:5:1")
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 0.5 USDT x 10",
+                  callback_data="giveaway:10:0.5")
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 5 USDT x 2",
+                  callback_data="giveaway:2:5")
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 2 USDT x 4",
+                  callback_data="giveaway:4:2")
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 2 USDT x 5",
+                  callback_data="giveaway:5:2")
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 10 USDT x 1",
+                  callback_data="giveaway:1:10")
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 10 USDT x 2",
+                  callback_data="giveaway:2:10")
+        kb.button(text=f"{Messages.get_text("OTHERS", "giveaway", language_code)} 10 USDT x 3",
+                  callback_data="giveaway:3:10")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="admin-panel")
+        kb.adjust(3, 3, 3, 1)
+        return kb.as_markup()
+
+    @staticmethod
+    def build_giveaways_keyboard(button_text: str):
+        keyboard_builder = InlineKeyboardBuilder()
+        button_entries = button_text.split('|')
+        for entry in button_entries:
+            button_parts = entry.split(';')
+            if len(button_parts) == 2:
+                button_label, button_url = button_parts
+                keyboard_builder.button(text=f"{button_label} USDT", url=button_url)
+        keyboard_builder.adjust(2)
+        return keyboard_builder.as_markup()
 
     @staticmethod
     def get_tables_keyboard(tables: List[str], language_code: str) -> InlineKeyboardMarkup:

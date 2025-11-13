@@ -429,7 +429,8 @@ class BotInterface:
         chat_id = callback_query.message.chat.id
 
         if command == "delete":
-            await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            await self.bot.delete_message(chat_id,
+                                          callback_query.message.message_id)
             return
 
         if str(chat_id).startswith('-'):
@@ -444,17 +445,20 @@ class BotInterface:
             await HandlersManager.register_cancel(self, chat_id)
             return
         elif command == "referral-cancel":
-            await ReferralHandler.referral_cancel(self, chat_id, callback_query.message.message_id)
+            await ReferralHandler.referral_cancel(self, chat_id,
+                                                  callback_query.message.message_id)
             return
         elif command == "custom-message-cancel":
-            await HandlersManager.custom_message_cancel(self, chat_id, user_data, callback_query.message.message_id)
+            await HandlersManager.custom_message_cancel(self, chat_id, user_data,
+                                                        callback_query.message.message_id)
             return
 
         if block_input:
             return
 
         if command == "back":
-            await self.main_menu(chat_id, callback_query.message.message_id)
+            await self.main_menu(chat_id,
+                                 callback_query.message.message_id)
 
         # ════════════════ Регистрация ════════════════
         elif command == "register_back":
@@ -463,8 +467,10 @@ class BotInterface:
             await HandlersManager.register_back(self, callback_query)
         elif command == "check-subscription":
             if await HandlersManager.check_subscription(self, chat_id, user_data["username"]):
-                await self.main_menu(chat_id, callback_query.message.message_id)
-            await self.bot.delete_message(chat_id, callback_query.message.message_id)
+                await self.main_menu(chat_id,
+                                     callback_query.message.message_id)
+            await self.bot.delete_message(chat_id,
+                                          callback_query.message.message_id)
             return
 
         # ════════════════════ Игры ═══════════════════
@@ -484,29 +490,36 @@ class BotInterface:
                                                         callback_query.message.message_id)
             await callback_query.answer()
         elif command == "select-bet":
-            await HandlersManager.select_bet(self, chat_id, user_data, callback_query.message.message_id)
+            await HandlersManager.select_bet(self, chat_id, user_data,
+                                             callback_query.message.message_id)
         elif command.startswith("start-game"):
             bet = float(command.split(':')[1])
-            await HandlersManager.start_game(self, chat_id, user_data, bet, callback_query.message.message_id)
+            await HandlersManager.start_game(self, chat_id, user_data, bet,
+                                             callback_query.message.message_id)
         elif command.startswith("game_action:"):
             action = callback_query.data[len("game_action:"):]
             await InteractiveGameHandlers.handle_game_action(self, callback_query, action)
 
         # ═════════════════ Настройки ═════════════════
         elif command == "change-game":
-            await HandlersManager.change_game(self, chat_id, user_data, callback_query.message.message_id)
+            await HandlersManager.change_game(self, chat_id, user_data,
+                                              callback_query.message.message_id)
         elif command.startswith("set-game"):
-            await HandlersManager.set_game(self, chat_id, command, callback_query.message.message_id)
+            await HandlersManager.set_game(self, chat_id, command,
+                                           callback_query.message.message_id)
         elif command == "change-language":
-            await HandlersManager.change_language(self, chat_id, callback_query.message.message_id)
+            await HandlersManager.change_language(self, chat_id,
+                                                  callback_query.message.message_id)
         elif command == "change-email":
             await HandlersManager.change_email(self, callback_query)
         elif command.startswith("language"):
-            await HandlersManager.language(self, chat_id, command, callback_query.message.message_id)
+            await HandlersManager.language(self, chat_id, command,
+                                           callback_query.message.message_id)
 
         # ═══════════════════ Баланс ══════════════════
         elif command == "balance":
-            await HandlersManager.balance(self, chat_id, user_data, callback_query.message.message_id)
+            await HandlersManager.balance(self, chat_id, user_data,
+                                          callback_query.message.message_id)
         elif command == "balance-deposit":
             await HandlersManager.get_currency(self, chat_id, user_data, "deposit", self.crypto_pay.supported_codes,
                                                callback_query.message.message_id)
@@ -532,7 +545,8 @@ class BotInterface:
         elif command.startswith("check-deposit"):
             internal_tx_id = command.split(':')[1]
             if await HandlersManager.check_deposit(self, chat_id, user_data, internal_tx_id):
-                await self.bot.delete_message(chat_id, callback_query.message.message_id)
+                await self.bot.delete_message(chat_id,
+                                              callback_query.message.message_id)
             await callback_query.answer()
 
         elif command.startswith("cancel-deposit"):
@@ -545,7 +559,8 @@ class BotInterface:
                                                              tx_id, callback_query.message.message_id)
                 await callback_query.answer()
                 return
-            await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            await self.bot.delete_message(chat_id,
+                                          callback_query.message.message_id)
             if confirm == "yes":
                 await HandlersManager.cancel_deposit(self, chat_id, user_data, tx_id)
                 await self.bot.delete_message(chat_id, message_id)
@@ -612,12 +627,19 @@ class BotInterface:
         elif command.startswith("channel-message"):
             await HandlersManager.channel_message_menu(self, chat_id, user_data, command,
                                                        callback_query.message.message_id)
+        elif command == "custom-message-send":
+            await HandlersManager.send_custom_message(self, chat_id, user_data,
+                                                      callback_query.message)
         elif command == "create-leaderboard":
             await HandlersManager.create_leaderboard(self, chat_id, user_data)
+        elif command.startswith("giveaway"):
+            await HandlersManager.giveaway(self, chat_id, user_data, command,
+                                           callback_query.message.message_id)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":
-            await ReferralHandler.referral_menu(self, chat_id, user_data, callback_query.message.message_id)
+            await ReferralHandler.referral_menu(self, chat_id, user_data,
+                                                callback_query.message.message_id)
         elif command == "referral-create":
             await ReferralHandler.create_clone_bot(self, chat_id, user_data)
         elif command == "referral-stats":
@@ -626,9 +648,8 @@ class BotInterface:
 
         # ═══════════════════ Прочее ══════════════════
         elif command == "rules":
-            await HandlersManager.rules(self, chat_id, user_data, callback_query.message.message_id)
-        elif command == "custom-message-send":
-            await HandlersManager.send_custom_message(self, chat_id, user_data, callback_query.message)
+            await HandlersManager.rules(self, chat_id, user_data,
+                                        callback_query.message.message_id)
         await callback_query.answer()
 
     @staticmethod

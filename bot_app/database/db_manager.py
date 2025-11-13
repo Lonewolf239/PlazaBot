@@ -22,6 +22,9 @@ class DatabaseInterface:
         """
         self.db_path = db_path
         self.logger = logger
+        self._top_cache = None
+        self._top_cache_time = None
+        self._cache_ttl = 60
 
     async def execute(self, query: str, params: tuple = ()) -> None:
         """
@@ -96,14 +99,13 @@ class DatabaseInterface:
         return await self.fetch_all("SELECT * FROM logs ORDER BY log_id")
 
     async def get_needed(self, admin_ids: list[int]) -> Tuple[float, int, float, float, float]:
+        where_conditions = ["user_id >= 10"]
         if admin_ids:
             admin_ids_str = ",".join(map(str, admin_ids))
-            where_clause = f"WHERE user_id NOT IN ({admin_ids_str})"
-        else:
-            where_clause = ""
-        row_sum = await self.fetch_one(
-            f"SELECT SUM(CAST(balance AS REAL)) AS total_balance FROM users {where_clause};"
-        )
+            where_conditions.append(f"user_id NOT IN ({admin_ids_str})")
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+        row_sum = await self.fetch_one(f"SELECT SUM(CAST(balance AS REAL)) "
+                                       f"AS total_balance FROM users {where_clause};")
         total_balance_str = row_sum.get("total_balance", "0") or "0"
         try:
             needed = float(total_balance_str)
@@ -118,6 +120,7 @@ class DatabaseInterface:
         avg_bal = row_stats.get("avg_balance", 0.0) or 0.0
         max_bal = row_stats.get("max_balance", 0.0) or 0.0
         min_bal = row_stats.get("min_balance", 0.0) or 0.0
+
         return needed, count, avg_bal, max_bal, min_bal
 
     async def create(self):
@@ -430,85 +433,85 @@ class DatabaseInterface:
 
     async def get_top_users(self, limit: int = 10) -> list[dict[str, Any]]:
         """Получает топ N пользователей по выигрышам"""
-        return await self.fetch_all("SELECT * FROM users ORDER BY CAST(winnings AS REAL) DESC LIMIT ?", (limit,))
+        now = datetime.now()
+        if self._top_cache is None or (now - self._top_cache_time).total_seconds() > self._cache_ttl:
+            self._top_cache = await self.fetch_all("SELECT * FROM users ORDER BY CAST(winnings AS REAL) DESC LIMIT ?",
+                                                   (limit,))
+            self._top_cache_time = now
+        return self._top_cache
 
     async def create_leaderboard(self) -> bool:
-        """
-        Добавляет 10 реалистичных тестовых пользователей в таблицу users,
-        если они там еще не существуют.
-        :return: True, если пользователи успешно добавлены, False в случае ошибки.
-        """
         leaderboard = [
             {
-                "user_id": "14",
-                "username": "nightowl",
-                "balance": 1049.73,
-                "games_played": "1:68|2:48|3:66|4:64|5:50|6:74|7:10",
-                "registered_at": "11:03:20 08.11.2025",
+                "user_id": "0",
+                "username": "irina.k",
+                "winnings": 487.32,
+                "games_played": "0:28|1:8|2:5|3:10|4:8|5:5|6:4|7:10",
+                "registered_at": "04:03:12 11.10.2025"
             },
             {
-                "user_id": "13",
-                "username": "crypto_hunter",
-                "balance": 1020.73,
-                "games_played": "1:48|2:75|3:60|4:46|5:68|6:50|7:40",
-                "registered_at": "19:48:24 12.11.2025",
+                "user_id": "1",
+                "username": "oleg_24",
+                "winnings": 356.89,
+                "games_played": "0:7|1:24|2:7|3:2|4:4|5:4|6:7|7:7",
+                "registered_at": "10:00:48 07.05.2025"
             },
             {
-                "user_id": "12",
-                "username": "lucky_cat",
-                "balance": 889.8,
-                "games_played": "1:32|2:28|3:33|4:40|5:27|6:32|7:19",
-                "registered_at": "22:13:47 08.11.2025",
+                "user_id": "2",
+                "username": "leonid_x",
+                "winnings": 298.47,
+                "games_played": "0:3|1:1|2:22|3:7|4:2|5:7|6:2|7:1",
+                "registered_at": "08:07:36 02.07.2025"
             },
             {
-                "user_id": "18",
-                "username": "phoenix_rise",
-                "balance": 726.8,
-                "games_played": "1:67|2:58|3:72|4:66|5:52|6:54|7:10",
-                "registered_at": "16:43:11 08.11.2025",
+                "user_id": "3",
+                "username": "andrey_j",
+                "winnings": 264.15,
+                "games_played": "0:10|1:4|2:3|3:37|4:4|5:5|6:5|7:3",
+                "registered_at": "03:43:54 05.06.2025"
             },
             {
-                "user_id": "17",
-                "username": "echo_master",
-                "balance": 549.82,
-                "games_played": "1:44|2:42|3:48|4:41|5:50|6:48|7:31",
-                "registered_at": "14:17:43 08.11.2025",
+                "user_id": "4",
+                "username": "boris_p",
+                "winnings": 215.68,
+                "games_played": "0:10|1:28|2:11|3:8|4:11|5:4|6:8|7:9",
+                "registered_at": "19:51:22 21.10.2025"
             },
             {
-                "user_id": "10",
-                "username": "alexdev",
-                "balance": 548.92,
-                "games_played": "1:44|2:33|3:45|4:32|5:28|6:41|7:15",
-                "registered_at": "09:04:41 08.11.2025",
+                "user_id": "5",
+                "username": "artem123",
+                "winnings": 189.43,
+                "games_played": "0:8|1:4|2:6|3:1|4:7|5:7|6:13|7:8",
+                "registered_at": "21:29:57 23.05.2025"
             },
             {
-                "user_id": "16",
-                "username": "silent_player",
-                "balance": 544.3,
-                "games_played": "1:45|2:58|3:54|4:51|5:53|6:48|7:12",
-                "registered_at": "09:19:46 10.11.2025",
+                "user_id": "6",
+                "username": "nina_ray",
+                "winnings": 167.82,
+                "games_played": "0:6|1:4|2:3|3:5|4:1|5:6|6:2|7:11",
+                "registered_at": "01:09:25 17.08.2025"
             },
             {
-                "user_id": "15",
-                "username": "storm_rider",
-                "balance": 494.53,
-                "games_played": "1:34|2:23|3:23|4:37|5:29|6:28|7:13",
-                "registered_at": "09:34:11 08.11.2025",
+                "user_id": "7",
+                "username": "kate_21",
+                "winnings": 142.56,
+                "games_played": "0:7|1:1|2:4|3:6|4:26|5:3|6:2|7:3",
+                "registered_at": "03:24:40 08.05.2025"
             },
             {
-                "user_id": "11",
-                "username": "gambler_pro",
-                "balance": 406.16,
-                "games_played": "1:29|2:23|3:22|4:27|5:19|6:18|7:17",
-                "registered_at": "08:20:09 07.11.2025",
+                "user_id": "8",
+                "username": "nadia_sun",
+                "winnings": 128.93,
+                "games_played": "0:5|1:4|2:1|3:6|4:4|5:12|6:4|7:5",
+                "registered_at": "08:28:15 25.06.2025"
             },
             {
-                "user_id": "19",
-                "username": "cyber_ninja",
-                "balance": 388.37,
-                "games_played": "1:69|2:59|3:64|4:53|5:54|6:45|7:10",
-                "registered_at": "12:29:40 04.11.2025",
-            },
+                "user_id": "9",
+                "username": "sergey_v",
+                "winnings": 115.27,
+                "games_played": "0:7|1:2|2:34|3:5|4:3|5:7|6:2|7:7",
+                "registered_at": "21:55:07 07.09.2025"
+            }
         ]
         try:
             for user in leaderboard:
@@ -517,7 +520,7 @@ class DatabaseInterface:
                                            f"({user['username']}) уже существует. Пропускаем.")
                     continue
                 await self.create_user(user["user_id"], user["username"], "en")
-                await self.update_balance(user["user_id"], user["balance"], "win")
+                await self.update_balance(user["user_id"], user["winnings"], "win")
                 await self.update_user(user["user_id"], registered_at=user["registered_at"],
                                        games_played=user["games_played"])
             await self.log_info("10 тестовых пользователей успешно добавлены в базу данных.")

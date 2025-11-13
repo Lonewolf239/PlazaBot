@@ -3,6 +3,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from aiocryptopay import AioCryptoPay, Networks
+from aiocryptopay.models.check import Check
 from aiocryptopay.models.currencies import Currency
 from aiocryptopay.models.rates import ExchangeRate
 from aiocryptopay.models.update import Update
@@ -635,6 +636,12 @@ class CryptoPay:
             raise
 
     # ==================== УТИЛИТЫ ====================
+
+    async def create_giveaway(self, quantity: int, amount: float) -> list[Check]:
+        giveaways = []
+        for i in range(quantity):
+            giveaways.append((await self.crypto.create_check("USDT", amount)))
+        return giveaways
 
     async def close(self) -> None:
         """Закрывает подключение к Crypto Pay API."""
