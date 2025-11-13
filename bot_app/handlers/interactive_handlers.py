@@ -34,7 +34,7 @@ class InteractiveGameHandlers:
                 parse_mode="HTML"
             )
         except Exception as e:
-            bot.logger.error(f"Ошибка при редактировании: {e}")
+            await bot.database_interface.log_error(f"Ошибка при редактировании: {e}")
 
     @staticmethod
     async def handle_game_action(bot, callback_query: types.CallbackQuery, action: str):
@@ -74,7 +74,7 @@ class InteractiveGameHandlers:
 
             await callback_query.answer()
         except Exception as e:
-            bot.logger.error(f"Ошибка в игре: {e}", exc_info=True)
+            await bot.database_interface.log_error(f"Ошибка в игре: {e}", exc_info=True)
             await callback_query.answer(
                 await bot.get_text(chat_id, "ERROR_IN_MOVE", user_data), show_alert=True)
             await bot.bot.delete_message(chat_id, message_id)
@@ -100,7 +100,7 @@ class InteractiveGameHandlers:
                                                                            game_session)
             await InteractiveGameHandlers.edit_message(bot, user_id, message_id, keyboard, frame)
         except Exception as e:
-            bot.logger.error(f"Ошибка при обновлении кадра: {e}")
+            await bot.database_interface.log_error(f"Ошибка при обновлении кадра: {e}")
 
     @staticmethod
     async def finish_game(bot, chat_id: int, message_id: int, game, user_session):

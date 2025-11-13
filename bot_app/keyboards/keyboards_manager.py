@@ -460,7 +460,7 @@ class KeyboardManager:
         kb.button(text=Messages.get_text("ADMIN", "custom_message", language_code),
                   callback_data="channel-message:custom")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
-                  callback_data="back")
+                  callback_data="admin-panel")
         kb.adjust(2)
         return kb.as_markup()
 

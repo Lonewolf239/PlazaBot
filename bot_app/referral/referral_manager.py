@@ -25,11 +25,11 @@ class ReferralManager:
             bot_info = await bot.get_me()
             bot_username = bot_info.username
             if not bot_username:
-                self.logger.error("Бот не имеет username")
+                await self.db.log_error("Бот не имеет username")
                 return None
             existing = await self.db.fetch_one("SELECT * FROM bot_instances WHERE bot_id = ?", (bot_username,))
             if existing:
-                self.logger.warning(f"Бот {bot_username} уже существует")
+                await self.db.log_warning(f"Бот {bot_username} уже существует")
                 return None
             main_bot = Bot(self.main_bot_token)
             main_bot_info = await main_bot.get_me()
@@ -44,38 +44,38 @@ class ReferralManager:
             ref_code = Hacher.hash(str(creator_user_id), False)
             self.ref_code_mapping[ref_code] = creator_user_id
             await self.db.execute("UPDATE users SET ref_code = ? WHERE user_id = ?", (ref_code, creator_user_id))
-            self.logger.info(f"Создан клон-бот {bot_username} для пользователя {creator_user_id}")
-            await self.copy_bot_commands(self.logger, main_bot, bot)
+            await self.db.log_info(f"Создан клон-бот {bot_username} для пользователя {creator_user_id}")
+            await self.copy_bot_commands(self.db, main_bot, bot)
             self.active_bots[bot_username] = bot
             bot = None
             return bot_username
         except Exception as e:
-            self.logger.error(f"Ошибка при создании клон-бота: {e}")
+            await self.db.log_error(f"Ошибка при создании клон-бота: {e}")
             return None
         finally:
             if bot is not None:
                 try:
                     await bot.session.close()
                 except Exception as e:
-                    self.logger.error(f"Ошибка при закрытии сессии тестового бота: {e}")
+                    await self.db.log_error(f"Ошибка при закрытии сессии тестового бота: {e}")
             if main_bot is not None:
                 try:
                     await main_bot.session.close()
                 except Exception as e:
-                    self.logger.error(f"Ошибка при закрытии сессии главного бота: {e}")
+                    await self.db.log_error(f"Ошибка при закрытии сессии главного бота: {e}")
 
     @staticmethod
-    async def copy_bot_commands(logger: logging.Logger, source_bot: Bot, target_bot: Bot):
+    async def copy_bot_commands(db: DatabaseInterface, source_bot: Bot, target_bot: Bot):
         """Копирует меню команд с одного бота на другой"""
         try:
             source_commands = await source_bot.get_my_commands()
             if source_commands:
                 await target_bot.set_my_commands(source_commands)
-                logger.info(f"Команды успешно скопированы на клон-бота. Всего команд: {len(source_commands)}")
+                await db.log_info(f"Команды успешно скопированы на клон-бота. Всего команд: {len(source_commands)}")
             else:
-                logger.warning("У оригинального бота не найдено команд")
+                await db.log_warning("У оригинального бота не найдено команд")
         except Exception as e:
-            logger.error(f"Ошибка при копировании команд: {e}")
+            await db.log_error(f"Ошибка при копировании команд: {e}")
 
     async def start_clone_bot(self, bot_id: str, dispatcher: Dispatcher):
         """
@@ -85,15 +85,15 @@ class ReferralManager:
         """
         try:
             if bot_id not in self.active_bots:
-                self.logger.error(f"Бот {bot_id} не найден в active_bots")
+                await self.db.log_error(f"Бот {bot_id} не найден в active_bots")
                 return
             bot = self.active_bots[bot_id]
             task = asyncio.create_task(dispatcher.start_polling(bot))
             self.clone_tasks[bot_id] = task
-            self.logger.info(f"Запущен клон-бот {bot_id}")
+            await self.db.log_info(f"Запущен клон-бот {bot_id}")
 
         except Exception as e:
-            self.logger.error(f"Ошибка при запуске клон-бота {bot_id}: {e}")
+            await self.db.log_error(f"Ошибка при запуске клон-бота {bot_id}: {e}")
 
     async def stop_clone_bot(self, bot_id: str):
         """
@@ -108,13 +108,13 @@ class ReferralManager:
             except asyncio.CancelledError:
                 pass
             del self.clone_tasks[bot_id]
-            self.logger.info(f"Остановлен клон-бот {bot_id}")
+            await self.db.log_info(f"Остановлен клон-бот {bot_id}")
         if bot_id in self.active_bots:
             try:
                 await self.active_bots[bot_id].session.close()
                 del self.active_bots[bot_id]
             except Exception as e:
-                self.logger.error(f"Ошибка при закрытии сессии {bot_id}: {e}")
+                await self.db.log_error(f"Ошибка при закрытии сессии {bot_id}: {e}")
 
     async def get_bot_creator(self, bot_id: str) -> Optional[int]:
         """
@@ -140,7 +140,7 @@ class ReferralManager:
                 return True
             referrer_id = await self.get_bot_creator(bot_id)
             if not referrer_id:
-                self.logger.warning(f"Не найден создатель бота {bot_id}")
+                await self.db.log_warning(f"Не найден создатель бота {bot_id}")
                 return False
             if referrer_id == user_id:
                 return True
@@ -156,7 +156,7 @@ class ReferralManager:
                     VALUES (?, ?, ?)""",
                     (referrer_id, user_id, bot_id)
                 )
-                self.logger.info(f"Создана реферальная связь: {referrer_id} -> {user_id}")
+                await self.db.log_info(f"Создана реферальная связь: {referrer_id} -> {user_id}")
             reward_percent = 0.0
             if action_type == 'bet':
                 reward_percent = 0.05
@@ -176,10 +176,10 @@ class ReferralManager:
                     WHERE referrer_user_id = ? AND referred_user_id = ?""",
                     (reward_amount, referrer_id, user_id)
                 )
-                self.logger.info(f"Начислено {reward_amount} реферёру {referrer_id} от {user_id}")
+                await self.db.log_info(f"Начислено {reward_amount} реферёру {referrer_id} от {user_id}")
             return True
         except Exception as e:
-            self.logger.error(f"Ошибка при обработке действия пользователя: {e}")
+            await self.db.log_error(f"Ошибка при обработке действия пользователя: {e}")
             return False
 
     async def get_referral_link(self, user_id: int, bot_id: Optional[str] = None) -> str:
@@ -213,7 +213,7 @@ class ReferralManager:
                     referrer_id = user_data.get("user_id")
                     self.ref_code_mapping[referral_code] = referrer_id
                 else:
-                    self.logger.warning(f"Не найден реферер для кода {referral_code}")
+                    await self.db.log_warning(f"Не найден реферер для кода {referral_code}")
                     return False
             if referrer_id == referred_user_id:
                 return False
@@ -223,10 +223,10 @@ class ReferralManager:
                 VALUES (?, ?, ?)""",
                 (referrer_id, referred_user_id, bot_id)
             )
-            self.logger.info(f"Реферальная связь создана: {referrer_id} -> {referred_user_id}")
+            await self.db.log_info(f"Реферальная связь создана: {referrer_id} -> {referred_user_id}")
             return True
         except Exception as e:
-            self.logger.error(f"Ошибка при обработке реф-ссылки: {e}")
+            await self.db.log_error(f"Ошибка при обработке реф-ссылки: {e}")
             return False
 
     async def get_bot_token(self, bot_id: str) -> Optional[str]:
@@ -241,11 +241,11 @@ class ReferralManager:
             try:
                 self.active_bots[bot_record["bot_id"]] = Bot(bot_record["token"])
             except Exception as e:
-                self.logger.error(f"Ошибка при загрузке бота {bot_record['bot_id']}: {e}")
+                await self.db.log_error(f"Ошибка при загрузке бота {bot_record['bot_id']}: {e}")
         users = await self.db.fetch_all("SELECT user_id, ref_code FROM users WHERE ref_code IS NOT NULL")
         for user in users:
             self.ref_code_mapping[user["ref_code"]] = user["user_id"]
-        self.logger.info(f"Загружено {len(self.active_bots)} активных клон-ботов")
+        await self.db.log_info(f"Загружено {len(self.active_bots)} активных клон-ботов")
 
     async def cleanup(self):
         """Закрывает все открытые сессии ботов при завершении"""
@@ -253,5 +253,5 @@ class ReferralManager:
             try:
                 await bot.session.close()
             except Exception as e:
-                self.logger.error(f"Ошибка при закрытии сессии {bot_id}: {e}")
+                await self.db.log_error(f"Ошибка при закрытии сессии {bot_id}: {e}")
         self.active_bots.clear()

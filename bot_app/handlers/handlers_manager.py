@@ -139,7 +139,7 @@ class HandlersManager:
             await bot.edit_message(chat_id, message_text, message_id, reply_markup=keyboard)
             return None
         except Exception as e:
-            bot.logger.error(f"Ошибка при редактировании сообщения: {e}")
+            await bot.database_interface.log_error(f"Ошибка при редактировании сообщения: {e}")
             return await bot.send_message(chat_id, message_text, reply_markup=keyboard)
 
     @staticmethod
@@ -158,7 +158,7 @@ class HandlersManager:
             try:
                 await bot.edit_message(chat_id, message_text, message_id, reply_markup=keyboard)
             except Exception as e:
-                bot.logger.error(f"Ошибка при редактировании сообщения: {e}")
+                await bot.database_interface.log_error(f"Ошибка при редактировании сообщения: {e}")
                 await bot.send_message(chat_id, message_text, reply_markup=keyboard)
         else:
             await bot.send_message(chat_id, message_text, reply_markup=keyboard)
@@ -230,7 +230,7 @@ class HandlersManager:
                     parse_mode="HTML"
                 )
         except Exception as e:
-            bot.logger.error(f"Ошибка при редактировании сообщения: {e}")
+            await bot.database_interface.log_error(f"Ошибка при редактировании сообщения: {e}")
 
     @staticmethod
     async def on_game_started(bot, session):
@@ -590,19 +590,17 @@ class HandlersManager:
         await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
 
     @staticmethod
-    async def admin_issue_balance(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
+    async def admin_issue_balance(bot, chat_id: int, user_data: dict[str, Any], callback_query: CallbackQuery):
         await bot.database_interface.set_balance(chat_id, 1000)
-        await bot.send_message(chat_id, await bot.get_text(chat_id, "ADMIN_BALANCE_ISSUED", user_data))
-        await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
+        await callback_query.answer(await bot.get_text(chat_id, "ADMIN_BALANCE_ISSUED", user_data))
 
     @staticmethod
-    async def admin_reset_balance(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
+    async def admin_reset_balance(bot, chat_id: int, user_data: dict[str, Any], callback_query: CallbackQuery):
         await bot.database_interface.reset_balance(chat_id)
-        await bot.send_message(chat_id, await bot.get_text(chat_id, "ADMIN_BALANCE_RESET", user_data))
-        await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
+        await callback_query.answer(await bot.get_text(chat_id, "ADMIN_BALANCE_RESET", user_data))
 
     @staticmethod
-    async def admin_get_balance(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
+    async def admin_get_balance(bot, chat_id: int):
         balance_data = await bot.crypto_pay.get_balance()
 
         def format_balance(balance: dict) -> str:
@@ -624,7 +622,6 @@ class HandlersManager:
 
         total = await bot.crypto_pay.get_total_balance_usd()
         await bot.send_message(chat_id, format_balance(balance_data) + f"\n\n<b>Всего: {total:.2f}$</b>")
-        await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
 
     @staticmethod
     async def admin_game_settings_handler(bot, chat_id: int, user_data: dict[str, Any], command, message_id: int):
@@ -712,11 +709,10 @@ class HandlersManager:
                                reply_markup=KeyboardManager.get_bot_config(language_code))
 
     @staticmethod
-    async def update_max_bet(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
+    async def update_max_bet(bot, chat_id: int, user_data: dict[str, Any], callback_query: CallbackQuery):
         max_bet = await bot.database_interface.set_max_bet(await bot.crypto_pay.get_total_balance_usd())
         custom_data = {"max_bet": max_bet}
-        await bot.send_message(chat_id, await bot.get_text(chat_id, "MAX_BET_CONFIG", user_data, custom_data))
-        await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
+        await callback_query.answer(await bot.get_text(chat_id, "MAX_BET_CONFIG", user_data, custom_data), True)
 
     @staticmethod
     async def channel_message_menu(bot, chat_id: int, user_data: dict[str, Any], command: str, message_id: int):
@@ -732,9 +728,9 @@ class HandlersManager:
                                reply_markup=KeyboardManager.get_news_keyboard(user_data.get("language", "en")))
 
     @staticmethod
-    async def create_leaderboard(bot, chat_id: int, user_data: dict[str, Any]):
+    async def create_leaderboard(bot, chat_id: int, user_data: dict[str, Any], callback_query: CallbackQuery):
         await bot.database_interface.create_leaderboard()
-        await bot.send_message(chat_id, await bot.get_text(chat_id, "LEADERBOARD_CREATED", user_data))
+        await callback_query.answer(await bot.get_text(chat_id, "LEADERBOARD_CREATED", user_data))
 
     @staticmethod
     async def send_startup_channel_message(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
@@ -856,7 +852,7 @@ Every bet is calculated fairly and honestly.
                         )
                     await bot.send_message(chat_id, await bot.get_text(chat_id, "NEWS_CHANNEL_SEND_SUCCESS",
                                                                        user_data))
-                    bot.logger.info(f"✅ Сообщение отправлено в канал {news_chat_id}")
+                    await bot.database_interface.log_info(f"✅ Сообщение отправлено в канал {news_chat_id}")
                 else:
                     await bot.send_message(chat_id, await bot.get_text(chat_id, "NEWS_CHANNEL_NOT_CONNECTED"))
             else:
@@ -864,7 +860,7 @@ Every bet is calculated fairly and honestly.
             await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
         except Exception as e:
             await bot.send_message(chat_id, await bot.get_text(chat_id, "NEWS_CHANNEL_SEND_ERROR", user_data))
-            bot.logger.error(f"❌ Ошибка при отправке сообщения: {str(e)}")
+            await bot.database_interface.log_error(f"❌ Ошибка при отправке сообщения: {str(e)}")
 
     @staticmethod
     async def admin_user(bot, chat_id: int, command: str, user_data: dict[str, Any], message_id: int):

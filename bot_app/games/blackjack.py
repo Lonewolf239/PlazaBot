@@ -87,8 +87,9 @@ Stand: Stop and pass turn to dealer
 
     @staticmethod
     def _init_deck() -> deque:
-        """Инициализировать стандартную колоду (52 карты, 1 масть для упрощения)"""
-        cards = [card for _ in range(4) for card in range(1, 14)]
+        """Инициализировать колоду (52 карты с мастями)"""
+        suits = ['spades', 'hearts', 'diamonds', 'clubs']
+        cards = [(card_value, suit) for _ in range(1) for card_value in range(1, 14) for suit in suits]
         deck_list = list(cards)
         for _ in range(len(deck_list)):
             idx1 = SystemRandom().randint(0, len(deck_list) - 1)
@@ -118,23 +119,32 @@ Stand: Stop and pass turn to dealer
         return player_hand, dealer_hand
 
     @staticmethod
-    def _get_card_value(card: int) -> int:
-        """Получить значение карты (1-13: Туз, 2-10, Валет, Дама, Король)"""
-        if card == 1:
+    def _get_card_value(card: tuple[int, str] | int) -> int:
+        """Получить значение карты."""
+        if isinstance(card, tuple):
+            card_num = card[0]
+        else:
+            card_num = card
+        if card_num == 1:
             return 11
-        elif card >= 11:
+        elif card_num >= 11:
             return 10
         else:
-            return card
+            return card_num
 
-    def _calculate_hand_value(self, hand: list[int]) -> tuple[int, int]:
-        """Рассчитать значение руки. Возвращает (мягкое значение, жёсткое значение)"""
+    def _calculate_hand_value(self, hand: list) -> tuple[int, int]:
+        """Рассчитать значение руки."""
         value = 0
         aces = 0
         for card in hand:
-            card_value = self._get_card_value(card)
-            if card == 1:
-                aces += 1
+            if isinstance(card, tuple):
+                card_value = self._get_card_value(card[0])
+                if card[0] == 1:
+                    aces += 1
+            else:
+                card_value = self._get_card_value(card)
+                if card == 1:
+                    aces += 1
             value += card_value
         soft_value = value
         while value > 21 and aces > 0:
@@ -150,22 +160,29 @@ Stand: Stop and pass turn to dealer
         return value == 21
 
     @staticmethod
-    def _get_card_suit_filename(card: int) -> str:
+    def _get_card_suit_filename(card: tuple[int, str] | int) -> str:
+        """Получить имя файла карты с учётом масти"""
         card_names = {
             1: "ace", 2: "2", 3: "3", 4: "4", 5: "5",
             6: "6", 7: "7", 8: "8", 9: "9", 10: "10",
             11: "jack", 12: "queen", 13: "king", 14: "hide"
         }
-        return f"{card_names.get(card, 'card')}_spades.png"
+        if isinstance(card, tuple):
+            card_num = card[0]
+            suit = card[1]
+        else:
+            if card == 14:
+                return "hide.png"
+            card_num = card
+            suit = 'spades'
+        card_name = card_names.get(card_num, 'card')
+        return f"{card_name}_{suit}.png"
 
     def _get_field_display(self, player_hand: list[int], dealer_hand: list[int],
-                           show_dealer_hole: bool = True, title: str = "Blackjack", language: str = "en") -> BytesIO:
-        """
-        Генерирует красивое двуязычное изображение стола блэкджека с увеличенными картами.
-        Карты увеличены с сохранением правильного смещения.
-        """
+                           show_dealer_hole: bool = True, title: str = "Blackjack", language: str = "en",
+                           game_over: bool = False) -> BytesIO:
         fonts = ResourceLoader.load_fonts()
-        CARD_SCALE = 1.05
+        CARD_SCALE = 1.15
         STYLE = {
             'bg_color': '#0a0e27',
             'table_bg': '#051a0a',
@@ -178,8 +195,8 @@ Stand: Stop and pass turn to dealer
             'text_secondary': '#94a3b8',
             'card_width': int(80 * CARD_SCALE),
             'card_height': int(109 * CARD_SCALE),
-            'padding': 25,
-            'spacing': int(15 * CARD_SCALE),
+            'padding': 15,
+            'spacing': int(12 * CARD_SCALE),
             'border_width': 2,
             'font_title': fonts.get('large'),
             'font_label': fonts.get('medium'),
@@ -187,27 +204,29 @@ Stand: Stop and pass turn to dealer
             'font_small': fonts.get('small'),
             'accent_color': '#10b981'
         }
-        img_width = 1200
-        img_height = 900
-        img = Image.new('RGB', (img_width, img_height), color=STYLE['bg_color'])
-        draw = ImageDraw.Draw(img)
-        draw.text((img_width // 2, 25), title, fill=STYLE['text_value'],
-                  font=STYLE['font_title'], anchor='mm')
-        draw.line([(STYLE['padding'], 50), (img_width - STYLE['padding'], 50)],
-                  fill=STYLE['text_value'], width=3)
-        dealer_section_y = 90
-        dealer_label = "ДИЛЕР" if language == "ru" else "DEALER"
-        draw.rectangle(
-            [(STYLE['padding'], dealer_section_y - 5),
-             (img_width - STYLE['padding'], dealer_section_y + STYLE['card_height'] + 80)],
-            outline=STYLE['accent_color'], width=2)
-        draw.text((STYLE['padding'] + 15, dealer_section_y + 20), dealer_label,
-                  fill=STYLE['text_value'], font=STYLE['font_label'], anchor='lm')
-        _, dealer_value = self._calculate_hand_value(dealer_hand)
         max_cards = max(len(dealer_hand), len(player_hand))
         cards_total_width = max_cards * STYLE['card_width'] + (max_cards - 1) * STYLE['spacing']
+        img_width = max(cards_total_width + STYLE['padding'] * 2 + 100, 900)
+        section_height = STYLE['card_height'] + 88
+        img_height = 50 + section_height + 25 + section_height + 50
+        img = Image.new('RGB', (img_width, img_height), color=STYLE['bg_color'])
+        draw = ImageDraw.Draw(img)
+        draw.text((img_width // 2, 20), title, fill=STYLE['text_value'],
+                  font=STYLE['font_title'], anchor='mm')
+        draw.line([(STYLE['padding'], 40), (img_width - STYLE['padding'], 40)],
+                  fill=STYLE['text_value'], width=2)
+        dealer_section_y = 55
+        dealer_label = "ДИЛЕР" if language == "ru" else "DEALER"
+        dealer_section_height = STYLE['card_height'] + 88
+        draw.rectangle(
+            [(STYLE['padding'], dealer_section_y),
+             (img_width - STYLE['padding'], dealer_section_y + dealer_section_height)],
+            outline=STYLE['accent_color'], width=2)
+        draw.text((STYLE['padding'] + 10, dealer_section_y + 18), dealer_label,
+                  fill=STYLE['text_value'], font=STYLE['font_label'], anchor='lm')
+        _, dealer_value = self._calculate_hand_value(dealer_hand)
         cards_x_start = (img_width - cards_total_width) // 2
-        dealer_cards_y = dealer_section_y + 60
+        dealer_cards_y = dealer_section_y + 71
         for idx, card in enumerate(dealer_hand):
             card_x = cards_x_start + idx * (STYLE['card_width'] + STYLE['spacing'])
             if idx > 0 and show_dealer_hole:
@@ -226,27 +245,28 @@ Stand: Stop and pass turn to dealer
                 dealer_color = STYLE['text_success']
             else:
                 dealer_color = STYLE['text_value']
-        status_x = img_width - STYLE['padding'] - 20
-        draw.text((status_x, dealer_section_y + 20),
-                  f"Σ: {dealer_value_display}",
+        info_x = img_width - STYLE['padding'] - 10
+        info_y = dealer_section_y + 18
+        draw.text((info_x, info_y), f"Σ: {dealer_value_display}",
                   fill=dealer_color, font=STYLE['font_value'], anchor='rm')
         if dealer_status:
-            draw.text((status_x, dealer_section_y + 55), dealer_status,
+            draw.text((info_x, info_y + 30), dealer_status,
                       fill=dealer_color, font=STYLE['font_label'], anchor='rm')
-        separator_y = dealer_cards_y + STYLE['card_height'] + 50
+        separator_y = dealer_section_y + dealer_section_height + 10
         draw.line([(STYLE['padding'], separator_y), (img_width - STYLE['padding'], separator_y)],
                   fill=STYLE['card_border'], width=2)
-        draw.text((img_width // 2, separator_y), "VS", fill=STYLE['text_secondary'],
+        draw.text((img_width // 2, separator_y + 2), "VS", fill=STYLE['text_secondary'],
                   font=STYLE['font_small'], anchor='mm')
-        player_section_y = separator_y + 50
+        player_section_y = separator_y + 12
         player_label = "ВАША РУКА" if language == "ru" else "YOUR HAND"
-        draw.rectangle([(STYLE['padding'], player_section_y - 5),
-                        (img_width - STYLE['padding'], player_section_y + STYLE['card_height'] + 80)],
+        player_section_height = STYLE['card_height'] + 88
+        draw.rectangle([(STYLE['padding'], player_section_y),
+                        (img_width - STYLE['padding'], player_section_y + player_section_height)],
                        outline=STYLE['accent_color'], width=2)
-        draw.text((STYLE['padding'] + 15, player_section_y + 20), player_label,
+        draw.text((STYLE['padding'] + 10, player_section_y + 18), player_label,
                   fill=STYLE['text_value'], font=STYLE['font_label'], anchor='lm')
         _, player_value = self._calculate_hand_value(player_hand)
-        player_cards_y = player_section_y + 60
+        player_cards_y = player_section_y + 71
         for idx, card in enumerate(player_hand):
             card_x = cards_x_start + idx * (STYLE['card_width'] + STYLE['spacing'])
             self._draw_card(img, card_x, player_cards_y, STYLE, card)
@@ -258,27 +278,33 @@ Stand: Stop and pass turn to dealer
         elif player_value == 21:
             player_status = "BLACKJACK"
             player_color = STYLE['text_success']
-        draw.text((status_x, player_section_y + 20),
-                  f"Σ: {player_value}", fill=player_color, font=STYLE['font_value'], anchor='rm')
+        info_y_player = player_section_y + 18
+        draw.text((info_x, info_y_player), f"Σ: {player_value}",
+                  fill=player_color, font=STYLE['font_value'], anchor='rm')
         if player_status:
-            draw.text((status_x, player_section_y + 55),
-                      player_status, fill=player_color, font=STYLE['font_label'], anchor='rm')
-        info_y = img_height - 30
-        hit_text = "HIT" if language == "en" else "ЕЩЕ"
-        stand_text = "STAND" if language == "en" else "СТОП"
-        tips_text = f"← {hit_text}  |  {stand_text} →"
-        draw.text((img_width // 2, info_y), tips_text,
-                  fill=STYLE['text_secondary'], font=STYLE['font_small'], anchor='mm')
+            draw.text((info_x, info_y_player + 30), player_status,
+                      fill=player_color, font=STYLE['font_label'], anchor='rm')
+        if not game_over:
+            info_y = img_height - 12
+            hit_text = "HIT" if language == "en" else "ЕЩЕ"
+            stand_text = "STAND" if language == "en" else "СТОП"
+            tips_text = f"← {hit_text}  |  {stand_text} →"
+            draw.text((img_width // 2, info_y), tips_text,
+                      fill=STYLE['text_secondary'], font=STYLE['font_small'], anchor='mm')
         img_byte_arr = BytesIO()
         img.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
         return img_byte_arr
 
-    def _draw_card(self, img, x: int, y: int, style: dict, card_value: int = None):
+    def _draw_card(self, img, x: int, y: int, style: dict, card_value: tuple[int, str] | int = None):
+        """Рисует карту на изображении"""
         width = style["card_width"]
         height = style["card_height"]
-        card_img = ResourceLoader.load_image_no_square("blackjack", self._get_card_suit_filename(card_value),
-                                                       (width, height))
+        if isinstance(card_value, int) and card_value == 14:
+            filename = self._get_card_suit_filename(14)
+        else:
+            filename = self._get_card_suit_filename(card_value)
+        card_img = ResourceLoader.load_image_no_square("blackjack", filename, (width, height))
         ResourceLoader.paste_image_centered_no_square(img, card_img, x, y, width, height)
 
     async def play(self, bot, user_id: int, message_id: int, bet: float,
@@ -517,7 +543,8 @@ Stand: Stop and pass turn to dealer
             dealer_hand,
             show_dealer_hole=False,
             title=game_name,
-            language=language
+            language=language,
+            game_over=True
         )
         result_map_ru = {
             'win': '✅ ВЫИГРЫШ',

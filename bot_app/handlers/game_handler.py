@@ -19,19 +19,19 @@ class GameManager:
         }
         self.interactive_game_sessions: Dict[int, Dict[int, Dict[str, Any]]] = {}
 
-    def register_game(self, game_id: int, game_class: Type[BaseGame]) -> None:
+    async def register_game(self, game_id: int, game_class: Type[BaseGame]) -> None:
         if game_id in self.games:
-            self.logger.warning(f"Game {game_id} is already registered")
+            await self.db_interface.log_warning(f"Game {game_id} is already registered")
         self.games[game_id] = game_class
-        self.logger.info(f"Registered game {game_id}")
+        await self.db_interface.log_info(f"Registered game {game_id}")
 
-    def register_games(self, games: Dict[int, Type[BaseGame]]) -> None:
+    async def register_games(self, games: Dict[int, Type[BaseGame]]) -> None:
         for game_id, game_class in games.items():
-            self.register_game(game_id, game_class)
+            await self.register_game(game_id, game_class)
 
     async def get_game(self, game_id: int) -> Optional[BaseGame]:
         if game_id not in self.games:
-            self.logger.error(f"Game {game_id} not registered")
+            await self.db_interface.log_error(f"Game {game_id} not registered")
             return None
 
         game_class = self.games[game_id]
@@ -64,7 +64,7 @@ class GameManager:
                     if hasattr(result, '__await__'):
                         await result
             except Exception as e:
-                self.logger.error(f"Ошибка при вызове {callback_type}: {e}")
+                await self.db_interface.log_error(f"Ошибка при вызове {callback_type}: {e}")
 
     async def start_game(self, bot, user_id: int, message_id: int, game_id: int, bet: float,
                          bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> Optional[GameResult]:
@@ -81,7 +81,7 @@ class GameManager:
         :return: GameResult или None в случае ошибки
         """
         if user_id in self.active_sessions:
-            self.logger.warning(f"Пользователь {user_id} уже играет")
+            await self.db_interface.log_warning(f"Пользователь {user_id} уже играет")
             return None
         game = await self.get_game(game_id)
         if not game:
@@ -98,20 +98,20 @@ class GameManager:
             if not isinstance(game, InteractiveGameBase):
                 result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
                 await self._call_callbacks('on_game_end', result, session)
-                self.logger.info(f"Пользователь {user_id} завершил игру {game_id}")
+                await self.db_interface.log_info(f"Пользователь {user_id} завершил игру {game_id}")
                 self.active_sessions.pop(user_id, None)
                 return result
             else:
                 if hasattr(game, 'set_game_id'):
                     game.set_game_id(game_id)
-                self.logger.info(f"Интерактивная игра {game_id} начата для {user_id}")
+                await self.db_interface.log_info(f"Интерактивная игра {game_id} начата для {user_id}")
                 result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
                 if result.status == GameStatus.FINISHED:
                     from . import InteractiveGameHandlers
                     await InteractiveGameHandlers.finish_game(bot, user_id, message_id, game, result.session)
                 return result
         except Exception as e:
-            self.logger.error(f"Ошибка при запуске игры: {e}", exc_info=True)
+            await self.db_interface.log_error(f"Ошибка при запуске игры: {e}", exc_info=True)
             await self._call_callbacks('on_game_error', e, session)
             self.active_sessions.pop(user_id, None)
             return None

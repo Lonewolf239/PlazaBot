@@ -182,19 +182,19 @@ class BotInterface:
         self.referral_manager: Optional[ReferralManager] = None
         self.logger = logger
         self.game_manager = GameManager(db_interface, logger)
-        self.game_manager.register_games(self.CasinoGames)
         self.game_manager.on_game_start(self.on_game_started)
         self.game_manager.on_game_end(self.on_game_finished)
         self.game_manager.on_game_error(self.on_game_error)
         self.bet_data_collector = BetDataCollector()
 
-    def initialize(self, crypto_pay: CryptoPay):
+    async def initialize(self, crypto_pay: CryptoPay):
         self.crypto_pay = crypto_pay
         self.referral_manager = ReferralManager(
             self.database_interface,
             self.token,
             self.logger
         )
+        await self.game_manager.register_games(self.CasinoGames)
 
     async def on_game_started(self, session):
         await HandlersManager.on_game_started(self, session)
@@ -203,7 +203,7 @@ class BotInterface:
         await HandlersManager.on_game_finished(self, result, session)
 
     async def on_game_error(self, error, session):
-        self.logger.error(str(error), str(session))
+        await self.database_interface.log_error(str(error) + str(session))
 
     def get_bot(self):
         return self.bot
@@ -351,8 +351,8 @@ class BotInterface:
                         VALUES (?, ?, ?)""",
                         (referrer_id, chat_id, current_bot_id)
                     )
-                    self.logger.info(f"✅ Создана реферальная связь: {referrer_id} -> "
-                                     f"{chat_id} (бот: {current_bot_id})")
+                    await self.database_interface.log_info(f"✅ Создана реферальная связь: {referrer_id} -> "
+                                                           f"{chat_id} (бот: {current_bot_id})")
         await self.registration_menu(message)
         user_data = await self.database_interface.get_user(chat_id)
         block_input = await self.database_interface.get_block_input(chat_id)
@@ -604,14 +604,11 @@ class BotInterface:
             await HandlersManager.admin_show_table(self, chat_id, table, user_data,
                                                    callback_query.message.message_id)
         elif command == "admin-issue-balance":
-            await HandlersManager.admin_issue_balance(self, chat_id, user_data,
-                                                      callback_query.message.message_id)
+            await HandlersManager.admin_issue_balance(self, chat_id, user_data, callback_query)
         elif command == "admin-reset-balance":
-            await HandlersManager.admin_reset_balance(self, chat_id, user_data,
-                                                      callback_query.message.message_id)
+            await HandlersManager.admin_reset_balance(self, chat_id, user_data, callback_query)
         elif command == "admin-get-balance":
-            await HandlersManager.admin_get_balance(self, chat_id, user_data,
-                                                    callback_query.message.message_id)
+            await HandlersManager.admin_get_balance(self, chat_id)
         elif command.startswith("admin-game-settings"):
             await HandlersManager.admin_game_settings_handler(self, chat_id, user_data, command,
                                                               callback_query.message.message_id)
@@ -622,8 +619,7 @@ class BotInterface:
             await HandlersManager.admin_bot_config(self, chat_id, user_data, command,
                                                    callback_query.message.message_id)
         elif command == "update-max-bet":
-            await HandlersManager.update_max_bet(self, chat_id, user_data,
-                                                 callback_query.message.message_id)
+            await HandlersManager.update_max_bet(self, chat_id, user_data, callback_query)
         elif command.startswith("channel-message"):
             await HandlersManager.channel_message_menu(self, chat_id, user_data, command,
                                                        callback_query.message.message_id)
@@ -631,7 +627,7 @@ class BotInterface:
             await HandlersManager.send_custom_message(self, chat_id, user_data,
                                                       callback_query.message)
         elif command == "create-leaderboard":
-            await HandlersManager.create_leaderboard(self, chat_id, user_data)
+            await HandlersManager.create_leaderboard(self, chat_id, user_data, callback_query)
         elif command.startswith("giveaway"):
             await HandlersManager.giveaway(self, chat_id, user_data, command,
                                            callback_query.message.message_id)
@@ -731,4 +727,4 @@ class BotInterface:
             else:
                 await self.send_message(chat_id, text, reply_markup=reply_markup)
         except Exception as e:
-            self.logger.error(f"Ошибка при редактировании сообщения: {e}")
+            await self.database_interface.log_error(f"Ошибка при редактировании сообщения: {e}")

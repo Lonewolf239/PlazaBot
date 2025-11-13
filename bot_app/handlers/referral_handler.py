@@ -59,11 +59,11 @@ class ReferralHandler:
                     bot.admin_ids,
                     bot.logger
                 )
-                clone_bot_interface.initialize(bot.crypto_pay)
+                await clone_bot_interface.initialize(bot.crypto_pay)
                 clone_bot_interface.referral_manager = bot.referral_manager
                 register_bot_handlers(clone_dp, clone_bot_interface)
                 await bot.referral_manager.start_clone_bot(bot_id, clone_dp)
-                bot.logger.info(f"Клон-бот {bot_id} запущен немедленно")
+                await bot.database_interface.log_info(f"Клон-бот {bot_id} запущен немедленно")
                 await bot.main_menu(chat_id)
                 return True
             finally:
@@ -71,10 +71,10 @@ class ReferralHandler:
                     try:
                         await test_bot.session.close()
                     except Exception as e:
-                        bot.logger.error(f"Ошибка при закрытии сессии test_bot: {e}")
+                        await bot.database_interface.log_error(f"Ошибка при закрытии сессии test_bot: {e}")
         except Exception as e:
             user_data = await bot.database_interface.get_user(chat_id)
-            bot.logger.error(f"Ошибка при обработке токена: {e}")
+            await bot.database_interface.log_error(f"Ошибка при обработке токена: {e}")
             text = await bot.get_text(chat_id, "REFERRAL_BOT_CREATION_ERROR", user_data)
             await bot.send_message(chat_id, text)
             return False
@@ -83,7 +83,7 @@ class ReferralHandler:
                 try:
                     await test_bot.session.close()
                 except Exception as e:
-                    bot.logger.error(f"Ошибка при закрытии test_bot в finally: {e}")
+                    await bot.database_interface.log_error(f"Ошибка при закрытии test_bot в finally: {e}")
 
     @staticmethod
     async def my_referrals(bot, chat_id: int, user_data: dict[str, Any], message_id: int):

@@ -100,7 +100,7 @@ async def lifespan(app: FastAPI):
     await crypto_pay.initialize()
     register_crypto_handlers(crypto_pay)
     await start_webhook_server()
-    bot.initialize(crypto_pay)
+    await bot.initialize(crypto_pay)
     await bot.referral_manager.load_active_bots()
     dp = Dispatcher()
     register_bot_handlers(dp, bot)
@@ -112,7 +112,7 @@ async def lifespan(app: FastAPI):
             logger.warning(f"Не найден токен для клон-бота {bot_id}")
             continue
         clone_bot_interface = BotInterface(db, clone_token, config.ADMIN_IDS, logger)
-        clone_bot_interface.initialize(crypto_pay)
+        await clone_bot_interface.initialize(crypto_pay)
         await ReferralManager.copy_bot_commands(logger, bot.bot, clone_bot_interface.bot)
         clone_dp = Dispatcher()
         register_bot_handlers(clone_dp, clone_bot_interface)

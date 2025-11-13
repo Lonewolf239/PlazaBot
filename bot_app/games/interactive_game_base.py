@@ -67,7 +67,7 @@ class InteractiveGameBase(BaseGame, ABC):
                 parse_mode="HTML"
             )
         except Exception as e:
-            bot.logger.error(f"Ошибка при отправке первого сообщения: {e}")
+            await bot.database_interface.log_error(f"Ошибка при отправке первого сообщения: {e}")
 
     def get_session(self, bot, user_id: int) -> Optional[Dict[str, Any]]:
         """Получить сессию игрока из game_manager"""
