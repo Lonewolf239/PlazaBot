@@ -451,7 +451,79 @@ class HandlersManager:
     async def user(bot, chat_id: int, command: str):
         username = command[len("user:"):]
         user = await bot.database_interface.get_user_by_username(username)
-        await bot.send_userinfo(chat_id, user, profile=True)
+        await HandlersManager.send_userinfo(bot, chat_id, user, profile=True)
+
+    @staticmethod
+    async def leaderboard(bot, chat_id: int, user_data: dict[str, Any]):
+        """Отправляет таблицу лидеров с топ-10 игроков по выигрышам"""
+        top_users = await bot.database_interface.get_top_users(limit=10)
+        leaderboard_text = ""
+        medals = ["🥇", "🥈", "🥉"]
+        for position, user in enumerate(top_users, start=1):
+            medal = medals[position - 1] if position <= 3 else f"{position}."
+            username = (f"<a href='https://t.me/{(await bot.bot.get_me()).username}?"
+                        f"start=user_{user.get("hashed_username")}'>{user.get("username")}</a>")
+            custom_data = {"position": medal, "winnings": f"{float(user.get("winnings", 0.0)):.2f}",
+                           "registered_at": user.get("registered_at", "None")}
+            user_text = await bot.get_text(chat_id, "LEADERBOARD_USERINFO", user_data, custom_data)
+            user_text = user_text.replace("username", username)
+            user_text += f"\n{await HandlersManager.format_games_statistics(bot, chat_id, user, False)}"
+            leaderboard_text += f"{user_text}\n\n"
+        text = await bot.get_text(chat_id, "LEADERBOARD", user_data, {"leaderboard_text": leaderboard_text})
+        await bot.send_message(chat_id, text)
+
+    @staticmethod
+    async def format_games_statistics(bot, chat_id: int, user_data: dict[str, Any], for_admin: bool) -> str:
+        """
+        Возвращает форматированный текст со статистикой игр пользователя:
+        - Любимая игра
+        - Всего игр и количество сыгранных раз по каждой
+        """
+        games_dict = await bot.database_interface.get_games_played(user_data["user_id"])
+        if not games_dict:
+            return await bot.get_text(chat_id, "USERINFO_NO_GAMES", custom_data=user_data)
+        language = (await bot.database_interface.get_user(chat_id)).get("language", "en")
+        favorite_game_id = max(games_dict, key=games_dict.get)
+        favorite_game = await bot.game_manager.get_game(favorite_game_id)
+        favorite_game_name = f"{favorite_game.icon} {favorite_game.name(language)}"
+        favorite_play_times = games_dict[favorite_game_id]
+        games_list = []
+        for game_id, count in games_dict.items():
+            game = await bot.game_manager.get_game(game_id)
+            game_name = f"{game.icon} {game.name(language)}"
+            game_text = await bot.get_text(chat_id, "USERINFO_GAMES_LIST", custom_data=user_data)
+            game_text = game_text.replace("game_name", game_name).replace("count", str(count))
+            games_list.append(game_text)
+        response_text = await bot.get_text(chat_id, "USERINFO_FOFAVORITE_GAME", custom_data=user_data)
+        response_text = (response_text.replace("favorite_game_name", favorite_game_name).
+                         replace("favorite_play_times", str(favorite_play_times)))
+        if for_admin:
+            response_text += (f"\n{await bot.get_text(chat_id, "USERINFO_GAMES_LIST_TITLE", custom_data=user_data)}:\n"
+                              + "\n".join(games_list))
+
+        return response_text
+
+    @staticmethod
+    async def send_userinfo(bot, chat_id: int, user_data: dict[str, Any] = None,
+                            for_admin: bool = False, profile: bool = False):
+        from ..keyboards import KeyboardManager
+        if user_data is None:
+            user_data = await bot.database_interface.get_user(chat_id)
+        tag = "USERINFO"
+        if profile:
+            tag = "PROFILE"
+        elif for_admin:
+            tag = "USERINFO_ADMIN"
+        if user_data.get("user_id", chat_id) != chat_id:
+            user_data["winnings"] = float(user_data["winnings"]) * 1.15
+        user_data["winnings"] = f"{float(user_data["winnings"]):.2f}"
+        user_date_recipient = await bot.database_interface.get_user(chat_id)
+        userinfo = await bot.get_text(chat_id, tag, user_date_recipient, user_data)
+        userinfo = userinfo.replace("username",
+                                    f"<a href='https://t.me/{(await bot.bot.get_me()).username}?"
+                                    f"start=user_{user_data['hashed_username']}'>{user_data['username']}</a>")
+        userinfo += "\n" + await HandlersManager.format_games_statistics(bot, chat_id, user_data, for_admin)
+        await bot.send_message(chat_id, userinfo, reply_markup=KeyboardManager.get_delete_keyboard())
 
     # ════════════════ Админ-панель ═══════════════
     @staticmethod
@@ -660,6 +732,11 @@ class HandlersManager:
                                reply_markup=KeyboardManager.get_news_keyboard(user_data.get("language", "en")))
 
     @staticmethod
+    async def create_leaderboard(bot, chat_id: int, user_data: dict[str, Any]):
+        await bot.database_interface.create_leaderboard()
+        await bot.send_message(chat_id, await bot.get_text(chat_id, "LEADERBOARD_CREATED", user_data))
+
+    @staticmethod
     async def send_startup_channel_message(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
         from ..keyboards import KeyboardManager
         russian_message = """
@@ -788,7 +865,8 @@ Every bet is calculated fairly and honestly.
     @staticmethod
     async def admin_user(bot, chat_id: int, command: str, user_data: dict[str, Any], message_id: int):
         username = command[len("admin-user:"):]
-        await bot.send_userinfo(chat_id, await bot.database_interface.get_user_by_username(username), True)
+        await HandlersManager.send_userinfo(bot, chat_id,
+                                            await bot.database_interface.get_user_by_username(username), True)
         await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
 
     @staticmethod

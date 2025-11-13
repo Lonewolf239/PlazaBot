@@ -365,7 +365,7 @@ class BotInterface:
                 start_param = parts[1][5:] if parts[1].startswith("user_") else parts[1]
                 user_data = await self.database_interface.get_user_by_hashed_username(start_param)
                 if user_data:
-                    await self.send_userinfo(chat_id, user_data, chat_id in self.admin_ids)
+                    await HandlersManager.send_userinfo(self, chat_id, user_data, chat_id in self.admin_ids)
             elif start_param == "deb":
                 await HandlersManager.select_bet(self, chat_id, user_data)
                 return
@@ -562,6 +562,8 @@ class BotInterface:
             await HandlersManager.user(self, chat_id, f"user:{chat_id}")
         elif command.startswith("user"):
             await HandlersManager.user(self, chat_id, command)
+        elif command == "leaderboard":
+            await HandlersManager.leaderboard(self, chat_id, user_data)
 
         # ════════════════ Админ-панель ═══════════════
         elif command == "admin-panel":
@@ -610,6 +612,8 @@ class BotInterface:
         elif command.startswith("channel-message"):
             await HandlersManager.channel_message_menu(self, chat_id, user_data, command,
                                                        callback_query.message.message_id)
+        elif command == "create-leaderboard":
+            await HandlersManager.create_leaderboard(self, chat_id, user_data)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":
@@ -650,53 +654,6 @@ class BotInterface:
         lines = [f"[{r['timestamp']}] {r['type']} — {r['message']}" for r in page_rows]
         text = f"Логи [{page}/{last_page}]:\n\n" + "\n\n".join(lines)
         return text, add_next_page
-
-    async def format_games_statistics(self, chat_id: int, user_data: Dict[str, Any], for_admin: bool) -> str:
-        """
-        Возвращает форматированный текст со статистикой игр пользователя:
-        - Любимая игра
-        - Всего игр и количество сыгранных раз по каждой
-        """
-        games_dict = await self.database_interface.get_games_played(user_data["user_id"])
-        if not games_dict:
-            return await self.get_text(chat_id, "USERINFO_NO_GAMES", custom_data=user_data)
-        favorite_game_id = max(games_dict, key=games_dict.get)
-        favorite_game = await self.game_manager.get_game(favorite_game_id)
-        favorite_game_name = f"{favorite_game.icon} {favorite_game.name(user_data.get("language", "en"))}"
-        favorite_play_times = games_dict[favorite_game_id]
-        games_list = []
-        for game_id, count in games_dict.items():
-            game = await self.game_manager.get_game(game_id)
-            game_name = f"{game.icon} {game.name(user_data.get("language", "en"))}"
-            game_text = await self.get_text(chat_id, "USERINFO_GAMES_LIST", custom_data=user_data)
-            game_text = game_text.replace("game_name", game_name).replace("count", str(count))
-            games_list.append(game_text)
-        response_text = await self.get_text(chat_id, "USERINFO_FOFAVORITE_GAME", custom_data=user_data)
-        response_text = (response_text.replace("favorite_game_name", favorite_game_name).
-                         replace("favorite_play_times", str(favorite_play_times)))
-        if for_admin:
-            response_text += (f"\n{await self.get_text(chat_id, "USERINFO_GAMES_LIST_TITLE", custom_data=user_data)}:\n"
-                              + "\n".join(games_list))
-
-        return response_text
-
-    async def send_userinfo(self, chat_id: int, user_data: Dict[str, Any] = None,
-                            for_admin: bool = False, profile: bool = False):
-        if user_data is None:
-            user_data = await self.database_interface.get_user(chat_id)
-        tag = "USERINFO"
-        if profile:
-            tag = "PROFILE"
-        elif for_admin:
-            tag = "USERINFO_ADMIN"
-        if int(user_data["user_id"]) != chat_id:
-            user_data["winnings"] = float(user_data["winnings"]) * 1.15
-        userinfo = await self.get_text(chat_id, tag, user_data)
-        userinfo = userinfo.replace("username",
-                                    f"<a href='https://t.me/{(await self.bot.get_me()).username}?"
-                                    f"start=user_{user_data['hashed_username']}'>{user_data['username']}</a>")
-        userinfo += "\n" + await self.format_games_statistics(chat_id, user_data, for_admin)
-        await self.send_message(chat_id, userinfo, reply_markup=KeyboardManager.get_delete_keyboard())
 
     async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML", image: BytesIO = None,
                            reply_markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardRemove]] = None,

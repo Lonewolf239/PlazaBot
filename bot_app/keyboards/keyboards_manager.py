@@ -8,7 +8,6 @@ class Messages:
     TEXT = {
         "MAIN_MENU": {
             "games": {"ru": "Начать игру", "en": "Start Game"},
-            "profile": {"ru": "Профиль", "en": "Profile"},
             "settings": {"ru": "Настройки", "en": "Settings"},
             "balance": {"ru": "Баланс", "en": "Balance"},
             "rules": {"ru": "Правила игры", "en": "Rules"},
@@ -16,6 +15,10 @@ class Messages:
             "news": {"ru": "Новостной канал", "en": "News channel"},
             "referral": {"ru": "Рефералка", "en": "Referral"},
             "admin": {"ru": "Админ-панель", "en": "Admin Panel"}
+        },
+        "PROFILE": {
+            "profile": {"ru": "Профиль", "en": "Profile"},
+            "leaderboard": {"ru": "Таблица лидеров", "en": "Leaderboard"}
         },
         "SETTINGS": {
             "game": {"ru": "Сменить игру", "en": "Change Game"},
@@ -46,7 +49,8 @@ class Messages:
             "max_bet": {"ru": "Макс ставка", "en": "Max Bet"},
             "message_channel": {"ru": "Отправить сообщение", "en": "Send a message"},
             "custom_message": {"ru": "Кастомное сообщение", "en": "Custom message"},
-            "startup_channel": {"ru": "Отправить стартовое", "en": "Send start"}
+            "startup_channel": {"ru": "Отправить стартовое", "en": "Send start"},
+            "create_leaderboard": {"ru": "Создать таблицу лидеров", "en": "Create a leaderboard"}
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
@@ -77,6 +81,10 @@ class Messages:
             "referral": "🔗",
             "admin": "👨‍💻"
         },
+        "PROFILE": {
+            "profile": "👤",
+            "leaderboard": "🏆",
+        },
         "SETTINGS": {
             "game": "🎮",
             "language": "🌐",
@@ -106,7 +114,8 @@ class Messages:
             "max_bet": "🔧",
             "message_channel": "💬",
             "custom_message": "📝",
-            "startup_channel": "🚀"
+            "startup_channel": "🚀",
+            "create_leaderboard": "🏆"
         },
         "REFERRAL": {
             "create": "➕",
@@ -157,7 +166,7 @@ class KeyboardManager:
             ],
             [
                 InlineKeyboardButton(
-                    text=Messages.get_text("MAIN_MENU", "profile", language_code),
+                    text=Messages.get_text("PROFILE", "profile", language_code),
                     callback_data="profile"
                 ),
                 InlineKeyboardButton(
@@ -199,6 +208,12 @@ class KeyboardManager:
                     url=f"https://t.me/{news_channel_username}"
                 )
             )
+        keyboard.append([
+            InlineKeyboardButton(
+                text=Messages.get_text("PROFILE", "leaderboard", language_code),
+                callback_data="leaderboard"
+            )
+        ])
         keyboard.append(help_keyboard_row)
         if admin:
             keyboard.append([
@@ -424,6 +439,8 @@ class KeyboardManager:
                   callback_data="update-max-bet")
         kb.button(text=Messages.get_text("ADMIN", "message_channel", language_code),
                   callback_data="channel-message")
+        kb.button(text=Messages.get_text("ADMIN", "create_leaderboard", language_code),
+                  callback_data="create-leaderboard")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(2)
@@ -526,16 +543,26 @@ class KeyboardManager:
     def get_users_keyboard(language_code: str, lines: list, page: int = 1,
                            add_next_page: bool = True) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
-        for line in lines:
-            kb.row(InlineKeyboardButton(text=line, callback_data=f"admin-user:{line}"))
+        for i in range(0, len(lines), 2):
+            if i + 1 < len(lines):
+                kb.row(
+                    InlineKeyboardButton(text=lines[i], callback_data=f"admin-user:{lines[i]}"),
+                    InlineKeyboardButton(text=lines[i + 1], callback_data=f"admin-user:{lines[i + 1]}")
+                )
+            else:
+                kb.row(InlineKeyboardButton(text=lines[i], callback_data=f"admin-user:{lines[i]}"))
         nav_buttons = []
         if page > 1:
             nav_buttons.append(InlineKeyboardButton(text="◀️", callback_data=f"admin-list-players:{page - 1}"))
+        else:
+            nav_buttons.append(InlineKeyboardButton(text=" ", callback_data="noop"))
         nav_buttons.append(InlineKeyboardButton(
             text=Messages.get_text("OTHERS", "back", language_code),
             callback_data="admin-panel"))
         if add_next_page:
             nav_buttons.append(InlineKeyboardButton(text="▶️", callback_data=f"admin-list-players:{page + 1}"))
+        else:
+            nav_buttons.append(InlineKeyboardButton(text=" ", callback_data="noop"))
         kb.row(*nav_buttons)
         return kb.as_markup()
 

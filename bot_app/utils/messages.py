@@ -84,14 +84,12 @@ class Messages:
             "ru": (
                 "👤 Профиль пользователя\n\n"
                 "👤 Имя: username\n"
-                "💰 Баланс: {balance}$\n"
                 "🏆 Выигрыши: {winnings}$\n"
                 "📅 Регистрация: {registered_at}"
             ),
             "en": (
                 "👤 User Profile\n\n"
                 "👤 Username: username\n"
-                "💰 Balance: {balance}$\n"
                 "🏆 Winnings: {winnings}$\n"
                 "📅 Registration: {registered_at}"
             )
@@ -137,6 +135,28 @@ class Messages:
         "USERINFO_GAMES_LIST_TITLE": {
             "ru": "📈 Всего игр сыграно",
             "en": "📈 Total Games Played"
+        },
+        "LEADERBOARD_USERINFO": {
+            "ru": (
+                "{position} username\n"
+                "🏆 Выигрыши: {winnings}$\n"
+                "📅 Регистрация: {registered_at}"
+            ),
+            "en": (
+                "{position} Username: username\n"
+                "🏆 Winnings: {winnings}$\n"
+                "📅 Registration: {registered_at}"
+            )
+        },
+        "LEADERBOARD": {
+            "ru": (
+                "🏆 Таблица Лидеров\n\n"
+                "{leaderboard_text}"
+            ),
+            "en": (
+                "🏆 Leaderboard\n\n"
+                "{leaderboard_text}"
+            )
         }
     }
 
@@ -403,6 +423,10 @@ class Messages:
         "ADMIN_BALANCE_RESET": {
             "ru": "✅ Баланс пользователя успешно сброшен.",
             "en": "✅ User balance successfully reset."
+        },
+        "LEADERBOARD_CREATED": {
+            "ru": "✅ Таблица лидеров успешно создана.",
+            "en": "✅ Leaderboard successfully created."
         },
         "GAME_SETTINGS": {
             "ru": "⚙️ Выберите игру для настройки:",

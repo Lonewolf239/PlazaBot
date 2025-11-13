@@ -178,7 +178,7 @@ class DatabaseInterface:
                         block_input BOOLEAN DEFAULT 0,
                         language TEXT,
                         ref_code TEXT UNIQUE,
-                        registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        registered_at TEXT
                     )
                 """)
 
@@ -409,9 +409,10 @@ class DatabaseInterface:
             return False
 
         try:
-            await self.execute("INSERT INTO users (user_id, username, hashed_username, language, email) "
-                               "VALUES (?, ?, ?, ?, ?)",
-                               (user_id, username, Hacher.hash(username), language, "semga05@mail.ru"))
+            await self.execute("INSERT INTO users (user_id, username, hashed_username, language, email, registered_at) "
+                               "VALUES (?, ?, ?, ?, ?, ?)",
+                               (user_id, username, Hacher.hash(username), language, "NONE",
+                                datetime.now().strftime('%H:%M:%S %d.%m.%Y')))
 
             await self.log_info(f"Пользователь {user_id} ({username}) успешно зарегистрирован с балансом 0.0 $.")
             return True
@@ -426,6 +427,104 @@ class DatabaseInterface:
         :return: Словарь с данными пользователя или None, если пользователь не найден.
         """
         return await self.fetch_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
+
+    async def get_top_users(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Получает топ N пользователей по выигрышам"""
+        return await self.fetch_all("SELECT * FROM users ORDER BY CAST(winnings AS REAL) DESC LIMIT ?", (limit,))
+
+    async def create_leaderboard(self) -> bool:
+        """
+        Добавляет 10 реалистичных тестовых пользователей в таблицу users,
+        если они там еще не существуют.
+        :return: True, если пользователи успешно добавлены, False в случае ошибки.
+        """
+        leaderboard = [
+            {
+                "user_id": "14",
+                "username": "nightowl",
+                "balance": 1049.73,
+                "games_played": "1:68|2:48|3:66|4:64|5:50|6:74|7:10",
+                "registered_at": "11:03:20 08.11.2025",
+            },
+            {
+                "user_id": "13",
+                "username": "crypto_hunter",
+                "balance": 1020.73,
+                "games_played": "1:48|2:75|3:60|4:46|5:68|6:50|7:40",
+                "registered_at": "19:48:24 12.11.2025",
+            },
+            {
+                "user_id": "12",
+                "username": "lucky_cat",
+                "balance": 889.8,
+                "games_played": "1:32|2:28|3:33|4:40|5:27|6:32|7:19",
+                "registered_at": "22:13:47 08.11.2025",
+            },
+            {
+                "user_id": "18",
+                "username": "phoenix_rise",
+                "balance": 726.8,
+                "games_played": "1:67|2:58|3:72|4:66|5:52|6:54|7:10",
+                "registered_at": "16:43:11 08.11.2025",
+            },
+            {
+                "user_id": "17",
+                "username": "echo_master",
+                "balance": 549.82,
+                "games_played": "1:44|2:42|3:48|4:41|5:50|6:48|7:31",
+                "registered_at": "14:17:43 08.11.2025",
+            },
+            {
+                "user_id": "10",
+                "username": "alexdev",
+                "balance": 548.92,
+                "games_played": "1:44|2:33|3:45|4:32|5:28|6:41|7:15",
+                "registered_at": "09:04:41 08.11.2025",
+            },
+            {
+                "user_id": "16",
+                "username": "silent_player",
+                "balance": 544.3,
+                "games_played": "1:45|2:58|3:54|4:51|5:53|6:48|7:12",
+                "registered_at": "09:19:46 10.11.2025",
+            },
+            {
+                "user_id": "15",
+                "username": "storm_rider",
+                "balance": 494.53,
+                "games_played": "1:34|2:23|3:23|4:37|5:29|6:28|7:13",
+                "registered_at": "09:34:11 08.11.2025",
+            },
+            {
+                "user_id": "11",
+                "username": "gambler_pro",
+                "balance": 406.16,
+                "games_played": "1:29|2:23|3:22|4:27|5:19|6:18|7:17",
+                "registered_at": "08:20:09 07.11.2025",
+            },
+            {
+                "user_id": "19",
+                "username": "cyber_ninja",
+                "balance": 388.37,
+                "games_played": "1:69|2:59|3:64|4:53|5:54|6:45|7:10",
+                "registered_at": "12:29:40 04.11.2025",
+            },
+        ]
+        try:
+            for user in leaderboard:
+                if await self.user_exists(user["user_id"]):
+                    await self.log_warning(f"Тестовый пользователь {user['user_id']} "
+                                           f"({user['username']}) уже существует. Пропускаем.")
+                    continue
+                await self.create_user(user["user_id"], user["username"], "en")
+                await self.update_balance(user["user_id"], user["balance"], "win")
+                await self.update_user(user["user_id"], registered_at=user["registered_at"],
+                                       games_played=user["games_played"])
+            await self.log_info("10 тестовых пользователей успешно добавлены в базу данных.")
+            return True
+        except Exception as e:
+            await self.log_error(f"Ошибка при добавлении тестовых пользователей: {e}")
+            return False
 
     async def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
         return await self.fetch_one("SELECT * FROM users WHERE username = ?", (username,))
@@ -493,7 +592,9 @@ class DatabaseInterface:
                           selected_game: int = None,
                           input_type: int = None,
                           block_input: bool = None,
-                          language: str = None):
+                          language: str = None,
+                          registered_at: str = None,
+                          games_played: str = None):
         if not await self.user_exists(user_id):
             await self.log_error(f"Пользователь {user_id} не найден. Обновление не выполнено.")
             return False
@@ -534,6 +635,12 @@ class DatabaseInterface:
         if language is not None:
             fields.append("language = ?")
             params.append(language)
+        if registered_at is not None:
+            fields.append("registered_at = ?")
+            params.append(registered_at)
+        if games_played is not None:
+            fields.append("games_played = ?")
+            params.append(games_played)
 
         if not fields:
             await self.log_warning(f"Для пользователя {user_id} не передано полей для обновления.")
