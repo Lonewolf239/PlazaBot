@@ -28,6 +28,7 @@ class Messages:
         "BALANCE": {
             "deposit": {"ru": "Пополнить баланс", "en": "Deposit"},
             "withdraw": {"ru": "Вывести средства", "en": "Withdraw"},
+            "minimum_withdrawal": {"ru": "Минимум для вывода: 1.1$", "en": "Minimum withdrawal: 1.1$"},
             "pay": {"ru": "Оплатить", "en": "Pay"},
             "check": {"ru": "Проверить", "en": "Check"},
             "cancel_payment": {"ru": "Отменить платёж", "en": "Cancel Payment"}
@@ -95,6 +96,7 @@ class Messages:
         "BALANCE": {
             "deposit": "➕",
             "withdraw": "💸",
+            "minimum_withdrawal": "ℹ️",
             "pay": "💳",
             "check": "🔍",
             "cancel_payment": "❌"
@@ -275,6 +277,8 @@ class KeyboardManager:
                       callback_data=f"{operation_type}-select-currency:{currency["code"]}")
         kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
                   callback_data="back")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="balance")
         kb.adjust(size)
         return kb.as_markup()
 
@@ -358,29 +362,44 @@ class KeyboardManager:
                 text=display_text,
                 callback_data=f"do-deposit:{currency}:{amount}"
             )
-        kb.button(
-            text=Messages.get_text("OTHERS", "cancel", language_code),
-            callback_data="back"
-        )
-        return kb
+        kb.button(text=Messages.get_text("OTHERS", "cancel", language_code),
+                  callback_data="back")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="balance-deposit")
+        kb.adjust(2)
+        return kb.as_markup()
 
     @staticmethod
     def build_withdraw_amount(currency: str, language_code: str, balance: str) -> InlineKeyboardMarkup:
-        kb = InlineKeyboardBuilder()
         percentages = [25, 50, 75, 100]
-        for percentage in percentages:
-            withdraw_amount = (float(balance) * percentage) / 100
-            button_text = f"{percentage}% [{withdraw_amount:.2f}$]"
-            kb.button(
-                text=button_text,
-                callback_data=f"do-withdraw:{currency}:{withdraw_amount}"
-            )
-        kb.button(
-            text=Messages.get_text("OTHERS", "cancel", language_code),
-            callback_data="back"
+        min_withdrawal = 1.1
+        balance_float = float(balance)
+        keyboard = []
+        for i in range(0, len(percentages), 2):
+            pair = percentages[i:i + 2]
+            buttons = []
+            for percentage in pair:
+                withdraw_amount = (balance_float * percentage) / 100
+                if withdraw_amount >= min_withdrawal:
+                    buttons.append(InlineKeyboardButton(
+                        text=f"{percentage}% [{withdraw_amount:.2f}$]",
+                        callback_data=f"do-withdraw:{currency}:{withdraw_amount}"))
+            if buttons:
+                keyboard.append(buttons)
+        if len(keyboard) == 0:
+            keyboard.append([
+                InlineKeyboardButton(text=Messages.get_text("BALANCE", "minimum_withdrawal", language_code),
+                                     callback_data="noop")
+            ])
+        keyboard.append(
+            [
+                InlineKeyboardButton(text=Messages.get_text("OTHERS", "cancel", language_code),
+                                     callback_data="back"),
+                InlineKeyboardButton(text=Messages.get_text("OTHERS", "back", language_code),
+                                     callback_data="balance-withdraw")
+            ]
         )
-        kb.adjust(2, 2, 1)
-        return kb
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     @staticmethod
     def get_amount_keyboard(language_code: str, currency: str,
@@ -389,8 +408,7 @@ class KeyboardManager:
             kb = KeyboardManager.build_deposit_amount(currency, language_code)
         else:
             kb = KeyboardManager.build_withdraw_amount(currency, language_code, balance)
-        kb.adjust(2)
-        return True, kb.as_markup()
+        return True, kb
 
     @staticmethod
     def get_pay_keyboard(language_code: str, deposit: dict[str, Any], transaction_id: str) -> InlineKeyboardMarkup:

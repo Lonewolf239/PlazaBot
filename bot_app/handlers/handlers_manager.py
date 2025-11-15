@@ -83,13 +83,15 @@ class HandlersManager:
                                           selected_game, total_required, bet_data, HandlersManager.send_frame)
 
     @staticmethod
-    async def select_bet(bot, chat_id: int, user_data: dict[str, Any], message_id: int = None):
+    async def select_bet(bot, chat_id: int, user_data: dict[str, Any], callback_query: CallbackQuery = None):
         """Выбор ставки или начало сбора bet_data"""
         from ..keyboards import KeyboardManager
         if bot.game_manager.is_user_playing(chat_id):
-            await bot.edit_message(chat_id, await bot.get_text(chat_id, "USER_ALREADY_PLAYING", user_data),
-                                   message_id)
-            await bot.main_menu(chat_id)
+            if callback_query:
+                await callback_query.answer(await bot.get_text(chat_id, "USER_ALREADY_PLAYING", user_data), True)
+            else:
+                await bot.send_message(chat_id, await bot.get_text(chat_id, "USER_ALREADY_PLAYING", user_data))
+                await bot.main_menu(chat_id)
             return
         balance = 0.0
         try:
@@ -97,11 +99,16 @@ class HandlersManager:
         except (ValueError, TypeError):
             pass
         if balance <= 0:
-            await bot.edit_message(chat_id, await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data),
-                                   message_id)
-            await bot.main_menu(chat_id)
+            if callback_query:
+                await callback_query.answer(await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data), True)
+            else:
+                await bot.send_message(chat_id, await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_BET", user_data))
+                await bot.main_menu(chat_id)
             return
         game = await bot.game_manager.get_game(int(user_data.get("selected_game", "0")))
+        message_id = None
+        if callback_query:
+            message_id = callback_query.message.message_id
         if game.need_bet_data and game.bet_data_flow:
             bot.bet_data_collector.start_collection(chat_id, game.bet_data_flow)
             await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data, message_id)
@@ -341,8 +348,7 @@ class HandlersManager:
 
     @staticmethod
     async def get_currency(bot, chat_id: int, user_data: dict[str, Any],
-                           operation_type: str, available_currencies: list[str],
-                           message_id: int):
+                           operation_type: str, available_currencies: list[str], callback_query: CallbackQuery):
         from ..keyboards import KeyboardManager
         currency_list = []
         if operation_type == "withdraw":
@@ -350,20 +356,16 @@ class HandlersManager:
             try:
                 balance_float = float(balance_str) if balance_str else 0.0
                 if balance_float <= 0:
-                    await bot.edit_message(
-                        chat_id,
+                    await callback_query.answer(
                         await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_WITHDRAW", user_data),
-                        message_id
-                    )
-                    await bot.main_menu(chat_id)
+                        True)
+                    await bot.main_menu(chat_id, callback_query.message.message_id)
                     return
             except (ValueError, TypeError):
-                await bot.edit_message(
-                    chat_id,
+                await callback_query.answer(
                     await bot.get_text(chat_id, "EMPTY_BALANCE_FOR_WITHDRAW", user_data),
-                    message_id
-                )
-                await bot.main_menu(chat_id)
+                    True)
+                await bot.main_menu(chat_id, callback_query.message.message_id)
                 return
         for asset in bot.crypto_pay.supported_assets:
             if asset.is_fiat:
@@ -374,7 +376,7 @@ class HandlersManager:
         await bot.edit_message(
             chat_id,
             await bot.get_text(chat_id, "SELECT_CURRENCY", user_data),
-            message_id,
+            callback_query.message.message_id,
             reply_markup=KeyboardManager.get_currency_keyboard(
                 user_data.get("language", "en"),
                 currency_list,
@@ -404,30 +406,27 @@ class HandlersManager:
 
     @staticmethod
     async def do_withdraw(bot, chat_id: int, user_data: dict[str, Any], currency: str, amount: float,
-                          message_id: int):
+                          callback_query: CallbackQuery):
         withdraw = await bot.crypto_pay.initiate_withdrawal(chat_id, amount, currency)
         if withdraw:
             custom_data = {"amount": f"{amount:.8f}", "currency": currency}
-            success_text = await bot.get_text(chat_id, "WITHDRAW_SUCCESS", user_data, custom_data)
             await bot.database_interface.update_balance(chat_id, -amount, "withdrawal")
-            await bot.edit_message(chat_id, success_text, message_id)
+            await callback_query.answer(await bot.get_text(chat_id, "WITHDRAW_SUCCESS", user_data, custom_data), True)
         else:
-            error_text = await bot.get_text(chat_id, "WITHDRAW_ERROR", user_data)
-            await bot.edit_message(chat_id, error_text, message_id)
-        await bot.main_menu(chat_id)
+            await callback_query.answer(await bot.get_text(chat_id, "WITHDRAW_ERROR", user_data), True)
+        await bot.main_menu(chat_id, callback_query.message.message_id)
 
     @staticmethod
-    async def check_deposit(bot, chat_id, user_data, internal_tx_id) -> bool:
+    async def check_deposit(bot, chat_id: int, user_data: dict[str, Any], internal_tx_id: str,
+                            callback_query: CallbackQuery):
         invoice = await bot.crypto_pay.get_invoice(internal_tx_id)
         if invoice.status == "paid":
-            await bot.send_message(chat_id, await bot.get_text(chat_id, "DEPOSIT_SUCCESS", user_data))
+            await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_SUCCESS", user_data))
             amount = float(invoice.amount) * float(invoice.paid_usd_rate)
             await bot.database_interface.update_balance(chat_id, amount, "deposit")
-            await bot.main_menu(chat_id)
-            return True
+            await bot.main_menu(chat_id, callback_query.message.message_id)
         else:
-            await bot.send_message(chat_id, await bot.get_text(chat_id, "DEPOSIT_FAILED", user_data))
-            return False
+            await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_FAILED", user_data))
 
     @staticmethod
     async def cancel_deposit_confirm(bot, chat_id: int, user_data: dict[str, Any],
@@ -439,12 +438,13 @@ class HandlersManager:
                                    user_data.get("language", "en")))
 
     @staticmethod
-    async def cancel_deposit(bot, chat_id: int, user_data: dict[str, Any], internal_tx_id: str):
+    async def cancel_deposit(bot, chat_id: int, user_data: dict[str, Any],
+                             internal_tx_id: str, callback_query: CallbackQuery):
         if await bot.crypto_pay.cancel_deposit(internal_tx_id):
-            await bot.send_message(chat_id, await bot.get_text(chat_id, "DEPOSIT_CANCELLED", user_data))
+            await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_CANCELLED", user_data))
         else:
-            await bot.send_message(chat_id, await bot.get_text(chat_id, "DEPOSIT_CANCEL_FAILED", user_data))
-        await bot.main_menu(chat_id)
+            await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_CANCEL_FAILED", user_data))
+        await bot.main_menu(chat_id, callback_query.message.message_id)
 
     # ════════════════ Пользователь ═══════════════
     @staticmethod

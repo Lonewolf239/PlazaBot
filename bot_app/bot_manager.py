@@ -490,8 +490,7 @@ class BotInterface:
                                                         callback_query.message.message_id)
             await callback_query.answer()
         elif command == "select-bet":
-            await HandlersManager.select_bet(self, chat_id, user_data,
-                                             callback_query.message.message_id)
+            await HandlersManager.select_bet(self, chat_id, user_data, callback_query)
         elif command.startswith("start-game"):
             bet = float(command.split(':')[1])
             await HandlersManager.start_game(self, chat_id, user_data, bet,
@@ -522,11 +521,10 @@ class BotInterface:
                                           callback_query.message.message_id)
         elif command == "balance-deposit":
             await HandlersManager.get_currency(self, chat_id, user_data, "deposit", self.crypto_pay.supported_codes,
-                                               callback_query.message.message_id)
+                                               callback_query)
         elif command == "balance-withdraw":
             await HandlersManager.get_currency(self, chat_id, user_data, "withdraw",
-                                               await self.crypto_pay.get_currencies_with_balance(),
-                                               callback_query.message.message_id)
+                                               await self.crypto_pay.get_currencies_with_balance(), callback_query)
         elif command.startswith("deposit-select-currency"):
             currency = command.split(':')[1]
             await HandlersManager.get_amount(self, chat_id, user_data, currency, "deposit",
@@ -544,9 +542,7 @@ class BotInterface:
         # TODO: удалить после реализации вебхуков
         elif command.startswith("check-deposit"):
             internal_tx_id = command.split(':')[1]
-            if await HandlersManager.check_deposit(self, chat_id, user_data, internal_tx_id):
-                await self.bot.delete_message(chat_id,
-                                              callback_query.message.message_id)
+            await HandlersManager.check_deposit(self, chat_id, user_data, internal_tx_id, callback_query)
             await callback_query.answer()
 
         elif command.startswith("cancel-deposit"):
@@ -559,18 +555,15 @@ class BotInterface:
                                                              tx_id, callback_query.message.message_id)
                 await callback_query.answer()
                 return
-            await self.bot.delete_message(chat_id,
-                                          callback_query.message.message_id)
             if confirm == "yes":
-                await HandlersManager.cancel_deposit(self, chat_id, user_data, tx_id)
+                await HandlersManager.cancel_deposit(self, chat_id, user_data, tx_id, callback_query)
                 await self.bot.delete_message(chat_id, message_id)
             else:
-                await self.main_menu(chat_id)
+                await self.bot.delete_message(chat_id, callback_query.message.message_id)
         elif command.startswith("do-withdraw"):
             currency = command.split(':')[1]
             amount = float(command.split(':')[2])
-            await HandlersManager.do_withdraw(self, chat_id, user_data, currency, amount,
-                                              callback_query.message.message_id)
+            await HandlersManager.do_withdraw(self, chat_id, user_data, currency, amount, callback_query)
 
         # ════════════════ Пользователь ═══════════════
         elif command == "profile":

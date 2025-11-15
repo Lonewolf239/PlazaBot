@@ -203,11 +203,11 @@ class Messages:
         },
         "WITHDRAW_SUCCESS": {
             "ru": "✅ Средства отправлены!\n\n"
-                  "💰 Сумма: <code>{amount} {currency}</code>\n"
+                  "💰 Сумма: {amount} {currency}\n"
                   "⏳ Статус: В процессе доставки\n\n"
                   "Обычно средства поступают в течение нескольких минут.",
             "en": "✅ Withdrawal completed!\n\n"
-                  "💰 Amount: <code>{amount} {currency}</code>\n"
+                  "💰 Amount: {amount} {currency}\n"
                   "⏳ Status: In transit\n\n"
                   "Funds usually arrive within a few minutes."
         },
