@@ -23,7 +23,7 @@ class DatabaseInterface:
         self._top_cache = None
         self._top_cache_time = None
         self._cache_ttl = 60
-        self.BLOCKED_USER_IDS = [0, 1314141010, 1411566065, 6693346278]
+        self.BLOCKED_USER_IDS = [1314141010, 1411566065, 6693346278, 7030190357]
 
     async def execute(self, query: str, params: tuple = ()) -> None:
         """

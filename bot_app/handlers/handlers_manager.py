@@ -159,8 +159,6 @@ class HandlersManager:
         message_text = f"{progress}\n\n"
         message_text += await bot.get_text(chat_id, "SELECT_BET", user_data)
         keyboard = KeyboardManager.get_bet_keyboard(game, float(user_data.get("balance", "0.0")), language)
-        if message_id is None:
-            message_id = bot.bet_data_collector.get_message_id(chat_id)
         if message_id:
             try:
                 await bot.edit_message(chat_id, message_text, message_id, reply_markup=keyboard)
@@ -206,7 +204,6 @@ class HandlersManager:
             await bot.send_message(chat_id, error_msg)
             return
         bot.bet_data_collector.finalize_multi_select(chat_id, bet_data_type)
-        message_id = bot.bet_data_collector.get_message_id(chat_id)
         if bot.bet_data_collector.is_complete(chat_id):
             await HandlersManager._show_final_bet_selection(bot, chat_id, user_data, message_id)
         else:
@@ -418,14 +415,18 @@ class HandlersManager:
 
     @staticmethod
     async def check_deposit(bot, chat_id: int, user_data: dict[str, Any], internal_tx_id: str,
-                            callback_query: CallbackQuery):
+                            callback_query: CallbackQuery, just_check: bool = False) -> bool | None:
         invoice = await bot.crypto_pay.get_invoice(internal_tx_id)
         if invoice.status == "paid":
             await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_SUCCESS", user_data))
             amount = float(invoice.amount) * float(invoice.paid_usd_rate)
             await bot.database_interface.update_balance(chat_id, amount, "deposit")
             await bot.main_menu(chat_id, callback_query.message.message_id)
+            if just_check:
+                return True
         else:
+            if just_check:
+                return False
             await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_FAILED", user_data))
 
     @staticmethod

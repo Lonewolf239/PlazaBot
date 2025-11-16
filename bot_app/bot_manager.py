@@ -550,6 +550,9 @@ class BotInterface:
             tx_id = parts[1]
             message_id = parts[2] if len(parts) > 2 else ""
             confirm = parts[3] if len(parts) > 3 else ""
+            if await HandlersManager.check_deposit(self, chat_id, user_data, tx_id, callback_query, True):
+                await callback_query.answer()
+                return
             if not confirm:
                 await HandlersManager.cancel_deposit_confirm(self, chat_id, user_data,
                                                              tx_id, callback_query.message.message_id)
