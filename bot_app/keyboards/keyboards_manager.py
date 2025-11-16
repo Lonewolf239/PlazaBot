@@ -403,12 +403,12 @@ class KeyboardManager:
 
     @staticmethod
     def get_amount_keyboard(language_code: str, currency: str,
-                            operation_type: str, balance: str) -> tuple[bool, InlineKeyboardMarkup]:
+                            operation_type: str, balance: str) -> InlineKeyboardMarkup:
         if operation_type == "deposit":
             kb = KeyboardManager.build_deposit_amount(currency, language_code)
         else:
             kb = KeyboardManager.build_withdraw_amount(currency, language_code, balance)
-        return True, kb
+        return kb
 
     @staticmethod
     def get_pay_keyboard(language_code: str, deposit: dict[str, Any], transaction_id: str) -> InlineKeyboardMarkup:

@@ -385,11 +385,11 @@ class HandlersManager:
     async def get_amount(bot, chat_id: int, user_data: dict[str, Any], currency: str, operation_type: str,
                          message_id: int):
         from ..keyboards import KeyboardManager
-        ok, markup = KeyboardManager.get_amount_keyboard(
+        markup = KeyboardManager.get_amount_keyboard(
             user_data.get("language", "en"), currency,
             operation_type, user_data.get("balance", "0.0"))
-        tag = "SELECT_AMOUNT" if ok else "CURRENCY_NOT_AVAILABLE"
-        await bot.edit_message(chat_id, await bot.get_text(chat_id, tag, user_data), message_id, reply_markup=markup)
+        await bot.edit_message(chat_id, await bot.get_text(chat_id, "SELECT_AMOUNT", user_data),
+                               message_id, reply_markup=markup)
 
     @staticmethod
     async def do_deposit(bot, chat_id: int, user_data: dict[str, Any], currency: str, amount: float,

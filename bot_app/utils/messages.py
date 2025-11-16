@@ -173,10 +173,6 @@ class Messages:
             "ru": "💰 Выберите сумму:",
             "en": "💰 Select amount:"
         },
-        "CURRENCY_NOT_AVAILABLE": {
-            "ru": "❌ Данная валюта временно недоступна. Попробуйте позже.",
-            "en": "❌ This currency is temporarily unavailable. Please try later."
-        },
         "PAYMENT_LINK": {
             "ru": "💳 Ссылка для оплаты создана. Нажмите кнопку ниже для пополнения:",
             "en": "💳 Payment link created. Click the button below to deposit:"

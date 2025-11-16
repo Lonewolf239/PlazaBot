@@ -721,6 +721,7 @@ class BotInterface:
                         reply_markup=reply_markup
                     )
             else:
-                await self.send_message(chat_id, text, reply_markup=reply_markup)
+                return await self.send_message(chat_id, text, image=image,
+                                               reply_markup=reply_markup, add_delete_keyboard=add_delete_keyboard)
         except Exception as e:
             await self.database_interface.log_error(f"Ошибка при редактировании сообщения: {e}")
