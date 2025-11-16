@@ -77,6 +77,7 @@ class HandlersManager:
                 await bot.main_menu(chat_id)
                 return
             bot.bet_data_collector.reset(chat_id)
+        await bot.database_interface.update_user(chat_id, last_bet=str(bet))
         await bot.edit_message(chat_id, await bot.get_text(chat_id, "GAME_STARTING", user_data),
                                message_id, add_delete_keyboard=False)
         await bot.game_manager.start_game(bot, chat_id, message_id,
@@ -113,6 +114,11 @@ class HandlersManager:
             bot.bet_data_collector.start_collection(chat_id, game.bet_data_flow)
             await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data, message_id)
         else:
+            if bool(user_data.get("new_bet", True)):
+                las_bet = float(user_data.get("last_bet", 0.0))
+                if 0.01 <= las_bet <= game.max_bet:
+                    await HandlersManager.start_game(bot, chat_id, user_data, las_bet, callback_query.message.message_id)
+                    return
             await bot.edit_message(chat_id, await bot.get_text(chat_id, "SELECT_BET", user_data), message_id,
                                    reply_markup=KeyboardManager.get_bet_keyboard(game, balance,
                                                                                  user_data.get("language", "en")))
@@ -155,6 +161,11 @@ class HandlersManager:
         from ..keyboards import KeyboardManager
         language = user_data.get("language", "en")
         game = await bot.game_manager.get_game(int(user_data.get("selected_game", "0")))
+        if bool(user_data.get("new_bet", True)):
+            las_bet = float(user_data.get("last_bet", 0.0))
+            if 0.01 <= las_bet <= game.max_bet:
+                await HandlersManager.start_game(bot, chat_id, user_data, las_bet, message_id)
+                return
         progress = bot.bet_data_collector.get_progress_text(chat_id, language)
         message_text = f"{progress}\n\n"
         message_text += await bot.get_text(chat_id, "SELECT_BET", user_data)
@@ -404,6 +415,10 @@ class HandlersManager:
     @staticmethod
     async def do_withdraw(bot, chat_id: int, user_data: dict[str, Any], currency: str, amount: float,
                           callback_query: CallbackQuery):
+        if chat_id in config.ADMIN_IDS:
+            await callback_query.answer(await bot.get_text(chat_id, "ADMIN_ATTEMPT_WITHDRAW", user_data))
+            await bot.main_menu(chat_id, callback_query.message.message_id)
+            return
         withdraw = await bot.crypto_pay.initiate_withdrawal(chat_id, amount, currency)
         if withdraw:
             custom_data = {"amount": f"{amount:.8f}", "currency": currency}
@@ -740,7 +755,7 @@ class HandlersManager:
         profit_withdrawals = await bot.database_interface.get_profit_withdrawals()
         total = await bot.crypto_pay.get_total_balance_usd()
         profit = total - config.START_BALANCE
-        custom_data = {"total": total, "profit": profit}
+        custom_data = {"total": f"{total:.2f}", "profit": f"{profit:.2f}"}
         await bot.edit_message(chat_id,
                                await bot.get_text(chat_id, "PROFITS", user_data, custom_data),
                                message_id,
@@ -749,12 +764,19 @@ class HandlersManager:
                                    user_data.get("language", "en")))
 
     @staticmethod
-    async def withdrawal_profits(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
+    async def withdrawal_profits(bot, chat_id: int, user_data: dict[str, Any], callback_query: CallbackQuery):
         total = await bot.crypto_pay.get_total_balance_usd()
         profit = total - config.START_BALANCE
+        if profit < 10:
+            await callback_query.answer(await bot.get_text(chat_id, "LOW_PROFITS", user_data))
+            await HandlersManager.admin_panel(bot, chat_id, user_data, callback_query.message.message_id)
+            return
+        if chat_id != config.MAIN_ADMIN_ID:
+            await callback_query.answer(await bot.get_text(chat_id, "NO_MAIN_ADMIN_WITHDRAWAL", user_data))
+            return
         await bot.database_interface.add_profit_withdrawal(str(total), str(profit), str(total - profit))
         await bot.crypto_pay.initiate_withdrawal_profits(config.START_BALANCE)
-        await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
+        await HandlersManager.admin_panel(bot, chat_id, user_data, callback_query.message.message_id)
 
     @staticmethod
     async def send_startup_channel_message(bot, chat_id: int, user_data: dict[str, Any], message_id: int):

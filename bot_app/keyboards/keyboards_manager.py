@@ -171,7 +171,7 @@ class KeyboardManager:
             [
                 InlineKeyboardButton(
                     text=f"{game_icon}{Messages.get_text('MAIN_MENU', 'games', language_code)}",
-                    callback_data="select-bet"
+                    callback_data="select-bet:new_bet"
                 )
             ],
             [

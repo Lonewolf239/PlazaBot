@@ -228,6 +228,10 @@ class Messages:
                   "• Minimum withdrawal amount not reached\n"
                   "• Temporary system error\n\n"
                   "Please try again later or contact support."
+        },
+        "ADMIN_ATTEMPT_WITHDRAW": {
+            "ru": "❌ Администраторы могут выводить баланс только через панель администратора!",
+            "en": "❌ Administrators can only withdraw balance through the admin panel!"
         }
     }
 
@@ -453,6 +457,14 @@ class Messages:
                   "📈 Прибыль: <b>{profit}$</b>",
             "en": "💰 Balance: <b>{total}$</b>\n"
                   "📈 Profit: <b>{profit}$</b>",
+        },
+        "LOW_PROFITS": {
+            "ru": "❌ Прибыль должна быть более 10$!",
+            "en": "❌ The profit must be more than 10$!"
+        },
+        "NO_MAIN_ADMIN_WITHDRAWAL": {
+            "ru": "❌ Выводить средства может только главный администратор!",
+            "en": "❌ Only the main admin can withdraw funds!"
         }
     }
 

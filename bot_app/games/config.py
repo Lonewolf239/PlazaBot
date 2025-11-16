@@ -342,22 +342,22 @@ class MinesConfig:
         'name': 'Честный',
         'description': 'Идеальный баланс: справедливые шансы для игроков, стабильная прибыль казино',
         'bombs_count': 7,
-        'min_coef': 0.01,
-        'max_coef': 1.5,
+        'min_coef': 0.2,
+        'max_coef': 2.5,
     }
 
     AGGRESSIVE = {
         'name': 'Казино-ориентированный',
         'description': 'Увеличенный доход казино, честные шансы для игроков',
         'bombs_count': 10,
-        'min_coef': 0.01,
-        'max_coef': 1.8,
+        'min_coef': 0.1,
+        'max_coef': 2,
     }
 
     GENEROUS = {
         'name': 'Щедрый',
         'description': 'Максимальный стимул для игроков с честными шансами',
         'bombs_count': 4,
-        'min_coef': 0.01,
-        'max_coef': 1.2,
+        'min_coef': 0.25,
+        'max_coef': 2.75,
     }

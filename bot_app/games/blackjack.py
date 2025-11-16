@@ -421,7 +421,7 @@ Stand: Stop and pass turn to dealer
             }
         elif action == 'stand':
             _, dealer_value = self._calculate_hand_value(state['dealer_hand'])
-            cheat_chance = 0.25
+            cheat_chance = 0.42
             use_cheat = SystemRandom().random() < cheat_chance
             while dealer_value < 17:
                 _, player_value = self._calculate_hand_value(state['player_hand'])

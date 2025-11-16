@@ -367,6 +367,7 @@ class BotInterface:
                 if user_data:
                     await HandlersManager.send_userinfo(self, chat_id, user_data, chat_id in self.admin_ids)
             elif start_param == "deb":
+                await self.database_interface.update_user(chat_id, new_bet=True)
                 await HandlersManager.select_bet(self, chat_id, user_data)
                 return
         if not await HandlersManager.check_subscription(self, chat_id, message.from_user.first_name):
@@ -425,20 +426,14 @@ class BotInterface:
         command = callback_query.data
         if not command:
             return
-
         chat_id = callback_query.message.chat.id
-
         if command == "delete":
-            await self.bot.delete_message(chat_id,
-                                          callback_query.message.message_id)
+            await self.bot.delete_message(chat_id, callback_query.message.message_id)
             return
-
         if str(chat_id).startswith('-'):
             return
         user_data = await self.database_interface.get_user(chat_id)
-
         block_input = user_data.get("block_input", False)
-
         if command == "register_cancel":
             if not user_data.get("in_registration", False):
                 return
@@ -452,10 +447,8 @@ class BotInterface:
             await HandlersManager.custom_message_cancel(self, chat_id, user_data,
                                                         callback_query.message.message_id)
             return
-
         if block_input:
             return
-
         if command == "back":
             await self.main_menu(chat_id,
                                  callback_query.message.message_id)
@@ -489,7 +482,8 @@ class BotInterface:
                 await HandlersManager.finalize_bet_data(self, chat_id, user_data, bet_data_type,
                                                         callback_query.message.message_id)
             await callback_query.answer()
-        elif command == "select-bet":
+        elif command.startswith("select-bet"):
+            await self.database_interface.update_user(chat_id, new_bet="new_bet" in command)
             await HandlersManager.select_bet(self, chat_id, user_data, callback_query)
         elif command.startswith("start-game"):
             bet = float(command.split(':')[1])
@@ -631,8 +625,7 @@ class BotInterface:
             await HandlersManager.profits(self, chat_id, user_data,
                                           callback_query.message.message_id)
         elif command == "withdrawal-profits":
-            await HandlersManager.withdrawal_profits(self, chat_id, user_data,
-                                                     callback_query.message.message_id)
+            await HandlersManager.withdrawal_profits(self, chat_id, user_data, callback_query)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":
