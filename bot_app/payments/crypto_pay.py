@@ -132,13 +132,13 @@ class CryptoPay:
                 created_at=datetime.now(),
                 updated_at=datetime.now()
             )
-            self._logger.info(
+            await self._database.log_info(
                 f"✓ RECORD TRANSACTION: TxID={internal_transaction_id}, "
                 f"User={user_id}, Type={transaction_type}, "
                 f"Amount={amount} {currency}, Status={status}"
             )
         except Exception as e:
-            self._logger.error(
+            await self._database.log_error(
                 f"✗ Failed to record transaction: {e}",
                 exc_info=True
             )
@@ -162,12 +162,12 @@ class CryptoPay:
                 updated_at=datetime.now(),
                 crypto_data=crypto_data
             )
-            self._logger.info(
+            await self._database.log_info(
                 f"✓ UPDATE TRANSACTION STATUS: TxID={internal_transaction_id}, "
                 f"Status={status}, Message={message}"
             )
         except Exception as e:
-            self._logger.error(
+            await self._database.log_error(
                 f"✗ Failed to update transaction status: {e}",
                 exc_info=True
             )
@@ -189,13 +189,13 @@ class CryptoPay:
                 rates = [rate for rate in rates if rate.source == source]
             if target is not None:
                 rates = [rate for rate in rates if rate.target == target]
-            self._logger.debug(
+            await self._database.log_debug(
                 f"Exchange rates fetched: {len(rates)} pairs "
                 f"(source: {source}, target: {target})"
             )
             return rates
         except Exception as e:
-            self._logger.error(
+            await self._database.log_error(
                 f"Failed to get exchange rates (source: {source}, target: {target}): {e}"
             )
             raise
@@ -223,13 +223,13 @@ class CryptoPay:
         """
         try:
             balance = await self.crypto.get_balance()
-            self._logger.info(f"Balance fetched: {len(balance)} assets")
+            await self._database.log_info(f"Balance fetched: {len(balance)} assets")
             return {b.currency_code: {
                 "available": float(b.available),
                 "onhold": float(b.onhold)
             } for b in balance}
         except Exception as e:
-            self._logger.error(f"Failed to get balance: {e}")
+            await self._database.log_error(f"Failed to get balance: {e}")
             raise
 
     async def get_total_balance_usd(self) -> float:
@@ -246,10 +246,10 @@ class CryptoPay:
                 available = float(b.available)
                 rate_to_usd = rates_map.get(b.currency_code, 0)
                 total_usd += available * rate_to_usd
-            self._logger.info(f"Total balance: {total_usd} USD")
+            await self._database.log_info(f"Total balance: {total_usd} USD")
             return round(total_usd, 2)
         except Exception as e:
-            self._logger.error(f"Failed to calculate total balance in USD: {e}")
+            await self._database.log_error(f"Failed to calculate total balance in USD: {e}")
             raise
 
     async def get_currencies_with_balance(self) -> list[str]:
@@ -264,10 +264,10 @@ class CryptoPay:
                 for currency_code, balances in balance.items()
                 if balances["available"] > 0
             ]
-            self._logger.info(f"Found {len(currencies)} currencies with balance: {currencies}")
+            await self._database.log_info(f"Found {len(currencies)} currencies with balance: {currencies}")
             return currencies
         except Exception as e:
-            self._logger.error(f"Failed to get currencies with balance: {e}")
+            await self._database.log_error(f"Failed to get currencies with balance: {e}")
             raise
 
     async def get_app_stats(self, start_at: Optional[str] = None, end_at: Optional[str] = None) -> Dict[str, Any]:
@@ -289,7 +289,7 @@ class CryptoPay:
                 "end_at": stats.end_at
             }
         except Exception as e:
-            self._logger.error(f"Failed to get app stats: {e}")
+            await self._database.log_error(f"Failed to get app stats: {e}")
             raise
 
     # ==================== ПОПОЛНЕНИЯ (DEPOSITS) ====================
@@ -309,19 +309,19 @@ class CryptoPay:
         :return: Словарь с данными о счёте и URL для оплаты
         """
         if amount <= 0:
-            self._logger.warning(f"Invalid deposit amount: {amount}")
+            await self._database.log_warning(f"Invalid deposit amount: {amount}")
             return {
                 "status": TransactionStatus.DEPOSIT_FAILED,
                 "message": "Размер пополнения должен быть положительным"
             }
         if currency not in self.supported_codes:
-            self._logger.warning(f"Unsupported currency: {currency}")
+            await self._database.log_warning(f"Unsupported currency: {currency}")
             return {
                 "status": TransactionStatus.DEPOSIT_FAILED,
                 "message": f"Валюта {currency} не поддерживается"
             }
         if not (self.MIN_INVOICE_TTL <= expires_in <= self.MAX_INVOICE_TTL):
-            self._logger.warning(f"Invalid expires_in: {expires_in}")
+            await self._database.log_warning(f"Invalid expires_in: {expires_in}")
             expires_in = max(self.MIN_INVOICE_TTL, min(expires_in, self.MAX_INVOICE_TTL))
         internal_tx_id = await self._record_transaction(
             user_id=user_id,
@@ -349,7 +349,7 @@ class CryptoPay:
                     "hash": invoice.hash
                 }
             )
-            self._logger.info(
+            await self._database.log_info(
                 f"✓ Deposit initiated: TxID={internal_tx_id}, "
                 f"InvoiceID={invoice.invoice_id}, User={user_id}, "
                 f"Amount={amount} {currency}"
@@ -366,7 +366,7 @@ class CryptoPay:
                 "expires_at": invoice.expiration_date
             }
         except Exception as e:
-            self._logger.error(f"Failed to create invoice: {e}", exc_info=True)
+            await self._database.log_error(f"Failed to create invoice: {e}", exc_info=True)
             await self._update_transaction_status(
                 internal_tx_id,
                 TransactionStatus.DEPOSIT_FAILED,
@@ -388,7 +388,7 @@ class CryptoPay:
             invoice = await self.crypto.get_invoices(invoice_ids=[crypto_id])
             return invoice[0]
         except Exception as e:
-            self._logger.error(f"Failed to get deposit status: {e}")
+            await self._database.log_error(f"Failed to get deposit status: {e}")
             raise
 
     async def cancel_deposit(self, internal_tx_id: str) -> bool:
@@ -400,11 +400,11 @@ class CryptoPay:
         try:
             crypto_data = await self._database.get_crypto_data(internal_tx_id)
             if not crypto_data:
-                self._logger.warning(f"Transaction not found: {internal_tx_id}")
+                await self._database.log_warning(f"Transaction not found: {internal_tx_id}")
                 return False
             crypto_id = crypto_data.get("invoice_id")
             if not crypto_id:
-                self._logger.warning(f"No invoice ID for transaction: {internal_tx_id}")
+                await self._database.log_warning(f"No invoice ID for transaction: {internal_tx_id}")
                 return False
             result = await self.crypto.delete_invoice(invoice_id=int(crypto_id))
             if result:
@@ -413,13 +413,13 @@ class CryptoPay:
                     TransactionStatus.PAYMENT_EXPIRED,
                     message="Счёт отменён пользователем"
                 )
-                self._logger.info(f"✓ Deposit cancelled: {internal_tx_id}")
+                await self._database.log_info(f"✓ Deposit cancelled: {internal_tx_id}")
                 return True
             else:
-                self._logger.warning(f"Failed to delete invoice: {crypto_id}")
+                await self._database.log_warning(f"Failed to delete invoice: {crypto_id}")
                 return False
         except Exception as e:
-            self._logger.error(f"Failed to cancel deposit: {e}")
+            await self._database.log_error(f"Failed to cancel deposit: {e}")
             return False
 
     # ==================== ВЫВОДЫ (WITHDRAWALS) ====================
@@ -470,14 +470,14 @@ class CryptoPay:
                     "spend_id": spend_id
                 }
             )
-            self._logger.info(
+            await self._database.log_info(
                 f"✓ Withdrawal initiated: TxID={internal_tx_id}, "
                 f"TransferID={transfer.transfer_id}, User={user_id}, "
                 f"Amount={amount} {currency}"
             )
             return transfer
         except Exception as e:
-            self._logger.error(f"Failed to create transfer: {e}", exc_info=True)
+            await self._database.log_error(f"Failed to create transfer: {e}", exc_info=True)
             await self._update_transaction_status(
                 internal_tx_id,
                 TransactionStatus.WITHDRAWAL_FAILED,
@@ -504,8 +504,80 @@ class CryptoPay:
                 "updated_at": tx.get("updated_at")
             }
         except Exception as e:
-            self._logger.error(f"Failed to get withdrawal status: {e}")
+            await self._database.log_error(f"Failed to get withdrawal status: {e}")
             raise
+
+    async def initiate_withdrawal_profits(self, start_balance: float) -> None:
+        """
+        Инициирует распределение прибыли между получателями.
+
+        Схема работы:
+        1. Вычисляет текущий баланс в USD и профит
+        2. Распределяет профит поровну между всеми адресами в config.WITHDRAWAL_OF_PROFIT
+        3. Равномерно распределяет суммы согласно текущему распределению криптовалют
+        4. Выводит каждому получателю его долю в соответствующих крипто
+
+        :param start_balance: Стартовый баланс в USD на момент запуска казино
+        """
+        try:
+            from .config import WITHDRAWAL_OF_PROFIT
+            if not WITHDRAWAL_OF_PROFIT:
+                return
+            total_balance_usd = await self.get_total_balance_usd()
+            profit_usd = total_balance_usd - start_balance
+            if profit_usd <= 0:
+                return
+            balance_dict = await self.get_balance()
+            exchange_rates = await self.crypto.get_exchange_rates()
+            rates_map = {}
+            for rate in exchange_rates:
+                if rate.target == "USD":
+                    rates_map[rate.source] = float(rate.rate)
+            crypto_distribution = {}
+            total_usd = 0.0
+            for currency_code, balances in balance_dict.items():
+                available = float(balances["available"])
+                if available > 0:
+                    rate_to_usd = rates_map.get(currency_code, 0)
+                    usd_value = available * rate_to_usd
+                    total_usd += usd_value
+                    crypto_distribution[currency_code] = usd_value
+            if total_usd <= 0:
+                await self._database.log_error("Total balance is zero, cannot distribute")
+                return
+            for currency_code in crypto_distribution:
+                crypto_distribution[currency_code] = crypto_distribution[currency_code] / total_usd
+            profit_per_recipient = profit_usd / len(WITHDRAWAL_OF_PROFIT)
+            for user_id in WITHDRAWAL_OF_PROFIT:
+                remaining_profit = profit_per_recipient
+                sorted_cryptos = sorted(
+                    crypto_distribution.items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )
+                for idx, (currency_code, percentage) in enumerate(sorted_cryptos):
+                    if remaining_profit <= 0.01:
+                        break
+                    if idx == len(sorted_cryptos) - 1:
+                        amount_usd_for_crypto = remaining_profit
+                    else:
+                        amount_usd_for_crypto = profit_per_recipient * percentage
+                    if amount_usd_for_crypto > remaining_profit:
+                        amount_usd_for_crypto = remaining_profit
+                    if amount_usd_for_crypto > 0.01:
+                        rate_to_usd = rates_map.get(currency_code, 0)
+                        if rate_to_usd > 0:
+                            amount_crypto = amount_usd_for_crypto / rate_to_usd
+                            await self.initiate_withdrawal(
+                                user_id=user_id,
+                                amount=round(amount_crypto, 8),
+                                currency=currency_code,
+                                description=f"Распределение прибыли - {amount_usd_for_crypto:.2f} USD"
+                            )
+        except ImportError:
+            await self._database.log_error("Failed to import WITHDRAWAL_OF_PROFIT from config")
+        except Exception as e:
+            await self._database.log_error(f"Failed to distribute profits: {e}", exc_info=True)
 
     # ==================== WEBHOOKS ====================
 
@@ -516,12 +588,12 @@ class CryptoPay:
         """
         try:
             invoice = update.invoice
-            self._logger.info(
+            await self._database.log_info(
                 f"✓ Invoice paid webhook received: InvoiceID={invoice.invoice_id}, "
                 f"Amount={invoice.amount} {invoice.asset}"
             )
             if not invoice.payload:
-                self._logger.warning("Invoice has no payload, skipping")
+                await self._database.log_warning("Invoice has no payload, skipping")
                 return
             internal_tx_id = invoice.payload
             await self._update_transaction_status(
@@ -549,7 +621,7 @@ class CryptoPay:
                     fee=invoice.fee_amount
                 )
         except Exception as e:
-            self._logger.error(f"Failed to process invoice_paid webhook: {e}", exc_info=True)
+            await self._database.log_error(f"Failed to process invoice_paid webhook: {e}", exc_info=True)
 
     async def _send_deposit_notification(self, user_id: int, amount: float, asset: str, fee: float = 0) -> None:
         """
@@ -569,7 +641,7 @@ class CryptoPay:
             )
             await self._bot.send_message(user_id, message)
         except Exception as e:
-            self._logger.error(f"Failed to send notification to {user_id}: {e}")
+            await self._database.log_error(f"Failed to send notification to {user_id}: {e}")
 
     # ==================== ПРОВЕРКА СТАТУСОВ ====================
 
@@ -580,22 +652,22 @@ class CryptoPay:
         """
         try:
             invoices = await self.crypto.get_invoices(status="active")
-            self._logger.info(f"Checking {len(invoices)} active invoices")
+            await self._database.log_info(f"Checking {len(invoices)} active invoices")
             for invoice in invoices:
                 if not invoice.payload:
                     continue
                 internal_tx_id = invoice.payload
                 tx = await self._database.get_transaction(internal_tx_id)
                 if tx and tx.get("status") == TransactionStatus.PAYMENT_PENDING:
-                    self._logger.debug(f"Invoice {invoice.invoice_id} still pending")
+                    await self._database.log_debug(f"Invoice {invoice.invoice_id} still pending")
         except Exception as e:
-            self._logger.error(f"Failed to check pending deposits: {e}")
+            await self._database.log_error(f"Failed to check pending deposits: {e}")
 
     async def check_pending_withdrawals(self) -> None:
         """Проверяет статус всех активных выводов."""
         try:
             transfers = await self.crypto.get_transfers()
-            self._logger.info(f"Checking {len(transfers)} transfers")
+            await self._database.log_info(f"Checking {len(transfers)} transfers")
             for transfer in transfers:
                 if not transfer.spend_id:
                     continue
@@ -612,7 +684,7 @@ class CryptoPay:
                         }
                     )
         except Exception as e:
-            self._logger.error(f"Failed to check pending withdrawals: {e}")
+            await self._database.log_error(f"Failed to check pending withdrawals: {e}")
 
     async def get_user_transactions(self, user_id: int, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """
@@ -632,7 +704,7 @@ class CryptoPay:
             )
             return transactions
         except Exception as e:
-            self._logger.error(f"Failed to get user transactions: {e}")
+            await self._database.log_error(f"Failed to get user transactions: {e}")
             raise
 
     # ==================== УТИЛИТЫ ====================
@@ -647,9 +719,9 @@ class CryptoPay:
         """Закрывает подключение к Crypto Pay API."""
         try:
             await self.crypto.close()
-            self._logger.info("CryptoPay connection closed")
+            await self._database.log_info("CryptoPay connection closed")
         except Exception as e:
-            self._logger.error(f"Failed to close CryptoPay: {e}")
+            await self._database.log_error(f"Failed to close CryptoPay: {e}")
 
     @staticmethod
     def get_status_display(status: str) -> str:

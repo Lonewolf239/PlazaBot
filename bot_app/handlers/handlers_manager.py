@@ -734,6 +734,29 @@ class HandlersManager:
         await callback_query.answer(await bot.get_text(chat_id, "LEADERBOARD_CREATED", user_data))
 
     @staticmethod
+    async def profits(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
+        from ..utils.plt import PLT
+        from ..keyboards import KeyboardManager
+        profit_withdrawals = await bot.database_interface.get_profit_withdrawals()
+        total = await bot.crypto_pay.get_total_balance_usd()
+        profit = total - config.START_BALANCE
+        custom_data = {"total": total, "profit": profit}
+        await bot.edit_message(chat_id,
+                               await bot.get_text(chat_id, "PROFITS", user_data, custom_data),
+                               message_id,
+                               image=PLT.build_profit_chart(profit_withdrawals),
+                               reply_markup=KeyboardManager.get_profit_withdrawal_keyboards(
+                                   user_data.get("language", "en")))
+
+    @staticmethod
+    async def withdrawal_profits(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
+        total = await bot.crypto_pay.get_total_balance_usd()
+        profit = total - config.START_BALANCE
+        await bot.database_interface.add_profit_withdrawal(str(total), str(profit), str(total - profit))
+        await bot.crypto_pay.initiate_withdrawal_profits(config.START_BALANCE)
+        await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
+
+    @staticmethod
     async def send_startup_channel_message(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
         from ..keyboards import KeyboardManager
         russian_message = """

@@ -1,7 +1,7 @@
 from typing import Any
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InputMediaPhoto, BufferedInputFile
-from bot_app.games.base_game import GameResult, GameStatus
+from ..games.base_game import GameResult, GameStatus
 
 
 class InteractiveGameHandlers:

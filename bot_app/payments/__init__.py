@@ -1,4 +1,4 @@
-from .config import TEST, CRYPTOPAY_TEST_API_TOKEN, CRYPTOPAY_API_TOKEN, CRYPTOPAY_WEBHOOK
+from .config import TEST, CRYPTOPAY_TEST_API_TOKEN, CRYPTOPAY_API_TOKEN, CRYPTOPAY_WEBHOOK, WITHDRAWAL_OF_PROFIT
 from .crypto_pay import CryptoPay
 
 __all__ = [
@@ -6,5 +6,6 @@ __all__ = [
     'CRYPTOPAY_TEST_API_TOKEN',
     'CRYPTOPAY_API_TOKEN',
     'CRYPTOPAY_WEBHOOK',
+    'WITHDRAWAL_OF_PROFIT',
     'CryptoPay'
 ]

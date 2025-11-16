@@ -157,7 +157,7 @@ class BotInterface:
         5: Dice,
         6: HiLo,
         7: Mines,
-        8: Blackjack,
+        8: Blackjack
         # 200: Crash
     }
     GameConfigs = {
@@ -627,6 +627,12 @@ class BotInterface:
         elif command.startswith("giveaway"):
             await HandlersManager.giveaway(self, chat_id, user_data, command,
                                            callback_query.message.message_id)
+        elif command == "profits":
+            await HandlersManager.profits(self, chat_id, user_data,
+                                          callback_query.message.message_id)
+        elif command == "withdrawal-profits":
+            await HandlersManager.withdrawal_profits(self, chat_id, user_data,
+                                                     callback_query.message.message_id)
 
         # ═════════════════ Рефералка ═════════════════
         elif command == "referral-menu":
@@ -708,18 +714,23 @@ class BotInterface:
                                 filename='frame.png'
                             ),
                             caption=text,
+                            parse_mode="HTML"
+                        ),
+                        reply_markup=reply_markup
+                    )
+                else:
+                    try:
+                        return await self.bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_id,
+                            text=text,
                             parse_mode="HTML",
                             reply_markup=reply_markup
                         )
-                    )
-                else:
-                    return await self.bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_id,
-                        text=text,
-                        parse_mode="HTML",
-                        reply_markup=reply_markup
-                    )
+                    except Exception:
+                        await self.bot.delete_message(chat_id, message_id)
+                        await self.send_message(chat_id, text, reply_markup=reply_markup,
+                                                add_delete_keyboard=add_delete_keyboard)
             else:
                 return await self.send_message(chat_id, text, image=image,
                                                reply_markup=reply_markup, add_delete_keyboard=add_delete_keyboard)

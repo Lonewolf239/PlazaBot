@@ -52,7 +52,9 @@ class Messages:
             "custom_message": {"ru": "Кастомное сообщение", "en": "Custom message"},
             "startup_channel": {"ru": "Отправить стартовое", "en": "Send start"},
             "create_leaderboard": {"ru": "Создать лидеров", "en": "Create a leaderboard"},
-            "create_giveaway": {"ru": "Создать розыгрыш", "en": "Create a giveaway"}
+            "create_giveaway": {"ru": "Создать розыгрыш", "en": "Create a giveaway"},
+            "profit": {"ru": "Прибыль", "en": "Profit"},
+            "withdraw_profit": {"ru": "Вывод прибыли", "en": "Withdraw profit"}
         },
         "REFERRAL": {
             "create": {"ru": "Создать рефералку", "en": "Create Referral"},
@@ -120,7 +122,9 @@ class Messages:
             "custom_message": "📝",
             "startup_channel": "🚀",
             "create_leaderboard": "🏆",
-            "create_giveaway": "🎁"
+            "create_giveaway": "🎁",
+            "profit": "📈",
+            "withdraw_profit": "💸"
         },
         "REFERRAL": {
             "create": "➕",
@@ -465,6 +469,8 @@ class KeyboardManager:
                   callback_data="create-leaderboard")
         kb.button(text=Messages.get_text("ADMIN", "create_giveaway", language_code),
                   callback_data="giveaway")
+        kb.button(text=Messages.get_text("ADMIN", "profit", language_code),
+                  callback_data="profits")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")
         kb.adjust(2)
@@ -548,6 +554,16 @@ class KeyboardManager:
             if new_row:
                 new_keyboard.inline_keyboard.append(new_row)
         return new_keyboard
+
+    @staticmethod
+    def get_profit_withdrawal_keyboards(language_code: str) -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=Messages.get_text("ADMIN", "withdraw_profit", language_code),
+                  callback_data="withdrawal-profits")
+        kb.button(text=Messages.get_text("OTHERS", "back", language_code),
+                  callback_data="admin-panel")
+        kb.adjust(2)
+        return kb.as_markup()
 
     @staticmethod
     def get_logs_keyboard(language_code: str, page: int = 1, add_next_page: bool = True) -> InlineKeyboardMarkup:

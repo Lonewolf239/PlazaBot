@@ -447,6 +447,12 @@ class Messages:
                 "💰 Current value: {max_bet}$\n"
                 "📊 (1% of casino balance)"
             )
+        },
+        "PROFITS": {
+            "ru": "💰 Баланс: <b>{total}$</b>\n"
+                  "📈 Прибыль: <b>{profit}$</b>",
+            "en": "💰 Balance: <b>{total}$</b>\n"
+                  "📈 Profit: <b>{profit}$</b>",
         }
     }
 

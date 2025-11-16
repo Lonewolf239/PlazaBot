@@ -12,6 +12,7 @@ class DatabaseInterface:
     Предоставляет методы для создания таблиц, управления пользователями,
     их балансами и транзакциями, включая транзакции с внешними провайдерами.
     """
+
     def __init__(self, logger: logging.Logger, db_path: str = 'casino.db'):
         """
         Инициализирует DatabaseInterface.
@@ -166,6 +167,15 @@ class DatabaseInterface:
                 """)
 
                 await db.execute("""
+                    CREATE TABLE IF NOT EXISTS profit_withdrawals (
+                        transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        balance_before_withdrawal TEXT,
+                        amount TEXT,
+                        balance_after_withdrawal TEXT
+                    )
+                """)
+
+                await db.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         user_id INTEGER PRIMARY KEY,
                         balance TEXT DEFAULT 0.0,
@@ -300,6 +310,14 @@ class DatabaseInterface:
         except Exception as e:
             await self.log_error(f"Ошибка при инициализации базы данных: {e}")
             raise
+
+    async def get_profit_withdrawals(self):
+        return await self.fetch_all("SELECT * FROM profit_withdrawals")
+
+    async def add_profit_withdrawal(self, balance_before_withdrawal: str, amount: str, balance_after_withdrawal: str):
+        return await self.execute("INSERT INTO profit_withdrawals "
+                                  "(balance_before_withdrawal, amount, balance_after_withdrawal) "
+                                  "VALUES (?, ?, ?)", (balance_before_withdrawal, amount, balance_after_withdrawal))
 
     async def add_custom_message(self, message_id: int, message_text: str):
         await self.execute("INSERT INTO custom_messages (message_id, message_text) "
