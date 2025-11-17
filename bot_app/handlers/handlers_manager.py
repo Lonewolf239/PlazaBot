@@ -114,7 +114,7 @@ class HandlersManager:
             bot.bet_data_collector.start_collection(chat_id, game.bet_data_flow)
             await HandlersManager._show_next_bet_parameter(bot, chat_id, user_data, message_id)
         else:
-            if bool(user_data.get("new_bet", True)):
+            if not bool(user_data.get("new_bet", True)):
                 las_bet = float(user_data.get("last_bet", 0.0))
                 if 0.01 <= las_bet <= game.max_bet:
                     await HandlersManager.start_game(bot, chat_id, user_data, las_bet, callback_query.message.message_id)
@@ -161,7 +161,7 @@ class HandlersManager:
         from ..keyboards import KeyboardManager
         language = user_data.get("language", "en")
         game = await bot.game_manager.get_game(int(user_data.get("selected_game", "0")))
-        if bool(user_data.get("new_bet", True)):
+        if not bool(user_data.get("new_bet", True)):
             las_bet = float(user_data.get("last_bet", 0.0))
             if 0.01 <= las_bet <= game.max_bet:
                 await HandlersManager.start_game(bot, chat_id, user_data, las_bet, message_id)

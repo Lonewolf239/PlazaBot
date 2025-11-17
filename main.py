@@ -45,6 +45,10 @@ def register_bot_handlers(dp: Dispatcher, bot_instance: BotInterface):
     async def handle_inline_button(callback_query: types.CallbackQuery):
         await bot_instance.on_inline_button(callback_query)
 
+    @dp.message(F.web_app_data)
+    async def web_app_handler(message: types.Message):
+        await bot_instance.on_web_app(message)
+
 
 def register_crypto_handlers(crypto_instance: CryptoPay):
     global web_app, web_app_runner

@@ -484,6 +484,7 @@ class BotInterface:
             await callback_query.answer()
         elif command.startswith("select-bet"):
             await self.database_interface.update_user(chat_id, new_bet="new_bet" in command)
+            user_data['new_bet'] = "new_bet" in command
             await HandlersManager.select_bet(self, chat_id, user_data, callback_query)
         elif command.startswith("start-game"):
             bet = float(command.split(':')[1])
@@ -642,6 +643,9 @@ class BotInterface:
             await HandlersManager.rules(self, chat_id, user_data,
                                         callback_query.message.message_id)
         await callback_query.answer()
+
+    async def on_web_app(self, message: types.Message):
+        pass
 
     @staticmethod
     def get_page(rows, page: int):
