@@ -1,9 +1,9 @@
 import logging
 from io import BytesIO
-
 from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove, InputMediaPhoto, BufferedInputFile
+
 import config
 from .keyboards import KeyboardManager
 from .games import CasinoSlot, Roulette, Lottery, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines, Blackjack, \
@@ -21,7 +21,6 @@ PAGE_LIMIT = 16
 
 class BetDataCollector:
     """Управляет процессом сбора bet_data от пользователя"""
-
     def __init__(self):
         self._user_states: Dict[int, Dict[str, Any]] = {}
 
@@ -429,6 +428,7 @@ class BotInterface:
         chat_id = callback_query.message.chat.id
         if command == "delete":
             await self.bot.delete_message(chat_id, callback_query.message.message_id)
+            await callback_query.answer()
             return
         if str(chat_id).startswith('-'):
             return
@@ -644,8 +644,28 @@ class BotInterface:
                                         callback_query.message.message_id)
         await callback_query.answer()
 
-    async def on_web_app(self, message: types.Message):
-        pass
+    async def encrypt_user_data(self, chat_id: int):
+        from Crypto.Cipher import AES
+        from Crypto.Random import get_random_bytes
+        from Crypto.Util.Padding import pad
+        import base64
+        import json
+        import hashlib
+        SECRET_KEY = hashlib.sha256(config.SECRET_KEY_STR.encode()).digest()
+        user_data = await self.database_interface.get_user(chat_id)
+        iv = get_random_bytes(16)
+        cipher = AES.new(SECRET_KEY, AES.MODE_CBC, iv)
+        json_data = json.dumps(user_data).encode('utf-8')
+        padded_data = pad(json_data, AES.block_size)
+        ciphertext = cipher.encrypt(padded_data)
+        json_size = len(json_data).to_bytes(4, byteorder='big')
+        encrypted = base64.b64encode(json_size + iv + ciphertext).decode('utf-8')
+        from urllib.parse import quote
+        encrypted_safe = quote(encrypted)
+        return f"{config.WEBAPP_URL}/index.html?data={encrypted_safe}"
+
+    async def on_web_app(self, chat_id: int, data):
+        await self.send_message(chat_id, str(data))
 
     @staticmethod
     def get_page(rows, page: int):

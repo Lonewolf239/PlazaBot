@@ -28,7 +28,7 @@ class Messages:
         "BALANCE": {
             "deposit": {"ru": "Пополнить баланс", "en": "Deposit"},
             "withdraw": {"ru": "Вывести средства", "en": "Withdraw"},
-            "minimum_withdrawal": {"ru": "Минимум для вывода: 1.1$", "en": "Minimum withdrawal: 1.1$"},
+            "minimum_withdrawal": {"ru": "Минимум для вывода: $1.1", "en": "Minimum withdrawal: $1.1"},
             "pay": {"ru": "Оплатить", "en": "Pay"},
             "check": {"ru": "Проверить", "en": "Check"},
             "cancel_payment": {"ru": "Отменить платёж", "en": "Cancel Payment"}
@@ -38,7 +38,7 @@ class Messages:
             "players": {"ru": "Список игроков", "en": "Player List"},
             "logs": {"ru": "Логи событий", "en": "Event Logs"},
             "database": {"ru": "Показать БД", "en": "Show Database"},
-            "issue_balance": {"ru": "Выдать 1000$", "en": "Give out $1000"},
+            "issue_balance": {"ru": "Выдать $1000", "en": "Give out $1000"},
             "reset_balance": {"ru": "Обнулить баланс", "en": "Reset balance"},
             "get_balance": {"ru": "Получить баланс", "en": "Get balance"},
             "game_settings": {"ru": "Настройки игры", "en": "Game Settings"},
@@ -361,7 +361,7 @@ class KeyboardManager:
                 crypto_display = f"{amount:.2f}".rstrip('0').rstrip('.')
             else:
                 crypto_display = str(amount)
-            display_text = f"{crypto_display} [{usd_amount}$]"
+            display_text = f"{crypto_display} [${usd_amount}]"
             kb.button(
                 text=display_text,
                 callback_data=f"do-deposit:{currency}:{amount}"
@@ -386,7 +386,7 @@ class KeyboardManager:
                 withdraw_amount = (balance_float * percentage) / 100
                 if withdraw_amount >= min_withdrawal:
                     buttons.append(InlineKeyboardButton(
-                        text=f"{percentage}% [{withdraw_amount:.2f}$]",
+                        text=f"{percentage}% [${withdraw_amount:.2f}]",
                         callback_data=f"do-withdraw:{currency}:{withdraw_amount}"))
             if buttons:
                 keyboard.append(buttons)
@@ -788,7 +788,7 @@ class KeyboardManager:
             bet_values.append(round(balance, 2))
         bet_values = sorted(set(bet_values))
         for bet in bet_values:
-            text = f"{bet:.2f}".rstrip('0').rstrip('.') + '$'
+            text = f"${bet:.2f}".rstrip('0').rstrip('.')
             kb.button(text=text, callback_data=f"start-game:{bet}")
         kb.button(text=Messages.get_text("OTHERS", "back", language_code),
                   callback_data="back")

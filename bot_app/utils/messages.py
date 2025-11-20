@@ -68,15 +68,15 @@ class Messages:
             "ru": (
                 "👤 Ваш профиль\n\n"
                 "👤 Имя: username\n"
-                "💰 Баланс: {balance}$\n"
-                "🏆 Выигрыши: {winnings}$\n"
+                "💰 Баланс: ${balance}\n"
+                "🏆 Выигрыши: ${winnings}\n"
                 "📅 Дата регистрации: {registered_at}"
             ),
             "en": (
                 "👤 Your Profile\n\n"
                 "👤 Username: username\n"
-                "💰 Balance: {balance}$\n"
-                "🏆 Winnings: {winnings}$\n"
+                "💰 Balance: ${balance}\n"
+                "🏆 Winnings: ${winnings}\n"
                 "📅 Registration date: {registered_at}"
             )
         },
@@ -84,13 +84,13 @@ class Messages:
             "ru": (
                 "👤 Профиль пользователя\n\n"
                 "👤 Имя: username\n"
-                "🏆 Выигрыши: {winnings}$\n"
+                "🏆 Выигрыши: ${winnings}\n"
                 "📅 Регистрация: {registered_at}"
             ),
             "en": (
                 "👤 User Profile\n\n"
                 "👤 Username: username\n"
-                "🏆 Winnings: {winnings}$\n"
+                "🏆 Winnings: ${winnings}\n"
                 "📅 Registration: {registered_at}"
             )
         },
@@ -100,8 +100,8 @@ class Messages:
                 "🆔 ID: {user_id}\n"
                 "👤 Имя: username\n"
                 "🔐 Хэш имени: {hashed_username}\n"
-                "💰 Баланс: {balance}$\n"
-                "🏆 Выигрыши: {winnings}$\n"
+                "💰 Баланс: ${balance}\n"
+                "🏆 Выигрыши: ${winnings}\n"
                 "📧 Почта: {email} ({email_verified})\n"
                 "🎮 Выбранная игра: {selected_game}\n"
                 "🌐 Язык: {language}\n"
@@ -112,8 +112,8 @@ class Messages:
                 "🆔 ID: {user_id}\n"
                 "👤 Username: username\n"
                 "🔐 Hashed username: {hashed_username}\n"
-                "💰 Balance: {balance}$\n"
-                "🏆 Winnings: {winnings}$\n"
+                "💰 Balance: ${balance}\n"
+                "🏆 Winnings: ${winnings}\n"
                 "📧 Email: {email} ({email_verified})\n"
                 "🎮 Selected game: {selected_game}\n"
                 "🌐 Language: {language}\n"
@@ -139,12 +139,12 @@ class Messages:
         "LEADERBOARD_USERINFO": {
             "ru": (
                 "{position} username\n"
-                "🏆 Выигрыши: {winnings}$\n"
+                "🏆 Выигрыши: ${winnings}\n"
                 "📅 Регистрация: {registered_at}"
             ),
             "en": (
                 "{position} Username: username\n"
-                "🏆 Winnings: {winnings}$\n"
+                "🏆 Winnings: ${winnings}\n"
                 "📅 Registration: {registered_at}"
             )
         },
@@ -162,8 +162,8 @@ class Messages:
 
     BALANCE = {
         "BALANCE": {
-            "ru": "💰 Ваш текущий баланс: {balance}$",
-            "en": "💰 Your current balance: {balance}$"
+            "ru": "💰 Ваш текущий баланс: ${balance}",
+            "en": "💰 Your current balance: ${balance}"
         },
         "SELECT_CURRENCY": {
             "ru": "💱 Выберите валюту для операции:",
@@ -349,12 +349,12 @@ class Messages:
             "ru": (
                 "👥 <b>Ваши рефералы</b>\n\n"
                 "👤 Всего привлечено: <code>{total_refs}</code>\n"
-                "💰 <b>Получено наград: <code>{total_earned_sum}$</code></b>"
+                "💰 <b>Получено наград: <code>${total_earned_sum}</code></b>"
             ),
             "en": (
                 "👥 <b>Your Referrals</b>\n\n"
                 "👤 Total attracted: <code>{total_refs}</code>\n"
-                "💰 <b>Rewards earned: <code>{total_earned_sum}$</code></b>"
+                "💰 <b>Rewards earned: <code>${total_earned_sum}</code></b>"
             )
         },
         "REFERRAL_MY_BOTS": {
@@ -443,24 +443,24 @@ class Messages:
         "MAX_BET_CONFIG": {
             "ru": (
                 "⚙️ Макс. ставка\n\n"
-                "💰 Текущее значение: {max_bet}$\n"
+                "💰 Текущее значение: ${max_bet}\n"
                 "📊 (1% от баланса казино)"
             ),
             "en": (
                 "⚙️ Max bet\n\n"
-                "💰 Current value: {max_bet}$\n"
+                "💰 Current value: ${max_bet}\n"
                 "📊 (1% of casino balance)"
             )
         },
         "PROFITS": {
-            "ru": "💰 Баланс: <b>{total}$</b>\n"
-                  "📈 Прибыль: <b>{profit}$</b>",
-            "en": "💰 Balance: <b>{total}$</b>\n"
-                  "📈 Profit: <b>{profit}$</b>",
+            "ru": "💰 Баланс: <b>${total}</b>\n"
+                  "📈 Прибыль: <b>${profit}</b>",
+            "en": "💰 Balance: <b>${total}</b>\n"
+                  "📈 Profit: <b>${profit}</b>",
         },
         "LOW_PROFITS": {
-            "ru": "❌ Прибыль должна быть более 10$!",
-            "en": "❌ The profit must be more than 10$!"
+            "ru": "❌ Прибыль должна быть более $10!",
+            "en": "❌ The profit must be more than $10!"
         },
         "NO_MAIN_ADMIN_WITHDRAWAL": {
             "ru": "❌ Выводить средства может только главный администратор!",
@@ -496,11 +496,11 @@ class Messages:
         "GAME_WIN": {
             "ru": "<b>🎉 Поздравляем, вам улыбнулась удача!</b>\n\n{icon} Результат: {final_result}\n"
                   "#🎲 Ваша ставка: {user_bet}\n#"
-                  "💵 Ваш большой выигрыш: {amount}$\n"
+                  "💵 Ваш большой выигрыш: ${amount}\n"
                   "Ваш шанс сделать это снова растет! Не остановитесь на достигнутом! 🚀",
             "en": "<b>🎉 Congratulations, luck is on your side!</b>\n\n{icon} Result: {final_result}\n"
                   "#🎲 Your bet: {user_bet}\n#"
-                  "💵 Your big prize: {amount}$\n"
+                  "💵 Your big prize: ${amount}\n"
                   "Your chance to do it again is growing! Don't stop now! 🚀"
         },
         "GAME_LOSE": {
@@ -512,19 +512,19 @@ class Messages:
                   "Don't give up — the next round might change everything! <b>Try again! 🔥</b>"
         },
         "GAME_WIN_ANNOUNCEMENT": {
-            "ru": "<b>🔥 Внимание!</b>\n\nИгрок {username} <b>только что выиграл {amount}$</b>!\n"
+            "ru": "<b>🔥 Внимание!</b>\n\nИгрок {username} <b>только что выиграл ${amount}</b>!\n"
                   "#🎲 Ставка: {user_bet}\n#"
                   "{icon} Результат: {final_result}\n\n"
                   "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n"
-                  "<b>🔥 Attention!</b>\n\nPlayer {username} <b>just won {amount}$</b>!\n"
+                  "<b>🔥 Attention!</b>\n\nPlayer {username} <b>just won ${amount}</b>!\n"
                   "#🎲 Bet: {user_bet}\n#"
                   "{icon} Result: {final_result}\n\n"
                   "Luck is on your side — join the game and try to win yourself! 🚀",
-            "en": "<b>🔥 Внимание!</b>\n\nИгрок {username} <b>только что выиграл {amount}$</b>!\n"
+            "en": "<b>🔥 Внимание!</b>\n\nИгрок {username} <b>только что выиграл ${amount}</b>!\n"
                   "#🎲 Ставка: {user_bet}\n#"
                   "{icon} Результат: {final_result}\n\n"
                   "Удача на вашей стороне — присоединяйтесь к игре и попробуйте выиграть сами! 🚀\n\n\n"
-                  "<b>🔥 Attention!</b>\n\nPlayer {username} <b>just won {amount}$</b>!\n"
+                  "<b>🔥 Attention!</b>\n\nPlayer {username} <b>just won ${amount}</b>!\n"
                   "#🎲 Bet: {user_bet}\n#"
                   "{icon} Result: {final_result}\n\n"
                   "Luck is on your side — join the game and try to win yourself! 🚀"
@@ -570,12 +570,12 @@ class Messages:
             "ru": "{icon} МИНЫ\n\n"
                   "📊 Открыто ячеек: {opened_count}\n"
                   "💰 Множитель: ×{multiplier}\n"
-                  "🎯 Потенциальный выигрыш: {potential_win}$\n"
+                  "🎯 Потенциальный выигрыш: ${potential_win}\n"
                   "💡 Выберите ячейку или заберите выигрыш!",
             "en": "{icon} MINES\n\n"
                   "📊 Cells opened: {opened_count}\n"
                   "💰 Multiplier: ×{multiplier}\n"
-                  "🎯 Potential win: {potential_win}$\n"
+                  "🎯 Potential win: ${potential_win}\n"
                   "💡 Choose a cell or cash out!"
         },
         "MINES_LOST": {
@@ -583,8 +583,8 @@ class Messages:
             "en": "\n{icon} <b>BOOM! You hit a bomb!</b>\n💥 Cells opened: {opened_count}\n"
         },
         "MINES_WIN": {
-            "ru": "\n✅ Открыто ячеек: {opened_count}\n💰 Множитель: ×{multiplier}\n🏆 Выигрыш: {win_amount}$\n",
-            "en": "\n✅ Cells opened: {opened_count}\n💰 Multiplier: ×{multiplier}\n🏆 Win: {win_amount}$\n"
+            "ru": "\n✅ Открыто ячеек: {opened_count}\n💰 Множитель: ×{multiplier}\n🏆 Выигрыш: ${win_amount}\n",
+            "en": "\n✅ Cells opened: {opened_count}\n💰 Multiplier: ×{multiplier}\n🏆 Win: ${win_amount}\n"
         }
     }
 

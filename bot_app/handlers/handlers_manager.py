@@ -556,8 +556,8 @@ class HandlersManager:
         needed, count, avg_bal, max_bal, min_bal = await bot.database_interface.get_needed(bot.admin_ids)
         text = (
             f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_COUNT", user_data)}: {count}\n"
-            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_NEEDED", user_data)}: {int(needed)} $\n"
-            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_AVG_BALANCE", user_data)}: {int(avg_bal)} $\n"
+            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_NEEDED", user_data)}: ${int(needed)}\n"
+            f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_AVG_BALANCE", user_data)}: ${int(avg_bal)}\n"
             f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_MAX_BALANCE", user_data)}: {max_bal}\n"
             f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_MIN_BALANCE", user_data)}: {min_bal}"
         )
@@ -637,7 +637,7 @@ class HandlersManager:
             return "\n".join(formatted)
 
         total = await bot.crypto_pay.get_total_balance_usd()
-        await bot.send_message(chat_id, format_balance(balance_data) + f"\n\n<b>Всего: {total:.2f}$</b>")
+        await bot.send_message(chat_id, format_balance(balance_data) + f"\n\n<b>Всего: ${total:.2f}</b>")
 
     @staticmethod
     async def admin_game_settings_handler(bot, chat_id: int, user_data: dict[str, Any], command, message_id: int):

@@ -9,5 +9,5 @@ ADMIN_IDS = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip()] if a
 MAIN_ADMIN_ID = int(os.getenv("MAIN_ADMIN_ID"))
 SUPPORT_BOT = os.getenv("SUPPORT_BOT", "plaza_support_BOT")
 WEBAPP_URL = os.getenv("WEBAPP_URL")
-
+SECRET_KEY_STR = os.getenv("SECRET_KEY_STR")
 START_BALANCE = 225
