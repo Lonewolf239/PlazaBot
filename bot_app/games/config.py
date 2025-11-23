@@ -83,12 +83,12 @@ class SlotV2Config:
         'name': 'Честный слот (95% RTP)',
         'description': 'Идеальный баланс: справедливые шансы для игроков, стабильная прибыль для казино',
         'probabilities': {
-            'jackpot': 0.001,    # 0.1%
-            'big_win': 0.01,     # 1.0%
-            'medium_win': 0.10,  # 10%
-            'small_win': 0.15,   # 15%
-            'break_even': 0.45,  # 45%
-            'loss': 0.285        # 28.5%
+            'jackpot': 0.0008,  # 0.08%
+            'big_win': 0.0085,  # 0.85%
+            'medium_win': 0.095,  # 9.5%
+            'small_win': 0.14,  # 14%
+            'break_even': 0.43,  # 43%
+            'loss': 0.3357,  # 33.57%
         },
         'multipliers': {
             'jackpot': 12.0,
@@ -102,12 +102,12 @@ class SlotV2Config:
         'name': 'Казино-ориентированный (92% RTP)',
         'description': 'Увеличенный доход казино, честные шансы выигрыша для игроков',
         'probabilities': {
-            'jackpot': 0.001,    # 0.1%
-            'big_win': 0.009,    # 0.9%
-            'medium_win': 0.10,  # 10%
-            'small_win': 0.15,   # 15%
-            'break_even': 0.40,  # 40%
-            'loss': 0.341        # 34.1%
+            'jackpot': 0.0008,  # 0.08%
+            'big_win': 0.008,  # 0.8%
+            'medium_win': 0.095,  # 9.5%
+            'small_win': 0.14,  # 14%
+            'break_even': 0.38,  # 38%
+            'loss': 0.3772,  # 37.72%
         },
         'multipliers': {
             'jackpot': 11.0,
@@ -121,12 +121,12 @@ class SlotV2Config:
         'name': 'Щедрый слот (96% RTP)',
         'description': 'Максимальный стимул для игроков с честными шансами',
         'probabilities': {
-            'jackpot': 0.001,    # 0.1%
-            'big_win': 0.012,    # 1.2%
-            'medium_win': 0.10,  # 10%
-            'small_win': 0.15,   # 15%
-            'break_even': 0.50,  # 50%
-            'loss': 0.227        # 22.7%
+            'jackpot': 0.0009,  # 0.09%
+            'big_win': 0.011,  # 1.1%
+            'medium_win': 0.095,  # 9.5%
+            'small_win': 0.14,  # 14%
+            'break_even': 0.48,  # 48%
+            'loss': 0.2641,  # 26.41%
         },
         'multipliers': {
             'jackpot': 13.5,

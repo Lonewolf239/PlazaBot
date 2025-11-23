@@ -3,7 +3,6 @@ from io import BytesIO
 from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardRemove, InputMediaPhoto, BufferedInputFile
-
 import config
 from .keyboards import KeyboardManager
 from .games import CasinoSlot, Roulette, Lottery, BetDataFlow, BetParameter, Coin, Dice, HiLo, Mines, Blackjack, \
@@ -21,6 +20,7 @@ PAGE_LIMIT = 16
 
 class BetDataCollector:
     """Управляет процессом сбора bet_data от пользователя"""
+
     def __init__(self):
         self._user_states: Dict[int, Dict[str, Any]] = {}
 
@@ -450,8 +450,7 @@ class BotInterface:
         if block_input:
             return
         if command == "back":
-            await self.main_menu(chat_id,
-                                 callback_query.message.message_id)
+            await self.main_menu(chat_id, callback_query.message.message_id)
 
         # ════════════════ Регистрация ════════════════
         elif command == "register_back":
@@ -751,5 +750,5 @@ class BotInterface:
             else:
                 return await self.send_message(chat_id, text, image=image,
                                                reply_markup=reply_markup, add_delete_keyboard=add_delete_keyboard)
-        except Exception as e:
-            await self.database_interface.log_error(f"Ошибка при редактировании сообщения: {e}")
+        except Exception:
+            pass

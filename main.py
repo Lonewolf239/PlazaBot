@@ -1,7 +1,7 @@
 import uvicorn
 import logging
 import asyncio
-import json
+# import json
 from aiocryptopay import Networks
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
@@ -45,15 +45,15 @@ def register_bot_handlers(dp: Dispatcher, bot_instance: BotInterface):
     async def handle_inline_button(callback_query: types.CallbackQuery):
         await bot_instance.on_inline_button(callback_query)
 
-    @dp.message(F.web_app_data)
-    async def web_app_handler(message: types.Message):
-        data = json.loads(message.web_app_data.data)
-        chat_id = message.chat.id
-        try:
-            await message.delete()
-        except Exception:
-            pass
-        await bot_instance.on_web_app(chat_id, data)
+    # @dp.message(F.web_app_data)
+    # async def web_app_handler(message: types.Message):
+        #     data = json.loads(message.web_app_data.data)
+        #     chat_id = message.chat.id
+        #     try:
+        #         await message.delete()
+        #     except Exception:
+        #         pass
+    #     await bot_instance.on_web_app(chat_id, data)
 
 
 def register_crypto_handlers(crypto_instance: CryptoPay):
