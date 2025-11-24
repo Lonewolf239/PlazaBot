@@ -75,6 +75,7 @@ class GameManager:
         task = asyncio.create_task(self._cleanup_session_after_timeout(user_id))
         self._session_cleanup_tasks[user_id] = task
 
+    # noinspection PyAsyncCall
     async def _cleanup_session_after_timeout(self, user_id: int) -> None:
         """Удалить сессию спустя время ожидания"""
         try:
@@ -86,9 +87,10 @@ class GameManager:
                 game_id = session.get('game_id')
                 if game_id:
                     self.delete_interactive_session(user_id, game_id)
-            await self._session_cleanup_tasks.pop(user_id, None)
         except asyncio.CancelledError:
-            await self._session_cleanup_tasks.pop(user_id, None)
+            pass
+        finally:
+            self._session_cleanup_tasks.pop(user_id, None)
 
     async def start_game(self, bot, user_id: int, message_id: int, game_id: int, bet: float,
                          bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> Optional[GameResult]:
@@ -136,8 +138,6 @@ class GameManager:
         except Exception as e:
             await self.db_interface.log_error(f"Ошибка при запуске игры: {e}", exc_info=True)
             await self._call_callbacks('on_game_error', e, session)
-        finally:
-            self.active_sessions.pop(user_id, None)
         return None
 
     def is_user_playing(self, user_id: int) -> bool:
