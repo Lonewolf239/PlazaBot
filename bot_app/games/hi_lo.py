@@ -1,4 +1,4 @@
-from secrets import choice
+from secrets import choice, randbelow
 from typing import Any, Optional, Callable, Dict
 from . import InteractiveGameBase, GameResult, GameStatus
 
@@ -113,6 +113,34 @@ Same card value = loss and game over
             bet_data=bet_data
         )
 
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        session = {'bet': bet}
+        current_card = choice(self.config['card_values'])
+        streak = randbelow(4) + 1
+        multiplier = self.config['multiplier_win'] * streak
+        session['state'] = {
+            'current_card': current_card,
+            'streak': streak,
+            'multiplier': multiplier,
+            'history': []
+        }
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=bet * multiplier,
+            bet_amount=bet,
+            user_bet=None,
+            multiplier=multiplier,
+            is_win=True,
+            game_data=await self.get_game_data(None, None),
+            animations_data={
+                'icon': self.icon,
+                'final_result': (await self.get_final_result_message(bot, user_id, session))['text'],
+                'final_result_image': None
+            },
+            bet_data=None
+        )
+        return await self._finalize_game(game_result)
+
     async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
         """Обработать ход игрока: 'high' или 'low'"""
         session = self.get_session(bot, user_id)
@@ -224,9 +252,11 @@ Same card value = loss and game over
             return card_names[value]
         return f"{'🃏'} {value}"
 
-    async def get_final_result_message(self, bot, user_id: int) -> dict[str, Any]:
+    async def get_final_result_message(self, bot, user_id: int,
+                                       session: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Финальный текст результата"""
-        session = self.get_session(bot, user_id)
+        if session is None:
+            session = self.get_session(bot, user_id)
         state = session['state']
         current_card = state['current_card']
         card_display = self._get_card_display(current_card)

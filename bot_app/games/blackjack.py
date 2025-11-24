@@ -9,6 +9,7 @@ from ..resources import ResourceLoader
 
 class Blackjack(InteractiveGameBase):
     """Блэкджек — набери 21 очко или больше дилера, не перебирая"""
+
     def __init__(self, max_bet: float, config_name: str = "honest"):
         super().__init__(max_bet, config_name)
         self.load_config()
@@ -392,6 +393,48 @@ Stand: Stop and pass turn to dealer
             bet_data=bet_data
         )
 
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        session = {'deck': self._init_deck()}
+        player_hand, dealer_hand = self._draw_initial_hands(session)
+        session['state'] = {
+            'player_hand': player_hand,
+            'dealer_hand': dealer_hand
+        }
+        _, dealer_value = self._calculate_hand_value(session['state']['dealer_hand'])
+        while dealer_value < 17:
+            new_card = self._get_card_from_deck(session)
+            session['state']['dealer_hand'].append(new_card)
+            _, dealer_value = self._calculate_hand_value(session['state']['dealer_hand'])
+        _, player_value = self._calculate_hand_value(session['state']['player_hand'])
+        while player_value <= dealer_value:
+            new_card = self._get_strategic_card_from_deck(session, player_value, dealer_value)
+            session['state']['player_hand'].append(new_card)
+            _, player_value = self._calculate_hand_value(session['state']['player_hand'])
+        session['state']['result'] = 'win'
+        session['state']['multiplier'] = self.config['multiplier_win']
+        session['state']['game_status'] = 'finished'
+        game_data = await self.get_game_data(None, None)
+        final_result_message = await self.get_final_result_message(bot, user_id, session)
+        multiplier = 2
+        if player_value > 21 or dealer_value >= player_value:
+            multiplier = 0
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=bet * multiplier,
+            bet_amount=bet,
+            user_bet=None,
+            multiplier=multiplier,
+            is_win=True,
+            game_data=game_data,
+            animations_data={
+                'icon': self.icon,
+                'final_result': final_result_message['text'],
+                'final_result_image': final_result_message['image']
+            },
+            bet_data=None
+        )
+        return await self._finalize_game(game_result)
+
     async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
         """Обработать ход игрока: 'hit' (брать) или 'stand' (стоять)"""
         session = self.get_session(bot, user_id)
@@ -527,9 +570,11 @@ Stand: Stop and pass turn to dealer
         text = f"{self.icon} {game_name}"
         return {"text": text, "image": image}
 
-    async def get_final_result_message(self, bot, user_id: int) -> dict[str, Any]:
+    async def get_final_result_message(self, bot, user_id: int,
+                                       session: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Финальный текст результата с изображением"""
-        session = self.get_session(bot, user_id)
+        if session is None:
+            session = self.get_session(bot, user_id)
         state = session['state']
         user_data = await bot.database_interface.get_user(user_id)
         language = user_data.get("language", "ru")

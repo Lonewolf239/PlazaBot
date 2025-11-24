@@ -161,6 +161,46 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
             bet_data=bet_data
         )
 
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        field = self._generate_field()
+        safe_cells_total = self.TOTAL_CELLS - self.config['bombs_count']
+        max_open = min(randbelow(6) + 3, safe_cells_total)
+        opened = set()
+        coefficients = []
+        for _ in range(max_open):
+            while True:
+                cell = randbelow(self.TOTAL_CELLS)
+                if cell not in opened and field[cell] != 0.0:
+                    opened.add(cell)
+                    coefficients.append(field[cell])
+                    break
+        multiplier = self._calculate_multiplier(coefficients)
+        win_amount = bet * multiplier
+        session = {'bet': bet, 'state': {
+            'multiplier': multiplier,
+            'opened': opened,
+            'field_generated': True,
+            'field': field
+        }}
+        final_result = await self.get_final_result_message(bot, user_id, session)
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=win_amount,
+            bet_amount=bet,
+            user_bet=None,
+            multiplier=multiplier,
+            is_win=True,
+            game_data=await self.get_game_data(None, None),
+            animations_data={
+                'icon': self.icon,
+                'final_result': final_result['text'],
+                'final_result_image': final_result['image']
+            },
+            bet_data=None
+        )
+
+        return await self._finalize_game(game_result)
+
     async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
         """Обработать ход игрока: открытие ячейки или забрать выигрыш"""
         session = self.get_session(bot, user_id)
@@ -326,9 +366,11 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
         img_byte_arr.seek(0)
         return img_byte_arr
 
-    async def get_final_result_message(self, bot, user_id: int) -> dict[str, Any]:
+    async def get_final_result_message(self, bot, user_id: int,
+                                       session: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Финальный текст результата"""
-        session = self.get_session(bot, user_id)
+        if session is None:
+            session = self.get_session(bot, user_id)
         state = session['state']
         bet = session['bet']
         multiplier = state['multiplier']

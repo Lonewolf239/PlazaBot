@@ -1,15 +1,15 @@
 from typing import Dict, Optional, Type, Callable, Any
 from datetime import datetime
-import logging
+import asyncio
+
 from ..database import DatabaseInterface
 from ..games import BaseGame, GameResult, InteractiveGameBase, GameStatus
 
 
 class GameManager:
     """Менеджер для управления играми"""
-    def __init__(self, db_interface: DatabaseInterface, logger: logging.Logger):
+    def __init__(self, db_interface: DatabaseInterface):
         self.db_interface = db_interface
-        self.logger = logger
         self.games: Dict[int, Type[BaseGame]] = {}
         self.active_sessions: Dict[int, Dict[str, Any]] = {}
         self.game_callbacks: Dict[str, list[Callable[[Any], Any]]] = {
@@ -18,6 +18,8 @@ class GameManager:
             'on_game_error': []
         }
         self.interactive_game_sessions: Dict[int, Dict[int, Dict[str, Any]]] = {}
+        self._session_cleanup_tasks: Dict[int, asyncio.Task] = {}
+        self.SESSION_TIMEOUT = 600
 
     async def register_game(self, game_id: int, game_class: Type[BaseGame]) -> None:
         if game_id in self.games:
@@ -66,6 +68,28 @@ class GameManager:
             except Exception as e:
                 await self.db_interface.log_error(f"Ошибка при вызове {callback_type}: {e}")
 
+    async def _schedule_session_cleanup(self, user_id: int) -> None:
+        """Запланировать удаление сессии через 10 минут"""
+        if user_id in self._session_cleanup_tasks:
+            self._session_cleanup_tasks[user_id].cancel()
+        task = asyncio.create_task(self._cleanup_session_after_timeout(user_id))
+        self._session_cleanup_tasks[user_id] = task
+
+    async def _cleanup_session_after_timeout(self, user_id: int) -> None:
+        """Удалить сессию спустя время ожидания"""
+        try:
+            await asyncio.sleep(self.SESSION_TIMEOUT)
+            if user_id in self.active_sessions:
+                session = self.active_sessions[user_id]
+                await self.db_interface.log_info(f"Сессия пользователя {user_id} удалена по timeout")
+                self.active_sessions.pop(user_id, None)
+                game_id = session.get('game_id')
+                if game_id:
+                    self.delete_interactive_session(user_id, game_id)
+            await self._session_cleanup_tasks.pop(user_id, None)
+        except asyncio.CancelledError:
+            await self._session_cleanup_tasks.pop(user_id, None)
+
     async def start_game(self, bot, user_id: int, message_id: int, game_id: int, bet: float,
                          bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> Optional[GameResult]:
         """
@@ -93,14 +117,13 @@ class GameManager:
             'started_at': datetime.now()
         }
         self.active_sessions[user_id] = session
+        await self._schedule_session_cleanup(user_id)
         try:
             await self._call_callbacks('on_game_start', session)
             if not isinstance(game, InteractiveGameBase):
                 result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
                 await self._call_callbacks('on_game_end', result, session)
                 await self.db_interface.log_info(f"Пользователь {user_id} завершил игру {game_id}")
-                self.active_sessions.pop(user_id, None)
-                return result
             else:
                 if hasattr(game, 'set_game_id'):
                     game.set_game_id(game_id)
@@ -113,8 +136,9 @@ class GameManager:
         except Exception as e:
             await self.db_interface.log_error(f"Ошибка при запуске игры: {e}", exc_info=True)
             await self._call_callbacks('on_game_error', e, session)
+        finally:
             self.active_sessions.pop(user_id, None)
-            return None
+        return None
 
     def is_user_playing(self, user_id: int) -> bool:
         """Проверить, играет ли пользователь"""
@@ -145,3 +169,11 @@ class GameManager:
             self.interactive_game_sessions[game_id].pop(user_id, None)
             if not self.interactive_game_sessions[game_id]:
                 del self.interactive_game_sessions[game_id]
+
+    async def cleanup_all(self):
+        """Очистить все сессии при завершении приложения"""
+        for task in self._session_cleanup_tasks.values():
+            task.cancel()
+        self._session_cleanup_tasks.clear()
+        self.active_sessions.clear()
+        self.interactive_game_sessions.clear()

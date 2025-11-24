@@ -122,6 +122,32 @@ If the chosen side lands, you win!
         )
         return await self._finalize_game(game_result)
 
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        bet_data = f"bet_value:{randbelow(2)}"
+        while True:
+            result = self.generate_result(bet_data)
+            win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
+            if win_amount > bet:
+                break
+        result_side = "🦅" if result == 1 else "🪙"
+        game_data = self.get_game_data(result, bet_data)
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=win_amount,
+            bet_amount=bet,
+            user_bet=game_data["bet_value"],
+            multiplier=multiplier,
+            is_win=True,
+            game_data=game_data,
+            animations_data={
+                'icon': self.icon,
+                'final_result': f"✨ {result_side} ✨",
+                'final_result_image': None
+            },
+            bet_data=bet_data
+        )
+        return await self._finalize_game(game_result)
+
     def generate_result(self, bet_data: Optional[str] = None) -> int:
         """
         Генерирует результат монетки с правильным расчётом вероятности.

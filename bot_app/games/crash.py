@@ -187,6 +187,32 @@ At a random moment — CRASH! 💥
             bet_data=bet_data
         )
 
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        # TODO: сделать когда crash будет добавлен
+        bet_data = f"bet_value:{randbelow(2)}"
+        while True:
+            result = self.generate_result(bet_data)
+            win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
+            if win_amount > bet:
+                break
+        result_side = "🦅" if result == 1 else "🪙"
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=win_amount,
+            bet_amount=bet,
+            user_bet=None,
+            multiplier=multiplier,
+            is_win=True,
+            game_data=await self.get_game_data(result, None),
+            animations_data={
+                'icon': self.icon,
+                'final_result': f"✨ {result_side} ✨",
+                'final_result_image': None
+            },
+            bet_data=bet_data
+        )
+        return await self._finalize_game(game_result)
+
     async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
         """Обработать ход игрока: забрать выигрыш или проверить крах"""
         session = self.get_session(bot, user_id)
@@ -255,9 +281,11 @@ At a random moment — CRASH! 💥
         )
         return {"text": text}
 
-    async def get_final_result_message(self, bot, user_id: int) -> dict[str, Any]:
+    async def get_final_result_message(self, bot, user_id: int,
+                                       session: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Финальный результат игры"""
-        session = self.get_session(bot, user_id)
+        if session is None:
+            session = self.get_session(bot, user_id)
         state = session['state']
         bet = session['bet']
 

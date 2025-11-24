@@ -1,5 +1,5 @@
 import asyncio
-from secrets import randbelow
+from secrets import randbelow, choice
 from typing import Optional, Callable, Any
 from . import BaseGame, GameStatus, GameResult, BetParameter
 from .config import DiceConfig
@@ -230,6 +230,46 @@ Make a bet, choose a type and value — your winnings depend on your choice!
             is_win=win_amount > 0,
             game_data=game_data,
             animations_data=animation_data,
+            bet_data=bet_data
+        )
+        return await self._finalize_game(game_result)
+
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        bet_types = ['sum', 'parity', 'doubles', 'compare', 'range']
+        bet_type = choice(bet_types)
+        bet_data = "bet_type:"
+        bet_data += bet_type + ";bet_value:"
+        if bet_type == "sum":
+            bet_value = str(2 + randbelow(11))
+        elif bet_type == "parity":
+            bet_value = choice(['even', 'odd'])
+        elif bet_type == "doubles":
+            bet_value = str(randbelow(6) + 1)
+        elif bet_type == "compare":
+            bet_value = choice(['first_greater', 'second_greater', 'equal'])
+        else:
+            bet_value = choice(['less_than_7', 'greater_than_7', 'equal_7'])
+        bet_data += bet_value
+        while True:
+            result = self.generate_result()
+            win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
+            if win_amount > bet:
+                break
+        dice1, dice2 = result
+        game_data = self.get_game_data(result, bet_data)
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=win_amount,
+            bet_amount=bet,
+            user_bet=f"{game_data["bet_type"]} {game_data["bet_value"]}",
+            multiplier=multiplier,
+            is_win=True,
+            game_data=game_data,
+            animations_data={
+                'icon': self.icon,
+                'final_result': f"🎲 {dice1} + 🎲 {dice2} = {dice1 + dice2} 🎉",
+                'final_result_image': None
+            },
             bet_data=bet_data
         )
         return await self._finalize_game(game_result)

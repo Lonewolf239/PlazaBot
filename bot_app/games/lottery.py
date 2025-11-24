@@ -1,6 +1,6 @@
 import asyncio
 from io import BytesIO
-from secrets import choice, SystemRandom
+from secrets import choice, SystemRandom, randbelow
 from typing import Optional, Callable, Any
 from PIL import Image, ImageDraw
 from . import BaseGame, BetParameter, GameResult, GameStatus
@@ -136,7 +136,28 @@ your entire bet is multiplied!
             animations_data=animation_data,
             bet_data=bet_data
         )
+        return await self._finalize_game(game_result)
 
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        selected_number = randbelow(6) + 1
+        numbers = SystemRandom().sample(range(90), selected_number)
+        bet_data = "bet_value:" + ",".join(map(str, numbers))
+        bet = bet * selected_number
+        result = choice(numbers)
+        win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
+        game_data = self.get_game_data(result, bet_data)
+        frame_image = self._get_field_display([], result, selected_numbers=[result])
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=win_amount,
+            bet_amount=bet,
+            user_bet=game_data["bet_value"],
+            multiplier=multiplier,
+            is_win=True,
+            game_data=game_data,
+            animations_data={'icon': self.icon, 'final_result': f"🎯 ✓ {result:2d}", 'final_result_image': frame_image},
+            bet_data=bet_data
+        )
         return await self._finalize_game(game_result)
 
     def generate_result(self, bet_data: Optional[str] = None) -> int:

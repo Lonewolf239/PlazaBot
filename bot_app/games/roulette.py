@@ -1,5 +1,5 @@
 import asyncio
-from secrets import choice
+from secrets import choice, randbelow
 from typing import Optional, Callable, Any
 from . import BaseGame, GameStatus, GameResult, BetParameter
 from .config import RouletteConfig
@@ -16,6 +16,7 @@ class Roulette(BaseGame):
     - dozen|1, dozen|2 или dozen|3: на дюжину (выплата ×2)
     - column|1, column|2 или column|3: на колонну (выплата ×2)
     """
+
     def __init__(self, max_bet: float, config_name: str = "honest"):
         """
         Инициализация рулетки
@@ -56,17 +57,17 @@ class Roulette(BaseGame):
             options={
                 'values': [
                     {'ru': 'Число', 'en': 'Number', 'value': 'number', 'emoji': '🎯',
-                        'adjust': 2},
+                     'adjust': 2},
                     {'ru': 'Цвет', 'en': 'Color', 'value': 'color', 'emoji': '🎨',
-                        'adjust': 2},
+                     'adjust': 2},
                     {'ru': 'Чет/Нечет', 'en': 'Even/Odd', 'value': 'parity', 'emoji': '⚖️',
-                        'adjust': 2},
+                     'adjust': 2},
                     {'ru': 'Дюжина', 'en': 'Dozen', 'value': 'dozen', 'emoji': '📊',
-                        'adjust': 2},
+                     'adjust': 2},
                     {'ru': '1-18 / 19-36', 'en': 'Low/High', 'value': 'half', 'emoji': '⬆️',
-                        'adjust': 2},
+                     'adjust': 2},
                     {'ru': 'Колонна', 'en': 'Column', 'value': 'column', 'emoji': '🏛️',
-                        'adjust': 2}
+                     'adjust': 2}
                 ]
             }
         )
@@ -320,7 +321,67 @@ Zero (0) - bank wins on any bet except betting directly on 0
             animations_data=animation_data,
             bet_data=bet_data
         )
+        return await self._finalize_game(game_result)
 
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        bet_types = ['number', 'color', 'parity', 'dozen', 'half', 'column']
+        bet_type = choice(bet_types)
+        bet_data = "bet_type:"
+        bet_data += bet_type + ";bet_value:"
+        if bet_type == "number":
+            bet_value = str(choice(range(0, 37)))
+        elif bet_type == "color":
+            bet_value = choice(['🔴', '⚫️'])
+        elif bet_type == "parity":
+            bet_value = choice(['even', 'odd'])
+        elif bet_type == "dozen" or bet_type == "column":
+            bet_value = str(randbelow(3) + 1)
+        else:
+            bet_value = choice(['1-18', '19-36'])
+        bet_data += bet_value
+        while True:
+            result = self.generate_result()
+            win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
+            if win_amount > bet:
+                break
+        game_data = self.get_game_data(result, bet_data)
+        wheel_display = {
+            'top_1': None,
+            'top_2': None,
+            'center': None,
+            'bottom_1': None,
+            'bottom_2': None
+        }
+        wheel = self.numbers * 8
+        target_indices = [i for i, num in enumerate(wheel) if num == result]
+        final_index = target_indices[-2]
+        positions = [
+            wheel[(final_index - 2) % len(wheel)],
+            wheel[(final_index - 1) % len(wheel)],
+            wheel[final_index % len(wheel)],
+            wheel[(final_index + 1) % len(wheel)],
+            wheel[(final_index + 2) % len(wheel)]
+        ]
+        wheel_display['top_2'] = positions[0]
+        wheel_display['top_1'] = positions[1]
+        wheel_display['center'] = positions[2]
+        wheel_display['bottom_1'] = positions[3]
+        wheel_display['bottom_2'] = positions[4]
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=win_amount,
+            bet_amount=bet,
+            user_bet=f"{game_data["bet_type"]} {game_data["bet_value"]}",
+            multiplier=multiplier,
+            is_win=True,
+            game_data=game_data,
+            animations_data={
+                'icon': self.icon,
+                'final_result': self._build_roulette_frame(wheel_display, highlight_result=True),
+                'final_result_image': None
+            },
+            bet_data=bet_data
+        )
         return await self._finalize_game(game_result)
 
     def generate_result(self, bet_data: Optional[str] = None) -> int:

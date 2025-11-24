@@ -114,7 +114,6 @@ Jackpot (3× 7️⃣) — the biggest prize!
         self.game_over = False
         self.current_status = GameStatus.RUNNING
         self.frame_time = self.start_frame_time
-
         result = self.generate_result()
         win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
         animation_data = await self.create_animation(result, bot, user_id,
@@ -132,6 +131,29 @@ Jackpot (3× 7️⃣) — the biggest prize!
             bet_data=bet_data
         )
 
+        return await self._finalize_game(game_result)
+
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        while True:
+            result = self.generate_result()
+            win_amount, multiplier = self.evaluate_result(result, bet)
+            if win_amount > bet:
+                break
+        game_result = GameResult(
+            status=GameStatus.FINISHED,
+            win_amount=win_amount,
+            bet_amount=bet,
+            user_bet=None,
+            multiplier=multiplier,
+            is_win=True,
+            game_data=self.get_game_data(result),
+            animations_data={
+                'icon': self.icon,
+                'final_result': ' | '.join(result),
+                'final_result_image': None
+            },
+            bet_data=None
+        )
         return await self._finalize_game(game_result)
 
     def generate_result(self, bet_data: Optional[str] = None) -> list[str]:
@@ -191,7 +213,7 @@ Jackpot (3× 7️⃣) — the biggest prize!
                                bet_data: Optional[str] = None) -> dict[str, Any]:
         """
         Анимация спина.
-        :return: данные анимации
+        :return: Данные анимации
         """
         animation_frames = []
         if send_frame:

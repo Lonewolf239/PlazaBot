@@ -1,4 +1,7 @@
+import asyncio
 import logging
+import random
+import math
 from io import BytesIO
 from aiogram import Bot, types
 from typing import Optional, Union, Dict, Any
@@ -159,6 +162,7 @@ class BotInterface:
         8: Blackjack
         # 200: Crash
     }
+    GameWeights = {0: 25, 1: 20, 2: 18, 8: 15, 7: 10, 5: 6, 6: 3, 4: 2, 3: 1}
     GameConfigs = {
         0: ["honest", "aggressive", "generous"],
         1: ["honest", "aggressive", "generous"],
@@ -180,7 +184,7 @@ class BotInterface:
         self.admin_ids = admin_ids
         self.referral_manager: Optional[ReferralManager] = None
         self.logger = logger
-        self.game_manager = GameManager(db_interface, logger)
+        self.game_manager = GameManager(db_interface)
         self.game_manager.on_game_start(self.on_game_started)
         self.game_manager.on_game_end(self.on_game_finished)
         self.game_manager.on_game_error(self.on_game_error)
@@ -335,6 +339,7 @@ class BotInterface:
         bot_info = await self.bot.get_me()
         current_bot_id = bot_info.username
         is_clone = await self.database_interface.is_clone_bot(current_bot_id)
+        await self.create_and_launch_phantoms()
         if is_clone:
             referrer_id = await self.database_interface.get_clone_bot_creator(current_bot_id)
             if referrer_id and referrer_id != chat_id:
@@ -689,6 +694,170 @@ class BotInterface:
         lines = [f"[{r['timestamp']}] {r['type']} — {r['message']}" for r in page_rows]
         text = f"Логи [{page}/{last_page}]:\n\n" + "\n\n".join(lines)
         return text, add_next_page
+
+    @staticmethod
+    def get_phantom_bet(max_bet: float):
+        max_bet = max_bet
+        min_bet = 0.01
+        bet_values = []
+        if max_bet <= 10:
+            n_points = 12
+            step = (max_bet - min_bet) / (n_points - 1) if max_bet > min_bet else 0
+            bet_values = [round(min_bet + i * step, 2) for i in range(n_points)]
+            bet_values = [v for v in bet_values if v <= max_bet]
+        else:
+            log_min = math.log10(min_bet)
+            log_max = math.log10(max_bet)
+            step = (log_max - log_min) / 18
+            for i in range(19):
+                log_val = log_min + step * i
+                val = 10 ** log_val
+                if val < 1:
+                    bet_values.append(round(val, 2))
+                elif val < 100:
+                    bet_values.append(round(val, 1))
+                else:
+                    bet_values.append(int(val))
+            bet_values = sorted(set(bet_values))
+        bet_values = sorted(set(bet_values))
+        n = len(bet_values)
+        middle_idx = (n - 1) / 2
+        sigma = n / 4
+        weights = []
+        for i in range(n):
+            distance = abs(i - middle_idx)
+            weight = math.exp(-(distance ** 2) / (2 * sigma ** 2))
+            weights.append(weight)
+        total_weight = sum(weights)
+        weights = [w / total_weight for w in weights]
+        return random.choices(bet_values, weights=weights, k=1)[0]
+
+    @staticmethod
+    def get_phantom_pause() -> int:
+        import datetime
+        current_hour = datetime.datetime.now().hour
+        if current_hour in [12, 13, 14, 19, 20, 21, 22, 23]:
+            pause_minutes = random.choices(
+                [5, 7, 10, 12, 15],
+                weights=[20, 25, 30, 20, 5],
+                k=1
+            )[0]
+        elif current_hour in [10, 11, 15, 16, 17, 18]:
+            pause_minutes = random.choices(
+                [10, 15, 20, 25],
+                weights=[15, 30, 35, 20],
+                k=1
+            )[0]
+        else:
+            pause_minutes = random.choices(
+                [20, 30, 40, 50],
+                weights=[10, 20, 40, 30],
+                k=1
+            )[0]
+        variance = pause_minutes * 0.2
+        pause_minutes += random.uniform(-variance, variance)
+        return pause_minutes * 60
+
+    async def broadcast_phantom_wins(self):
+        while True:
+            max_bet = await self.database_interface.get_max_bet()
+            bet = self.get_phantom_bet(max_bet)
+            user_id = random.randrange(0, 50)
+            game_id = random.choices(
+                list(self.CasinoGames.keys()),
+                weights=[self.GameWeights[game_id] for game_id in self.CasinoGames.keys()],
+                k=1
+            )[0]
+            game = await self.game_manager.get_game(game_id)
+            result = await game.get_phantom_win(user_id, bet, self)
+            if result is None:
+                continue
+            if result.win_amount <= 0:
+                continue
+            await self.database_interface.update_balance(user_id, result.win_amount, 'win', 'Phantom win')
+            channel_id = await self.chat_id()
+            if channel_id:
+                user_data = await self.database_interface.get_user(user_id)
+                final_result = result.animations_data["final_result"]
+                final_result_image = result.animations_data.get("final_result_image")
+                icon = result.animations_data["icon"]
+                user_bet = result.user_bet
+                custom_data = {
+                    "username": f"<a href='https://t.me/"
+                                f"{(await self.bot.get_me()).username}?"
+                                f"start=user_{user_data['hashed_username']}'>{user_data['username']}</a>",
+                    "amount": f"{result.win_amount:.2f}",
+                    "bet": str(result.bet_amount),
+                    "user_bet": user_bet,
+                    "final_result": final_result,
+                    "icon": icon
+                }
+                if final_result_image:
+                    await self.bot.send_photo(channel_id,
+                                              BufferedInputFile(
+                                                  file=final_result_image.getvalue(),
+                                                  filename='image.png'
+                                              ),
+                                              caption=await self.get_text(user_id, "GAME_WIN_ANNOUNCEMENT", user_data,
+                                                                          custom_data),
+                                              reply_markup=KeyboardManager.get_channel_announcement_keyboard(
+                                                  (await self.bot.get_me()).username),
+                                              parse_mode="HTML")
+                else:
+                    await self.send_message(channel_id,
+                                            await self.get_text(user_id, "GAME_WIN_ANNOUNCEMENT", user_data,
+                                                                custom_data),
+                                            reply_markup=KeyboardManager.get_channel_announcement_keyboard(
+                                                (await self.bot.get_me()).username))
+            await asyncio.sleep(self.get_phantom_pause())
+
+    async def create_and_launch_phantoms(self):
+        usernames = [
+            "Димогорган",
+            "TyLEnKa568",
+            "._.",
+            "MotyaNeloh",
+            "ал",
+            "Name?",
+            "~Vilka~",
+            "Achoch",
+            ">///<",
+            "JL",
+            "H2",
+            "Баракуда",
+            "*",
+            "Т-Банк",
+            ">.<",
+            "Кремлёв",
+            "кiт",
+            "Dmitri228",
+            "8=======*",
+            "Олег",
+            "Gravis",
+            "Kakish",
+            "Саня",
+            "чортов",
+            "Vova",
+            "Святослав",
+            "$$$",
+            ".",
+            "MotoWay",
+            "Kuro",
+            "Саншко",
+            "When",
+            "Hinner1",
+            "Сева",
+            "Л1гхт",
+            "миша",
+            "Мьоп",
+            "NIKTO",
+            "Елисейка",
+            "Вадим",
+        ]
+        for i in range(len(usernames)):
+            await self.database_interface.create_user(i + 10, usernames[i], random.choice(["en", "ru"]))
+        # noinspection PyAsyncCall
+        asyncio.create_task(self.broadcast_phantom_wins())
 
     async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML", image: BytesIO = None,
                            reply_markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardRemove]] = None,

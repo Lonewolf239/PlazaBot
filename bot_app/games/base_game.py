@@ -128,6 +128,10 @@ class BaseGame(ABC):
         pass
 
     @abstractmethod
+    async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
+        pass
+
+    @abstractmethod
     def generate_result(self, bet_data: Optional[str] = None) -> Any:
         """
         Генерирует результат раунда.

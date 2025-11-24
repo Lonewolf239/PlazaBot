@@ -108,7 +108,7 @@ class DatabaseInterface:
     async def get_needed(self, admin_ids: list[int]) -> Tuple[float, int, float, float, float]:
         excluded_ids = self.BLOCKED_USER_IDS + admin_ids
         placeholders = ",".join("?" * len(excluded_ids))
-        where_clause = f"WHERE user_id >= 10 AND user_id NOT IN ({placeholders})"
+        where_clause = f"WHERE user_id >= 100 AND user_id NOT IN ({placeholders})"
         query = (
             f"SELECT "
             f"SUM(CAST(balance AS REAL)) AS total_balance, "
@@ -434,6 +434,7 @@ class DatabaseInterface:
             return False
 
         try:
+            username = username.replace('>', '').replace('<', '')
             await self.execute("INSERT INTO users (user_id, username, hashed_username, language, email, registered_at) "
                                "VALUES (?, ?, ?, ?, ?, ?)",
                                (user_id, username, Hacher.hash(username), language, "NONE",
@@ -471,70 +472,70 @@ class DatabaseInterface:
         leaderboard = [
             {
                 "user_id": "0",
-                "username": "sendovich",
+                "username": "кiт",
                 "winnings": 487.32,
                 "games_played": "0:28|1:8|2:5|3:10|4:8|5:5|6:4|7:10",
                 "registered_at": "04:03:12 11.10.2025"
             },
             {
                 "user_id": "1",
-                "username": "keluxe",
+                "username": "._.",
                 "winnings": 356.89,
                 "games_played": "0:7|1:24|2:7|3:2|4:4|5:4|6:7|7:7",
                 "registered_at": "10:00:48 07.05.2025"
             },
             {
                 "user_id": "2",
-                "username": "svinksu",
+                "username": "ал",
                 "winnings": 298.47,
                 "games_played": "0:3|1:1|2:22|3:7|4:2|5:7|6:2|7:1",
                 "registered_at": "08:07:36 02.07.2025"
             },
             {
                 "user_id": "3",
-                "username": "tarle4a",
+                "username": "Кремлёв",
                 "winnings": 264.15,
                 "games_played": "0:10|1:4|2:3|3:37|4:4|5:5|6:5|7:3",
                 "registered_at": "03:43:54 05.06.2025"
             },
             {
                 "user_id": "4",
-                "username": "sponge",
+                "username": "Hinner1",
                 "winnings": 215.68,
                 "games_played": "0:10|1:28|2:11|3:8|4:11|5:4|6:8|7:9",
                 "registered_at": "19:51:22 21.10.2025"
             },
             {
                 "user_id": "5",
-                "username": "caezyman",
+                "username": "Димогорган",
                 "winnings": 189.43,
                 "games_played": "0:8|1:4|2:6|3:1|4:7|5:7|6:13|7:8",
                 "registered_at": "21:29:57 23.05.2025"
             },
             {
                 "user_id": "6",
-                "username": "tentop",
+                "username": "Gravis",
                 "winnings": 167.82,
                 "games_played": "0:6|1:4|2:3|3:5|4:1|5:6|6:2|7:11",
                 "registered_at": "01:09:25 17.08.2025"
             },
             {
                 "user_id": "7",
-                "username": "pdiray",
+                "username": "JL",
                 "winnings": 142.56,
                 "games_played": "0:7|1:1|2:4|3:6|4:26|5:3|6:2|7:3",
                 "registered_at": "03:24:40 08.05.2025"
             },
             {
                 "user_id": "8",
-                "username": "lotopray",
+                "username": "8=======*",
                 "winnings": 128.93,
                 "games_played": "0:5|1:4|2:1|3:6|4:4|5:12|6:4|7:5",
                 "registered_at": "08:28:15 25.06.2025"
             },
             {
                 "user_id": "9",
-                "username": "pryaadush",
+                "username": "Dmitri228",
                 "winnings": 115.27,
                 "games_played": "0:7|1:2|2:34|3:5|4:3|5:7|6:2|7:7",
                 "registered_at": "21:55:07 07.09.2025"
@@ -1131,8 +1132,9 @@ class DatabaseInterface:
             has_user_id = 'user_id' in column_names
             if has_user_id:
                 blocked_ids_str = ','.join(map(str, self.BLOCKED_USER_IDS))
-                count_query = f"SELECT COUNT(*) as count FROM {table_name} WHERE user_id NOT IN ({blocked_ids_str})"
-                rows_query = f"SELECT * FROM {table_name} WHERE user_id NOT IN ({blocked_ids_str})"
+                count_query = (f"SELECT COUNT(*) as count FROM {table_name} WHERE user_id >= 100 AND "
+                               f"user_id NOT IN ({blocked_ids_str})")
+                rows_query = f"SELECT * FROM {table_name} WHERE user_id >= 100 AND user_id NOT IN ({blocked_ids_str})"
             else:
                 count_query = f"SELECT COUNT(*) as count FROM {table_name}"
                 rows_query = f"SELECT * FROM {table_name}"
