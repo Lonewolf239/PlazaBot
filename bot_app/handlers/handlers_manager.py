@@ -25,6 +25,7 @@ class HandlersManager:
         try:
             bot_config = await bot.bot_config()
             if not bot_config:
+                await bot.database_interface.update_user(chat_id, subscribed=True)
                 return True
             channel_id = bot_config.get("chat_id")
             channel_username = bot_config.get("chat_username")
