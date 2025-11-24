@@ -20,29 +20,27 @@ class HandlersManager:
         await bot.registration_menu(callback_query.message)
 
     @staticmethod
-    async def check_subscription(bot, chat_id: int, first_name: str) -> bool:
+    async def check_subscription(bot, chat_id: int, first_name: str, send_message: bool) -> bool:
         from ..keyboards import KeyboardManager
         try:
-            user_data = await bot.database_interface.get_user(chat_id)
-            if not user_data:
-                return True
-            if bool(user_data.get("subscribed")):
-                return True
             bot_config = await bot.bot_config()
             if not bot_config:
                 return True
             channel_id = bot_config.get("chat_id")
             channel_username = bot_config.get("chat_username")
             if not channel_id or not channel_username:
+                await bot.database_interface.update_user(chat_id, subscribed=True)
                 return True
             member = await bot.bot.get_chat_member(f"@{channel_username}", chat_id)
             if member.status in ("member", "administrator", "creator"):
                 await bot.database_interface.update_user(chat_id, subscribed=True)
-                await bot.send_message(chat_id, f"👋 Добро пожаловать, {first_name}!\n\n✅ Вы подписаны на наш канал.")
                 return True
-            await bot.send_message(chat_id,
-                                   f"👋 Привет, {first_name}!\n\n❌ Для продолжения работы подпишитесь на наш канал:",
-                                   reply_markup=KeyboardManager.get_channel_keyboard(channel_username))
+            await bot.database_interface.update_user(chat_id, subscribed=False)
+            if send_message:
+                await bot.send_message(chat_id,
+                                       f"👋 Привет, {first_name}!\n\n"
+                                       "❌ Для продолжения работы подпишитесь на наш канал:",
+                                       reply_markup=KeyboardManager.get_channel_keyboard(channel_username))
         except Exception:
             await bot.send_message(chat_id, "⚠️ Произошла ошибка при проверке подписки.\nПожалуйста, повторите попытку")
         return False
@@ -553,7 +551,8 @@ class HandlersManager:
     @staticmethod
     async def admin_summary(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
         from ..keyboards import KeyboardManager
-        needed, count, avg_bal, max_bal, min_bal = await bot.database_interface.get_needed(bot.admin_ids)
+        needed, count, avg_bal, max_bal, min_bal = await bot.database_interface.get_needed(
+            bot.admin_ids, len(bot.phantom_usernames) + 10)
         text = (
             f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_COUNT", user_data)}: {count}\n"
             f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_NEEDED", user_data)}: ${int(needed)}\n"

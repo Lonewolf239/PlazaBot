@@ -235,12 +235,27 @@ Make a bet, choose a type and value — your winnings depend on your choice!
         return await self._finalize_game(game_result)
 
     async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
-        bet_types = ['sum', 'parity', 'doubles', 'compare', 'range']
-        bet_type = choice(bet_types)
+        confidence = 65
+        medium_risk = 25
+        strategy_roll = randbelow(100)
+        if strategy_roll < confidence:
+            safe_bets = ['parity', 'range']
+            bet_type = choice(safe_bets)
+        elif strategy_roll < confidence + medium_risk:
+            medium_bets = ['sum', 'compare']
+            bet_type = choice(medium_bets)
+        else:
+            bet_type = 'doubles'
         bet_data = "bet_type:"
         bet_data += bet_type + ";bet_value:"
         if bet_type == "sum":
-            bet_value = str(2 + randbelow(11))
+            sum_roll = randbelow(100)
+            if sum_roll < 40:
+                bet_value = str(choice([6, 7, 8]))
+            elif sum_roll < 70:
+                bet_value = str(choice([5, 9]))
+            else:
+                bet_value = str(choice([2, 3, 4, 10, 11, 12]))
         elif bet_type == "parity":
             bet_value = choice(['even', 'odd'])
         elif bet_type == "doubles":

@@ -52,6 +52,7 @@ class Messages:
             "custom_message": {"ru": "Кастомное сообщение", "en": "Custom message"},
             "startup_channel": {"ru": "Отправить стартовое", "en": "Send start"},
             "create_leaderboard": {"ru": "Создать лидеров", "en": "Create a leaderboard"},
+            "create_phantoms": {"ru": "Создать фантомов", "en": "Create phantoms"},
             "create_giveaway": {"ru": "Создать розыгрыш", "en": "Create a giveaway"},
             "profit": {"ru": "Прибыль", "en": "Profit"},
             "withdraw_profit": {"ru": "Вывод прибыли", "en": "Withdraw profit"}
@@ -69,8 +70,8 @@ class Messages:
             "try_again": {"ru": "Попробовать снова", "en": "Try again"},
             "prev_page": {"ru": "", "en": ""},
             "next_page": {"ru": "", "en": ""},
-            "did_deb": {"en": "Играй сейчас/Play Now"},
-            "bot_open": {"en": "Открыть бота/Open the bot"}
+            "did_deb": {"en": "Играй сейчас / Play Now"},
+            "bot_open": {"en": "Открыть бота / Open the bot"}
         }
     }
 
@@ -122,6 +123,7 @@ class Messages:
             "custom_message": "📝",
             "startup_channel": "🚀",
             "create_leaderboard": "🏆",
+            "create_phantoms": "👻",
             "create_giveaway": "🎁",
             "profit": "📈",
             "withdraw_profit": "💸"
@@ -467,6 +469,8 @@ class KeyboardManager:
                   callback_data="channel-message")
         kb.button(text=Messages.get_text("ADMIN", "create_leaderboard", language_code),
                   callback_data="create-leaderboard")
+        kb.button(text=Messages.get_text("ADMIN", "create_phantoms", language_code),
+                  callback_data="create-phantoms")
         kb.button(text=Messages.get_text("ADMIN", "create_giveaway", language_code),
                   callback_data="giveaway")
         kb.button(text=Messages.get_text("ADMIN", "profit", language_code),

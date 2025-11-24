@@ -189,6 +189,49 @@ class BotInterface:
         self.game_manager.on_game_end(self.on_game_finished)
         self.game_manager.on_game_error(self.on_game_error)
         self.bet_data_collector = BetDataCollector()
+        self.broadcast_phantom_task = None
+        self.phantom_usernames = [
+            "Димогорган",
+            "TyLEnKa568",
+            "._.",
+            "MotyaNeloh",
+            "ал",
+            "Name?",
+            "~Vilka~",
+            "Achoch",
+            ">///<",
+            "JL",
+            "H2",
+            "Баракуда",
+            "*",
+            "Т-Банк",
+            ">.<",
+            "Кремлёв",
+            "кiт",
+            "Dmitri228",
+            "8=======*",
+            "Олег",
+            "Gravis",
+            "Kakish",
+            "Саня",
+            "чортов",
+            "Vova",
+            "Святослав",
+            "$$$",
+            ".",
+            "MotoWay",
+            "Kuro",
+            "Саншко",
+            "When",
+            "Hinner1",
+            "Сева",
+            "Л1гхт",
+            "миша",
+            "Мьоп",
+            "NIKTO",
+            "Елисейка",
+            "Вадим",
+        ]
 
     async def initialize(self, crypto_pay: CryptoPay):
         self.crypto_pay = crypto_pay
@@ -339,7 +382,6 @@ class BotInterface:
         bot_info = await self.bot.get_me()
         current_bot_id = bot_info.username
         is_clone = await self.database_interface.is_clone_bot(current_bot_id)
-        await self.create_and_launch_phantoms()
         if is_clone:
             referrer_id = await self.database_interface.get_clone_bot_creator(current_bot_id)
             if referrer_id and referrer_id != chat_id:
@@ -374,7 +416,7 @@ class BotInterface:
                 await self.database_interface.update_user(chat_id, new_bet=True)
                 await HandlersManager.select_bet(self, chat_id, user_data)
                 return
-        if not await HandlersManager.check_subscription(self, chat_id, message.from_user.first_name):
+        if not await HandlersManager.check_subscription(self, chat_id, message.from_user.first_name, True):
             return
         await self.main_menu(chat_id)
 
@@ -439,6 +481,7 @@ class BotInterface:
             return
         user_data = await self.database_interface.get_user(chat_id)
         block_input = user_data.get("block_input", False)
+        subscribed = user_data.get("subscribed", False)
         if command == "register_cancel":
             if not user_data.get("in_registration", False):
                 return
@@ -452,7 +495,16 @@ class BotInterface:
             await HandlersManager.custom_message_cancel(self, chat_id, user_data,
                                                         callback_query.message.message_id)
             return
-        if block_input:
+        elif command == "check-subscription":
+            if await HandlersManager.check_subscription(self, chat_id, user_data["username"], False):
+                await self.main_menu(chat_id, callback_query.message.message_id)
+                await callback_query.answer()
+                return
+            await callback_query.answer(await self.get_text(chat_id, "NOT_SUBSCRIBED_TO_CHANNEL", user_data),
+                                        show_alert=True)
+            return
+
+        if block_input or not subscribed:
             return
         if command == "back":
             await self.main_menu(chat_id, callback_query.message.message_id)
@@ -462,13 +514,6 @@ class BotInterface:
             if not user_data.get("in_registration", False):
                 return
             await HandlersManager.register_back(self, callback_query)
-        elif command == "check-subscription":
-            if await HandlersManager.check_subscription(self, chat_id, user_data["username"]):
-                await self.main_menu(chat_id,
-                                     callback_query.message.message_id)
-            await self.bot.delete_message(chat_id,
-                                          callback_query.message.message_id)
-            return
 
         # ════════════════════ Игры ═══════════════════
         if command.startswith("select-bet-data"):
@@ -623,6 +668,18 @@ class BotInterface:
                                                       callback_query.message)
         elif command == "create-leaderboard":
             await HandlersManager.create_leaderboard(self, chat_id, user_data, callback_query)
+        elif command == "create-phantoms":
+            bot_config = await self.database_interface.get_bot_config((await self.bot.get_me()).id)
+            if bot_config:
+                channel_id = bot_config.get("chat_id")
+                if channel_id is None:
+                    await self.send_message(chat_id, await self.get_text(chat_id, "CHANNEL_NOT_CONNECTED"))
+                    await callback_query.answer()
+                    return
+            if await self.create_and_launch_phantoms():
+                await callback_query.answer("✅ Фантомы успешно запущены")
+            else:
+                await callback_query.answer("👻 Фантомы уже работают")
         elif command.startswith("giveaway"):
             await HandlersManager.giveaway(self, chat_id, user_data, command,
                                            callback_query.message.message_id)
@@ -762,7 +819,7 @@ class BotInterface:
         while True:
             max_bet = await self.database_interface.get_max_bet()
             bet = self.get_phantom_bet(max_bet)
-            user_id = random.randrange(0, 50)
+            user_id = random.randrange(0, len(self.phantom_usernames))
             game_id = random.choices(
                 list(self.CasinoGames.keys()),
                 weights=[self.GameWeights[game_id] for game_id in self.CasinoGames.keys()],
@@ -774,6 +831,8 @@ class BotInterface:
                 continue
             if result.win_amount <= 0:
                 continue
+            await self.database_interface.update_user(user_id, selected_game=game_id)
+            await self.database_interface.update_balance(user_id, bet, 'bet', 'Phantom bet')
             await self.database_interface.update_balance(user_id, result.win_amount, 'win', 'Phantom win')
             channel_id = await self.chat_id()
             if channel_id:
@@ -811,53 +870,14 @@ class BotInterface:
                                                 (await self.bot.get_me()).username))
             await asyncio.sleep(self.get_phantom_pause())
 
-    async def create_and_launch_phantoms(self):
-        usernames = [
-            "Димогорган",
-            "TyLEnKa568",
-            "._.",
-            "MotyaNeloh",
-            "ал",
-            "Name?",
-            "~Vilka~",
-            "Achoch",
-            ">///<",
-            "JL",
-            "H2",
-            "Баракуда",
-            "*",
-            "Т-Банк",
-            ">.<",
-            "Кремлёв",
-            "кiт",
-            "Dmitri228",
-            "8=======*",
-            "Олег",
-            "Gravis",
-            "Kakish",
-            "Саня",
-            "чортов",
-            "Vova",
-            "Святослав",
-            "$$$",
-            ".",
-            "MotoWay",
-            "Kuro",
-            "Саншко",
-            "When",
-            "Hinner1",
-            "Сева",
-            "Л1гхт",
-            "миша",
-            "Мьоп",
-            "NIKTO",
-            "Елисейка",
-            "Вадим",
-        ]
-        for i in range(len(usernames)):
-            await self.database_interface.create_user(i + 10, usernames[i], random.choice(["en", "ru"]))
-        # noinspection PyAsyncCall
-        asyncio.create_task(self.broadcast_phantom_wins())
+    # noinspection PyAsyncCall
+    async def create_and_launch_phantoms(self) -> bool:
+        if self.broadcast_phantom_task:
+            return False
+        for i in range(len(self.phantom_usernames)):
+            await self.database_interface.create_user(i + 10, self.phantom_usernames[i], random.choice(["en", "ru"]))
+        self.broadcast_phantom_task = asyncio.create_task(self.broadcast_phantom_wins())
+        return True
 
     async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML", image: BytesIO = None,
                            reply_markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardRemove]] = None,

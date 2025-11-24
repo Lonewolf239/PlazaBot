@@ -164,16 +164,30 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
     async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
         field = self._generate_field()
         safe_cells_total = self.TOTAL_CELLS - self.config['bombs_count']
-        max_open = min(randbelow(6) + 3, safe_cells_total)
         opened = set()
         coefficients = []
-        for _ in range(max_open):
-            while True:
-                cell = randbelow(self.TOTAL_CELLS)
-                if cell not in opened and field[cell] != 0.0:
-                    opened.add(cell)
-                    coefficients.append(field[cell])
-                    break
+        risk_threshold = 100
+        while len(opened) < safe_cells_total:
+            current_risk = risk_threshold - (len(opened) * 15)
+            if current_risk < 10:
+                break
+            if randbelow(100) < current_risk:
+                while True:
+                    cell = randbelow(self.TOTAL_CELLS)
+                    if cell not in opened and field[cell] != 0.0:
+                        opened.add(cell)
+                        coefficients.append(field[cell])
+                        break
+            else:
+                break
+        if len(opened) < 2:
+            for _ in range(2 - len(opened)):
+                while True:
+                    cell = randbelow(self.TOTAL_CELLS)
+                    if cell not in opened and field[cell] != 0.0:
+                        opened.add(cell)
+                        coefficients.append(field[cell])
+                        break
         multiplier = self._calculate_multiplier(coefficients)
         win_amount = bet * multiplier
         session = {'bet': bet, 'state': {
@@ -198,7 +212,6 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
             },
             bet_data=None
         )
-
         return await self._finalize_game(game_result)
 
     async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:

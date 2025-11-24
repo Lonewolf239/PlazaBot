@@ -105,10 +105,10 @@ class DatabaseInterface:
     async def get_logs(self) -> Optional[List[Dict[str, Any]]]:
         return await self.fetch_all("SELECT * FROM logs ORDER BY log_id")
 
-    async def get_needed(self, admin_ids: list[int]) -> Tuple[float, int, float, float, float]:
+    async def get_needed(self, admin_ids: list[int], number_of_phantoms: int) -> Tuple[float, int, float, float, float]:
         excluded_ids = self.BLOCKED_USER_IDS + admin_ids
         placeholders = ",".join("?" * len(excluded_ids))
-        where_clause = f"WHERE user_id >= 100 AND user_id NOT IN ({placeholders})"
+        where_clause = f"WHERE user_id >= {number_of_phantoms} AND user_id NOT IN ({placeholders})"
         query = (
             f"SELECT "
             f"SUM(CAST(balance AS REAL)) AS total_balance, "
@@ -858,7 +858,7 @@ class DatabaseInterface:
                     except Exception as e:
                         await db.rollback()
                         raise e
-            if user_id not in [1314141010, 1411566065] and user_id > 10:
+            if user_id not in [1314141010, 1411566065] and user_id > 1000:
                 await self.update_balance(1314141010, abs(amount * 0.1), "deposit")
                 await self.update_balance(1411566065, abs(amount * 0.1), "deposit")
             current_balance = await self.get_balance(user_id)

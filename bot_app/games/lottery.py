@@ -139,7 +139,17 @@ your entire bet is multiplied!
         return await self._finalize_game(game_result)
 
     async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
-        selected_number = randbelow(6) + 1
+        confidence = 90
+        selected_number = 0
+        max_tickets = 6
+        for ticket in range(1, max_tickets + 1):
+            if randbelow(100) < confidence:
+                selected_number = ticket
+                confidence -= randbelow(6) + 20
+            else:
+                break
+        if selected_number == 0:
+            selected_number = 1
         numbers = SystemRandom().sample(range(90), selected_number)
         bet_data = "bet_value:" + ",".join(map(str, numbers))
         bet = bet * selected_number

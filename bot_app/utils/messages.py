@@ -31,6 +31,12 @@ class Messages:
         "REGISTRATION_COMPLETED": {
             "ru": "✅ Поздравляем!\n\nРегистрация успешно завершена. Ваш адрес электронной почты: {email}",
             "en": "✅ Congratulations!\n\nRegistration completed successfully. Your email address: {email}"
+        },
+        "NOT_SUBSCRIBED_TO_CHANNEL": {
+            "ru": "⚠️ Требуется подписка на канал\n\n"
+                  "Подпишитесь на наш канал, чтобы получить доступ к играм и выигрышам.",
+            "en": "⚠️ Channel subscription required\n\n"
+                  "Subscribe to our channel to gain access to games and winnings."
         }
     }
 
@@ -594,6 +600,28 @@ class Messages:
                   "Пожалуйста, напишите мне в личку для запуска.\n\n\n"
                   "❌ This bot only works in private messages!\n"
                   "Please message me privately to launch it."
+        },
+        "CHANNEL_NOT_CONNECTED": {
+            "ru": (
+                "⚠️ Канал уведомлений о выигрышах не подключён\n\n"
+                "🏆 Канал для публикации уведомлений о выигрышах не настроен.\n"
+                "Подключите его в административной панели для автоматической публикации результатов.\n\n"
+                "🔧 Как подключить:\n"
+                "1️⃣ Откройте админ панель\n"
+                "2️⃣ Перейдите в раздел настройки каналов\n"
+                "3️⃣ Укажите ID канала для уведомлений о выигрышах\n"
+                "4️⃣ Убедитесь, что бот добавлен как администратор"
+            ),
+            "en": (
+                "⚠️ Wins notification channel not connected\n\n"
+                "🏆 Channel for publishing win notifications is not configured.\n"
+                "Connect it in the admin panel for automatic results publication.\n\n"
+                "🔧 How to connect:\n"
+                "1️⃣ Open admin panel\n"
+                "2️⃣ Go to channel settings section\n"
+                "3️⃣ Specify the wins notification channel ID\n"
+                "4️⃣ Make sure bot is added as administrator"
+            )
         },
         "BOT_CONFIG": {
             "ru": (

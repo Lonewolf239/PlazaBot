@@ -324,8 +324,17 @@ Zero (0) - bank wins on any bet except betting directly on 0
         return await self._finalize_game(game_result)
 
     async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
-        bet_types = ['number', 'color', 'parity', 'dozen', 'half', 'column']
-        bet_type = choice(bet_types)
+        confidence = 70
+        risk_tolerance = 30
+        strategy_roll = randbelow(100)
+        if strategy_roll < confidence:
+            safe_bets = ['color', 'parity', 'half']
+            bet_type = choice(safe_bets)
+        elif strategy_roll < confidence + risk_tolerance:
+            medium_bets = ['dozen', 'column']
+            bet_type = choice(medium_bets)
+        else:
+            bet_type = 'number'
         bet_data = "bet_type:"
         bet_data += bet_type + ";bet_value:"
         if bet_type == "number":

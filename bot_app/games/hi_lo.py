@@ -116,13 +116,38 @@ Same card value = loss and game over
     async def get_phantom_win(self, user_id: int, bet: float, bot: Optional[Any] = None) -> GameResult:
         session = {'bet': bet}
         current_card = choice(self.config['card_values'])
-        streak = randbelow(4) + 1
+        confidence = 90
+        streak = 0
+        history = []
+        for attempt in range(1, 11):
+            if randbelow(100) >= confidence:
+                break
+            prediction = choice(['higher', 'lower'])
+            next_card = choice(self.config['card_values'])
+            is_correct = False
+            if prediction == 'higher' and next_card > current_card:
+                is_correct = True
+            elif prediction == 'lower' and next_card < current_card:
+                is_correct = True
+            if is_correct:
+                streak += 1
+                history.append({
+                    'card': next_card,
+                    'prediction': prediction,
+                    'correct': True
+                })
+                current_card = next_card
+                confidence -= randbelow(7) + 12
+            else:
+                break
+        if streak == 0:
+            streak = 1
         multiplier = self.config['multiplier_win'] * streak
         session['state'] = {
             'current_card': current_card,
             'streak': streak,
             'multiplier': multiplier,
-            'history': []
+            'history': history
         }
         game_result = GameResult(
             status=GameStatus.FINISHED,
@@ -165,8 +190,6 @@ Same card value = loss and game over
             is_correct = True
         elif action == 'low' and new_card < current_card:
             is_correct = True
-        if new_card == current_card:
-            is_correct = False
         state['current_card'] = new_card
         if is_correct:
             state['streak'] += 1
