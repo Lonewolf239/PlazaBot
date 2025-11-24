@@ -415,7 +415,7 @@ class HandlersManager:
     async def do_withdraw(bot, chat_id: int, user_data: dict[str, Any], currency: str, amount: float,
                           callback_query: CallbackQuery):
         if chat_id in config.ADMIN_IDS:
-            await callback_query.answer(await bot.get_text(chat_id, "ADMIN_ATTEMPT_WITHDRAW", user_data))
+            await callback_query.answer(await bot.get_text(chat_id, "ADMIN_ATTEMPT_WITHDRAW", user_data), True)
             await bot.main_menu(chat_id, callback_query.message.message_id)
             return
         withdraw = await bot.crypto_pay.initiate_withdrawal(chat_id, amount, currency)
@@ -441,7 +441,7 @@ class HandlersManager:
         else:
             if just_check:
                 return False
-            await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_FAILED", user_data))
+            await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_FAILED", user_data), True)
 
     @staticmethod
     async def cancel_deposit_confirm(bot, chat_id: int, user_data: dict[str, Any],
@@ -458,7 +458,7 @@ class HandlersManager:
         if await bot.crypto_pay.cancel_deposit(internal_tx_id):
             await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_CANCELLED", user_data))
         else:
-            await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_CANCEL_FAILED", user_data))
+            await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_CANCEL_FAILED", user_data), True)
         await bot.main_menu(chat_id, callback_query.message.message_id)
 
     # ════════════════ Пользователь ═══════════════
@@ -768,11 +768,11 @@ class HandlersManager:
         total = await bot.crypto_pay.get_total_balance_usd()
         profit = total - config.START_BALANCE
         if profit < 10:
-            await callback_query.answer(await bot.get_text(chat_id, "LOW_PROFITS", user_data))
+            await callback_query.answer(await bot.get_text(chat_id, "LOW_PROFITS", user_data), True)
             await HandlersManager.admin_panel(bot, chat_id, user_data, callback_query.message.message_id)
             return
         if chat_id != config.MAIN_ADMIN_ID:
-            await callback_query.answer(await bot.get_text(chat_id, "NO_MAIN_ADMIN_WITHDRAWAL", user_data))
+            await callback_query.answer(await bot.get_text(chat_id, "NO_MAIN_ADMIN_WITHDRAWAL", user_data), True)
             return
         await bot.database_interface.add_profit_withdrawal(str(total), str(profit), str(total - profit))
         await bot.crypto_pay.initiate_withdrawal_profits(config.START_BALANCE)

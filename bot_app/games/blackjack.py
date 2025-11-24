@@ -605,8 +605,7 @@ Stand: Stop and pass turn to dealer
         }
         result_map = result_map_en if language == "en" else result_map_ru
         result_text = result_map.get(state['result'], 'FINISHED' if language == "en" else 'ЗАВЕРШЕНО')
-        text = f"{self.icon} {game_name} - {result_text}"
-        return {"text": text, "image": image}
+        return {"text": result_text, "image": image}
 
     async def get_game_data(self, result: Any, bet_data: Optional[str]) -> dict[str, Any]:
         """Получить структурированные данные игры для логирования"""
