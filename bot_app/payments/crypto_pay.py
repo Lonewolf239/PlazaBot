@@ -2,6 +2,8 @@ import uuid
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+
+import aiocryptopay.models.invoice
 from aiocryptopay import AioCryptoPay, Networks
 from aiocryptopay.models.check import Check
 from aiocryptopay.models.currencies import Currency
@@ -386,6 +388,8 @@ class CryptoPay:
                 return None
             crypto_id = crypto_data.get("invoice_id")
             invoice = await self.crypto.get_invoices(invoice_ids=[crypto_id])
+            if not invoice:
+                return None
             return invoice[0]
         except Exception as e:
             await self._database.log_error(f"Failed to get deposit status: {e}")

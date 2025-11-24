@@ -595,18 +595,20 @@ class BotInterface:
             message_id = parts[2] if len(parts) > 2 else ""
             confirm = parts[3] if len(parts) > 3 else ""
             if await HandlersManager.check_deposit(self, chat_id, user_data, tx_id, callback_query, True):
-                await callback_query.answer()
-                return
-            if not confirm:
-                await HandlersManager.cancel_deposit_confirm(self, chat_id, user_data,
-                                                             tx_id, callback_query.message.message_id)
+                if confirm != "":
+                    await self.bot.delete_message(chat_id, callback_query.message.message_id)
+                await HandlersManager.check_deposit(self, chat_id, user_data, tx_id, callback_query)
                 await callback_query.answer()
                 return
             if confirm == "yes":
                 await HandlersManager.cancel_deposit(self, chat_id, user_data, tx_id, callback_query)
                 await self.bot.delete_message(chat_id, message_id)
-            else:
+                return
+            elif confirm == "no":
                 await self.bot.delete_message(chat_id, callback_query.message.message_id)
+                return
+            await HandlersManager.cancel_deposit_confirm(self, chat_id, user_data,
+                                                         tx_id, callback_query.message.message_id)
         elif command.startswith("do-withdraw"):
             currency = command.split(':')[1]
             amount = float(command.split(':')[2])

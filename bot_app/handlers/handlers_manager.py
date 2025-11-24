@@ -431,13 +431,15 @@ class HandlersManager:
     async def check_deposit(bot, chat_id: int, user_data: dict[str, Any], internal_tx_id: str,
                             callback_query: CallbackQuery, just_check: bool = False) -> bool | None:
         invoice = await bot.crypto_pay.get_invoice(internal_tx_id)
+        if invoice is None:
+            return False
         if invoice.status == "paid":
+            if just_check:
+                return True
             await callback_query.answer(await bot.get_text(chat_id, "DEPOSIT_SUCCESS", user_data))
             amount = float(invoice.amount) * float(invoice.paid_usd_rate)
             await bot.database_interface.update_balance(chat_id, amount, "deposit")
             await bot.main_menu(chat_id, callback_query.message.message_id)
-            if just_check:
-                return True
         else:
             if just_check:
                 return False
