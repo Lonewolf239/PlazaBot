@@ -450,12 +450,12 @@ class Messages:
             "ru": (
                 "⚙️ Макс. ставка\n\n"
                 "💰 Текущее значение: ${max_bet}\n"
-                "📊 (1% от баланса казино)"
+                "📊 ({percentage}% от баланса казино)"
             ),
             "en": (
                 "⚙️ Max bet\n\n"
                 "💰 Current value: ${max_bet}\n"
-                "📊 (1% of casino balance)"
+                "📊 ({percentage}% of casino balance)"
             )
         },
         "PROFITS": {

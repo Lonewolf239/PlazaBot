@@ -728,8 +728,9 @@ class HandlersManager:
 
     @staticmethod
     async def update_max_bet(bot, chat_id: int, user_data: dict[str, Any], callback_query: CallbackQuery):
-        max_bet = await bot.database_interface.set_max_bet(await bot.crypto_pay.get_total_balance_usd())
-        custom_data = {"max_bet": max_bet}
+        percentage = 5.0
+        max_bet = await bot.database_interface.set_max_bet(await bot.crypto_pay.get_total_balance_usd(), percentage)
+        custom_data = {"max_bet": max_bet, "percentage": percentage}
         await callback_query.answer(await bot.get_text(chat_id, "MAX_BET_CONFIG", user_data, custom_data), True)
 
     @staticmethod
