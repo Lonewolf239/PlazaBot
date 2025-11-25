@@ -121,8 +121,7 @@ Jackpot (3× 7️⃣) — the biggest prize!
             while win_amount == 0:
                 result = self.generate_result()
                 win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
-        animation_data = await self.create_animation(result, bot, user_id,
-                                                     message_id, send_frame)
+        animation_data = await self.create_animation(result, bot, user_id, message_id, send_frame)
         game_result = GameResult(
             status=GameStatus.FINISHED,
             win_amount=win_amount,

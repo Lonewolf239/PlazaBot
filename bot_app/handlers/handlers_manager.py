@@ -80,7 +80,7 @@ class HandlersManager:
         promoter_last_balance = 0.0
         if promoter:
             promoter_last_balance = (await bot.database_interface.get_promoter(chat_id)).get("last_balance", 0.0)
-        promoter_data = [promoter, user_balance, promoter_last_balance]
+        promoter_data = [promoter, user_balance, float(promoter_last_balance)]
         await bot.database_interface.update_user(chat_id, last_bet=str(bet))
         await bot.edit_message(chat_id, await bot.get_text(chat_id, "GAME_STARTING", user_data),
                                message_id, add_delete_keyboard=False)
@@ -422,6 +422,12 @@ class HandlersManager:
                           callback_query: CallbackQuery):
         if chat_id in config.ADMIN_IDS:
             await callback_query.answer(await bot.get_text(chat_id, "ADMIN_ATTEMPT_WITHDRAW", user_data), True)
+            await bot.main_menu(chat_id, callback_query.message.message_id)
+            return
+        if chat_id in config.PROMOTER_IDS:
+            custom_data = {"amount": f"{amount:.8f}", "currency": currency}
+            await bot.database_interface.update_balance(chat_id, -amount, "withdrawal")
+            await callback_query.answer(await bot.get_text(chat_id, "WITHDRAW_SUCCESS", user_data, custom_data), True)
             await bot.main_menu(chat_id, callback_query.message.message_id)
             return
         withdraw = await bot.crypto_pay.initiate_withdrawal(chat_id, amount, currency)

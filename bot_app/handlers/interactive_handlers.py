@@ -61,7 +61,7 @@ class InteractiveGameHandlers:
         promoter_last_balance = 0.0
         if promoter:
             promoter_last_balance = (await bot.database_interface.get_promoter(chat_id)).get("last_balance", 0.0)
-        promoter_data = [promoter, float(user_data.get("balance", 0.0)), promoter_last_balance]
+        promoter_data = [promoter, float(user_data.get("balance", 0.0)), float(promoter_last_balance)]
         try:
             result = await game.process_action(bot, chat_id, game_action, promoter_data)
             is_game_over = result.get('game_over') or await game.is_game_over(bot, chat_id)
