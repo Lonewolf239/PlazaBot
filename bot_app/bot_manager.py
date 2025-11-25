@@ -680,6 +680,11 @@ class BotInterface:
             await HandlersManager.admin_reset_balance(self, chat_id, user_data, callback_query)
         elif command == "admin-get-balance":
             await HandlersManager.admin_get_balance(self, chat_id)
+        elif command == "admin-issue-balance-promoters":
+            count = len(config.PROMOTER_IDS)
+            for promoter_id in config.PROMOTER_IDS:
+                await self.database_interface.update_balance(promoter_id, 100.0, "bonus", "issue balance promoters")
+            await callback_query.answer(f"✅ Выдано {count} промоутерам по $100", show_alert=True)
         elif command.startswith("admin-game-settings"):
             await HandlersManager.admin_game_settings_handler(self, chat_id, user_data, command,
                                                               callback_query.message.message_id)

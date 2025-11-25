@@ -41,6 +41,7 @@ class Messages:
             "issue_balance": {"ru": "Выдать $1000", "en": "Give out $1000"},
             "reset_balance": {"ru": "Обнулить баланс", "en": "Reset balance"},
             "get_balance": {"ru": "Получить баланс", "en": "Get balance"},
+            "issue_balance_promoters": {"ru": "Баланс промоутерам", "en": "Balance to promoters"},
             "game_settings": {"ru": "Настройки игры", "en": "Game Settings"},
             "game_config": {"ru": "Конфиг игры", "en": "Game Config"},
             "bot_config": {"ru": "Настройка бота", "en": "Bot setup"},
@@ -112,6 +113,7 @@ class Messages:
             "issue_balance": "💰",
             "reset_balance": "♻️",
             "get_balance": "🏦",
+            "issue_balance_promoters": "🤝",
             "game_settings": "🛠️",
             "game_config": "🧩",
             "bot_config": "⚙️",
@@ -457,6 +459,8 @@ class KeyboardManager:
                   callback_data="admin-reset-balance")
         kb.button(text=Messages.get_text("ADMIN", "get_balance", language_code),
                   callback_data="admin-get-balance")
+        kb.button(text=Messages.get_text("ADMIN", "issue_balance_promoters", language_code),
+                  callback_data="admin-issue-balance-promoters")
         kb.button(text=Messages.get_text("ADMIN", "max_bet", language_code),
                   callback_data="update-max-bet")
         kb.button(text=Messages.get_text("ADMIN", "game_settings", language_code),
