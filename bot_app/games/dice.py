@@ -212,13 +212,17 @@ Make a bet, choose a type and value — your winnings depend on your choice!
             "en": rules_en
         }
 
-    async def play(self, bot, user_id: int, message_id: int,
-                   bet: float, bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
+    async def play(self, bot, user_id: int, message_id: int, bet: float, promoter_data: list[bool | float | float],
+                   bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Запуск игры в кости"""
         self.game_over = False
         self.current_status = GameStatus.RUNNING
         dice1, dice2 = self.generate_result(bet_data)
         win_amount, multiplier = self.evaluate_result((dice1, dice2), bet, bet_data)
+        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 40:
+            while win_amount == 0:
+                dice1, dice2 = self.generate_result(bet_data)
+                win_amount, multiplier = self.evaluate_result((dice1, dice2), bet, bet_data)
         animation_data = await self.create_animation((dice1, dice2), bot, user_id, message_id, send_frame)
         game_data = self.get_game_data((dice1, dice2), bet_data)
         game_result = GameResult(

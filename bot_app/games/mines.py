@@ -130,7 +130,7 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
         col = cell % self.GRID_SIZE
         return row, col
 
-    async def play(self, bot, user_id: int, message_id: int, bet: float,
+    async def play(self, bot, user_id: int, message_id: int, bet: float, promoter_data: list[bool | float | float],
                    bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Главный loop игры"""
         if not self.get_session(bot, user_id):
@@ -214,7 +214,8 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
         )
         return await self._finalize_game(game_result)
 
-    async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
+    async def process_action(self, bot, user_id: int, action: str,
+                             promoter_data: list[bool | float | float]) -> Dict[str, Any]:
         """Обработать ход игрока: открытие ячейки или забрать выигрыш"""
         session = self.get_session(bot, user_id)
         if not session:
@@ -243,6 +244,17 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
             state['field_generated'] = True
         state['opened'].add(cell)
         cell_coefficient = state['field'][cell]
+        if cell_coefficient == 0.0:
+            if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 20:
+                safe_closed_cells = [
+                    c for c in range(self.TOTAL_CELLS)
+                    if c not in state['opened'] and state['field'][c] != 0.0
+                ]
+                if safe_closed_cells:
+                    random_safe_cell = safe_closed_cells[randbelow(len(safe_closed_cells))]
+                    state['field'][cell] = state['field'][random_safe_cell]
+                    state['field'][random_safe_cell] = 0.0
+                    cell_coefficient = state['field'][cell]
         if cell_coefficient == 0.0:
             state['multiplier'] = 0.0
             self.update_session(bot, user_id, state=state, game_over=True)

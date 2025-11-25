@@ -122,7 +122,7 @@ class BaseGame(ABC):
                 handler(result)
 
     @abstractmethod
-    async def play(self, bot, user_id: int, message_id: int, bet: float,
+    async def play(self, bot, user_id: int, message_id: int, bet: float,  promoter_data: list[bool | float | float],
                    bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Запуск игры. Должен быть переопределен в подклассах"""
         pass

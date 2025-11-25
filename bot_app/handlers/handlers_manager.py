@@ -76,11 +76,17 @@ class HandlersManager:
                 await bot.main_menu(chat_id)
                 return
             bot.bet_data_collector.reset(chat_id)
+        promoter = chat_id in config.PROMOTER_IDS
+        promoter_last_balance = 0.0
+        if promoter:
+            promoter_last_balance = (await bot.database_interface.get_promoter(chat_id)).get("last_balance", 0.0)
+        promoter_data = [promoter, user_balance, promoter_last_balance]
         await bot.database_interface.update_user(chat_id, last_bet=str(bet))
         await bot.edit_message(chat_id, await bot.get_text(chat_id, "GAME_STARTING", user_data),
                                message_id, add_delete_keyboard=False)
         await bot.game_manager.start_game(bot, chat_id, message_id,
-                                          selected_game, total_required, bet_data, HandlersManager.send_frame)
+                                          selected_game, total_required, bet_data, promoter_data,
+                                          HandlersManager.send_frame)
 
     @staticmethod
     async def select_bet(bot, chat_id: int, user_data: dict[str, Any], callback_query: CallbackQuery = None):

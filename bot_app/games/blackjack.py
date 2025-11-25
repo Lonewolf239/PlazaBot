@@ -308,7 +308,7 @@ Stand: Stop and pass turn to dealer
         card_img = ResourceLoader.load_image_no_square("blackjack", filename, (width, height))
         ResourceLoader.paste_image_centered_no_square(img, card_img, x, y, width, height)
 
-    async def play(self, bot, user_id: int, message_id: int, bet: float,
+    async def play(self, bot, user_id: int, message_id: int, bet: float, promoter_data: list[bool | float | float],
                    bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Главный loop игры"""
         if not self.get_session(bot, user_id):
@@ -435,7 +435,8 @@ Stand: Stop and pass turn to dealer
         )
         return await self._finalize_game(game_result)
 
-    async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
+    async def process_action(self, bot, user_id: int, action: str,
+                             promoter_data: list[bool | float | float]) -> Dict[str, Any]:
         """Обработать ход игрока: 'hit' (брать) или 'stand' (стоять)"""
         session = self.get_session(bot, user_id)
         if not session:

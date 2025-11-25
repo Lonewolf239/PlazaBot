@@ -101,7 +101,8 @@ class InteractiveGameBase(BaseGame, ABC):
         pass
 
     @abstractmethod
-    async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
+    async def process_action(self, bot, user_id: int, action: str,
+                             promoter_data: list[bool | float | float]) -> Dict[str, Any]:
         """
         Обработать действие пользователя.
         Возвращает результат действия

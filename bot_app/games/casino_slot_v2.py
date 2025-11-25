@@ -93,14 +93,18 @@ Matches on any row, column or diagonal
 """
         return {"ru": rules_ru, "en": rules_en}
 
-    async def play(self, bot, user_id: int, message_id: int, bet: float, bet_data: Optional[str] = None,
-                   send_frame: Optional[Callable] = None) -> GameResult:
+    async def play(self, bot, user_id: int, message_id: int, bet: float, promoter_data: list[bool | float | float],
+                   bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Запуск слота"""
         self.game_over = False
         self.current_status = GameStatus.RUNNING
         self.frame_time = self.start_frame_time
         result = [self.generate_result(), self.generate_result(), self.generate_result()]
         win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
+        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 40:
+            while win_amount == 0:
+                result = [self.generate_result(), self.generate_result(), self.generate_result()]
+                win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
         animation_data = await self.create_animation(result, bot, user_id, message_id, send_frame)
         game_result = GameResult(
             status=GameStatus.FINISHED,

@@ -153,7 +153,7 @@ At a random moment — CRASH! 💥
                 print(f"Error in auto_update_coefficient: {e}")
                 break
 
-    async def play(self, bot, user_id: int, message_id: int, bet: float,
+    async def play(self, bot, user_id: int, message_id: int, bet: float, promoter_data: list[bool | float | float],
                    bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Главный loop игры"""
         if not self.get_session(bot, user_id):
@@ -213,7 +213,8 @@ At a random moment — CRASH! 💥
         )
         return await self._finalize_game(game_result)
 
-    async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
+    async def process_action(self, bot, user_id: int, action: str,
+                             promoter_data: list[bool | float | float]) -> Dict[str, Any]:
         """Обработать ход игрока: забрать выигрыш или проверить крах"""
         session = self.get_session(bot, user_id)
         if not session:

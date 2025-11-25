@@ -1,6 +1,8 @@
 from typing import Any
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InputMediaPhoto, BufferedInputFile
+
+import config
 from ..games.base_game import GameResult, GameStatus
 
 
@@ -55,8 +57,13 @@ class InteractiveGameHandlers:
         game_id = user_session.get('game_id')
         game = await bot.game_manager.get_game(game_id)
         game.set_game_id(game_id)
+        promoter = chat_id in config.PROMOTER_IDS
+        promoter_last_balance = 0.0
+        if promoter:
+            promoter_last_balance = (await bot.database_interface.get_promoter(chat_id)).get("last_balance", 0.0)
+        promoter_data = [promoter, float(user_data.get("balance", 0.0)), promoter_last_balance]
         try:
-            result = await game.process_action(bot, chat_id, game_action)
+            result = await game.process_action(bot, chat_id, game_action, promoter_data)
             is_game_over = result.get('game_over') or await game.is_game_over(bot, chat_id)
             if is_game_over:
                 await InteractiveGameHandlers.finish_game(bot, chat_id, message_id, game, user_session)

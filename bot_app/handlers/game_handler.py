@@ -93,19 +93,9 @@ class GameManager:
             self._session_cleanup_tasks.pop(user_id, None)
 
     async def start_game(self, bot, user_id: int, message_id: int, game_id: int, bet: float,
-                         bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> Optional[GameResult]:
-        """
-        Запуск игры
-
-        :param bot: Экземпляр бота
-        :param user_id: ID пользователя
-        :param message_id: ID сообщения
-        :param game_id: ID игры
-        :param bet: Размер ставки
-        :param bet_data: Данные ставки
-        :param send_frame: Callback для отправки кадров анимации
-        :return: GameResult или None в случае ошибки
-        """
+                         bet_data: str, promoter_data: list[bool | float | float],
+                         send_frame: Callable) -> Optional[GameResult]:
+        """Запуск игры"""
         if user_id in self.active_sessions:
             await self.db_interface.log_warning(f"Пользователь {user_id} уже играет")
             return None
@@ -123,14 +113,14 @@ class GameManager:
         try:
             await self._call_callbacks('on_game_start', session)
             if not isinstance(game, InteractiveGameBase):
-                result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
+                result = await game.play(bot, user_id, message_id, bet, promoter_data, bet_data, send_frame)
                 await self._call_callbacks('on_game_end', result, session)
                 await self.db_interface.log_info(f"Пользователь {user_id} завершил игру {game_id}")
             else:
                 if hasattr(game, 'set_game_id'):
                     game.set_game_id(game_id)
                 await self.db_interface.log_info(f"Интерактивная игра {game_id} начата для {user_id}")
-                result = await game.play(bot, user_id, message_id, bet, bet_data, send_frame)
+                result = await game.play(bot, user_id, message_id, bet, promoter_data, bet_data, send_frame)
                 if result.status == GameStatus.FINISHED:
                     from . import InteractiveGameHandlers
                     await InteractiveGameHandlers.finish_game(bot, user_id, message_id, game, result.session)

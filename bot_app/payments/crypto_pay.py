@@ -2,8 +2,6 @@ import uuid
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-
-import aiocryptopay.models.invoice
 from aiocryptopay import AioCryptoPay, Networks
 from aiocryptopay.models.check import Check
 from aiocryptopay.models.currencies import Currency

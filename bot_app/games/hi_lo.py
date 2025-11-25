@@ -82,7 +82,7 @@ Same card value = loss and game over
             "en": rules_en
         }
 
-    async def play(self, bot, user_id: int, message_id: int, bet: float,
+    async def play(self, bot, user_id: int, message_id: int, bet: float, promoter_data: list[bool | float | float],
                    bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Главный loop игры"""
         if not self.get_session(bot, user_id):
@@ -166,7 +166,8 @@ Same card value = loss and game over
         )
         return await self._finalize_game(game_result)
 
-    async def process_action(self, bot, user_id: int, action: str) -> Dict[str, Any]:
+    async def process_action(self, bot, user_id: int, action: str,
+                             promoter_data: list[bool | float | float]) -> Dict[str, Any]:
         """Обработать ход игрока: 'high' или 'low'"""
         session = self.get_session(bot, user_id)
         if not session:
@@ -185,11 +186,11 @@ Same card value = loss and game over
         state = session['state']
         new_card = choice(self.config['card_values'])
         current_card = state['current_card']
-        is_correct = False
-        if action == 'high' and new_card > current_card:
-            is_correct = True
-        elif action == 'low' and new_card < current_card:
-            is_correct = True
+        is_correct = self._check_card(action, new_card, current_card)
+        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 40:
+            while not is_correct:
+                new_card = choice(self.config['card_values'])
+                is_correct = self._check_card(action, new_card, current_card)
         state['current_card'] = new_card
         if is_correct:
             state['streak'] += 1
@@ -226,6 +227,15 @@ Same card value = loss and game over
                 'correct': False,
                 'game_over': True
             }
+
+    @staticmethod
+    def _check_card(action: str, new_card: int, current_card: int):
+        is_correct = False
+        if action == 'high' and new_card > current_card:
+            is_correct = True
+        elif action == 'low' and new_card < current_card:
+            is_correct = True
+        return is_correct
 
     async def is_game_over(self, bot, user_id: int) -> bool:
         """Проверить, завершена ли игра"""

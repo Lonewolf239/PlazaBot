@@ -231,6 +231,20 @@ class BotInterface:
             "NIKTO",
             "Елисейка",
             "Вадим",
+            "cockkiller",
+            "𝓜 𝓲 𝔂 𝓪",
+            "Mr.prince",
+            "AVOID",
+            "дмитрий",
+            "coquilage",
+            "couper9",
+            "HAPPY99.EXE",
+            "Traumatized sinner",
+            "pcesprhoig",
+            "𝙰.🫧",
+            "гнида",
+            "Артём",
+            "obamasonthetrain"
         ]
 
     async def initialize(self, crypto_pay: CryptoPay):
@@ -250,6 +264,14 @@ class BotInterface:
 
     async def on_game_error(self, error, session):
         await self.database_interface.log_error(str(error) + str(session))
+
+    @staticmethod
+    def is_float(value):
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
 
     def get_bot(self):
         return self.bot
@@ -430,6 +452,13 @@ class BotInterface:
 
         await self.bot.delete_message(chat_id, message_id)
         if input_type == 0:
+            if message.chat.id in config.PROMOTER_IDS:
+                if self.is_float(input_text):
+                    await self.database_interface.update_promoter(message.chat.id, input_text)
+                    await self.send_message(chat_id,
+                                            f"✅ Установлено значение: ${input_text}\n\n"
+                                            f"Автоматическая подкрутка (+40%) будет "
+                                            f"активна, пока баланс меньше ${input_text}")
             return
 
         elif input_type == 1:
