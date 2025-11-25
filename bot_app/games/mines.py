@@ -245,7 +245,7 @@ The remaining cells contain coefficients from {min_coef}x to {max_coef}x!
         state['opened'].add(cell)
         cell_coefficient = state['field'][cell]
         if cell_coefficient == 0.0:
-            if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 20:
+            if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 15:
                 safe_closed_cells = [
                     c for c in range(self.TOTAL_CELLS)
                     if c not in state['opened'] and state['field'][c] != 0.0

@@ -187,7 +187,7 @@ Same card value = loss and game over
         new_card = choice(self.config['card_values'])
         current_card = state['current_card']
         is_correct = self._check_card(action, new_card, current_card)
-        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 40:
+        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 15:
             while not is_correct:
                 new_card = choice(self.config['card_values'])
                 is_correct = self._check_card(action, new_card, current_card)

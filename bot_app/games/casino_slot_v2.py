@@ -101,7 +101,7 @@ Matches on any row, column or diagonal
         self.frame_time = self.start_frame_time
         result = [self.generate_result(), self.generate_result(), self.generate_result()]
         win_amount, multiplier = self.evaluate_result(result, bet, bet_data)
-        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 40:
+        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 15:
             while win_amount == 0:
                 result = [self.generate_result(), self.generate_result(), self.generate_result()]
                 win_amount, multiplier = self.evaluate_result(result, bet, bet_data)

@@ -219,7 +219,7 @@ Make a bet, choose a type and value — your winnings depend on your choice!
         self.current_status = GameStatus.RUNNING
         dice1, dice2 = self.generate_result(bet_data)
         win_amount, multiplier = self.evaluate_result((dice1, dice2), bet, bet_data)
-        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 40:
+        if promoter_data[0] and promoter_data[1] <= promoter_data[2] and randbelow(100) < 15:
             while win_amount == 0:
                 dice1, dice2 = self.generate_result(bet_data)
                 win_amount, multiplier = self.evaluate_result((dice1, dice2), bet, bet_data)
