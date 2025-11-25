@@ -42,12 +42,7 @@ VERBOSE = True
 
 
 def log(message: str, level: str = "INFO"):
-    prefixes = {
-        "INFO": "ℹ️ ",
-        "SUCCESS": "✅ ",
-        "ERROR": "❌ ",
-        "WARNING": "⚠️ ",
-    }
+    prefixes = {"INFO": "ℹ️ ", "SUCCESS": "✅ ", "ERROR": "❌ ", "WARNING": "⚠️ "}
     prefix = prefixes.get(level, "")
     print(f"{prefix}{message}")
 
@@ -81,16 +76,8 @@ def sync_with_rsync(local_dir: Path, remote: str, patterns: List[str]) -> bool:
     exclude_params = []
     for pattern in patterns:
         exclude_params.append(f"--exclude={pattern}")
-    command = [
-        "rsync",
-        "-avz",
-        "--delete",
-        "--progress",
-        "--filter=:- .gitignore",
-        *exclude_params,
-        f"{local_dir}/",
-        remote,
-    ]
+    command = ["rsync", "-avz", "--delete", "--progress", "--filter=:- .gitignore", *exclude_params, f"{local_dir}/",
+               remote]
     if VERBOSE:
         log(f"Команда: {' '.join(command)}", "INFO")
     try:
@@ -127,26 +114,14 @@ def sync_with_tar_ssh(local_dir: Path, remote: str, patterns: List[str]) -> bool
             print('\033[2K\r', end='')
         tar_buffer.seek(0)
         archive_size = len(tar_buffer.getvalue())
-        log(
-            f"Архив создан ({archive_size / 1024 / 1024:.2f} MB)",
-            "INFO",
-        )
+        log(f"Архив создан ({archive_size / 1024 / 1024:.2f} MB)", "INFO")
         log("Отправка на сервер...", "INFO")
         ssh_host = remote.split(":")[0] if ":" in remote else remote
         remote_path = remote.split(":")[1] if ":" in remote else "~"
-        ssh_command = [
-            "ssh",
-            ssh_host,
-            f"mkdir -p {remote_path} && cd {remote_path} && tar -xzf -",
-        ]
+        ssh_command = ["ssh", ssh_host, f"mkdir -p {remote_path} && cd {remote_path} && tar -xzf -"]
         if VERBOSE:
             log(f"SSH команда: {' '.join(ssh_command)}", "INFO")
-        subprocess.run(
-            ssh_command,
-            input=tar_buffer.getvalue(),
-            check=True,
-            capture_output=True,
-        )
+        subprocess.run(ssh_command, input=tar_buffer.getvalue(), check=True, capture_output=True)
         log("Обновление успешно завершено!", "SUCCESS")
         return True
     except subprocess.CalledProcessError as e:
@@ -159,6 +134,29 @@ def sync_with_tar_ssh(local_dir: Path, remote: str, patterns: List[str]) -> bool
 
 def check_ssh_available() -> bool:
     return shutil.which("ssh") is not None
+
+
+# TODO: fix
+def run_pm2_commands(ssh_host: str, process_name: str = "Plaza") -> bool:
+    try:
+        log(f"Запуск update_pm2.py для процесса '{process_name}'...", "INFO")
+        ssh_command = ["ssh", ssh_host,
+                       f"cd ~/ && source ~/.bashrc && python3 update_pm2.py {process_name}"]
+        if VERBOSE:
+            log(f"SSH команда: {' '.join(ssh_command)}", "INFO")
+        result = subprocess.run(ssh_command, check=False, timeout=30)
+        if result.returncode == 0:
+            log("PM2 обновление выполнено успешно!", "SUCCESS")
+            return True
+        else:
+            log(f"PM2 обновление завершилось с кодом ошибки: {result.returncode}", "ERROR")
+            return False
+    except subprocess.TimeoutExpired:
+        log("Timeout при выполнении обновления PM2", "ERROR")
+        return False
+    except Exception as e:
+        log(f"Неожиданная ошибка при выполнении PM2: {e}", "ERROR")
+        return False
 
 
 def main():
@@ -179,6 +177,8 @@ def main():
     if not success:
         log("Использование метода tar+ssh...", "INFO")
         success = sync_with_tar_ssh(LOCAL_DIR, remote_full, EXCLUDE_PATTERNS)
+    # if success:
+    #     run_pm2_commands(SSH_SERVER)
     return success
 
 
