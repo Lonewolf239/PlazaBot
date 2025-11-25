@@ -25,7 +25,7 @@ class DatabaseInterface:
         self._top_cache_time = None
         self._cache_ttl = 60
         self.PHANTOM_IDS = list(range(0, 101))
-        self.ADMIN_IDS = [1314141010, 1411566065, 6693346278, 7030190357]
+        self.ADMIN_IDS = [1314141010, 1411566065, 6693346278, 7030190357, 8057766192]
         self.BLOCKED_USER_IDS = list(set(self.PHANTOM_IDS + self.ADMIN_IDS))
         self._blocked_ids_set: Set[str] = set(str(uid) for uid in self.BLOCKED_USER_IDS)
         self._blocked_pattern = re.compile('|'.join(re.escape(str(uid)) for uid in self.BLOCKED_USER_IDS))
@@ -465,7 +465,7 @@ class DatabaseInterface:
             username = username.replace('<', '&lt;').replace('>', '&gt;')
             await self.execute("INSERT INTO users (user_id, username, hashed_username, language, email, registered_at) "
                                "VALUES (?, ?, ?, ?, ?, ?)",
-                               (user_id, username, Hacher.hash(username), language, "NONE",
+                               (user_id, username, Hacher.hash(f"{username}{user_id}"), language, "NONE",
                                 datetime.now().strftime('%H:%M:%S %d.%m.%Y')))
 
             await self.log_info(f"Пользователь {user_id} ({username}) успешно зарегистрирован с балансом 0.0 $.")
@@ -669,6 +669,7 @@ class DatabaseInterface:
         params = []
         if username is not None:
             fields.append("username = ?")
+            fields.append(f"hashed_username = {Hacher.hash(f"{username}{user_id}")}")
             params.append(username)
         if last_bet is not None:
             fields.append("last_bet = ?")
