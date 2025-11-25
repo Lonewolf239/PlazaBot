@@ -37,6 +37,7 @@ class Messages:
             "summary": {"ru": "Сводка по балансу", "en": "Balance Summary"},
             "players": {"ru": "Список игроков", "en": "Player List"},
             "logs": {"ru": "Логи событий", "en": "Event Logs"},
+            "clear_logs": {"ru": "Очистить логи", "en": "Clear logs"},
             "database": {"ru": "Показать БД", "en": "Show Database"},
             "issue_balance": {"ru": "Выдать $1000", "en": "Give out $1000"},
             "reset_balance": {"ru": "Обнулить баланс", "en": "Reset balance"},
@@ -109,6 +110,7 @@ class Messages:
             "summary": "📊",
             "players": "👥",
             "logs": "🗒️",
+            "clear_logs": "🗑️",
             "database": "🗄️",
             "issue_balance": "💰",
             "reset_balance": "♻️",
@@ -451,6 +453,8 @@ class KeyboardManager:
                   callback_data="admin-list-players")
         kb.button(text=Messages.get_text("ADMIN", "logs", language_code),
                   callback_data="admin-show-logs")
+        kb.button(text=Messages.get_text("ADMIN", "clear_logs", language_code),
+                  callback_data="admin-clear-logs")
         kb.button(text=Messages.get_text("ADMIN", "database", language_code),
                   callback_data="admin-show-tables")
         kb.button(text=Messages.get_text("ADMIN", "issue_balance", language_code),

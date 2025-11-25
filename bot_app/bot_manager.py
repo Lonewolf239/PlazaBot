@@ -664,6 +664,9 @@ class BotInterface:
         elif command.startswith("admin-show-logs"):
             await HandlersManager.admin_show_logs(self, chat_id, command, user_data,
                                                   callback_query.message.message_id)
+        elif command == "admin-clear-logs":
+            await self.database_interface.clear_logs()
+            await callback_query.answer("✅ Логи были очищены")
         elif command.startswith("admin-user"):
             await HandlersManager.admin_user(self, chat_id, command, user_data,
                                              callback_query.message.message_id)

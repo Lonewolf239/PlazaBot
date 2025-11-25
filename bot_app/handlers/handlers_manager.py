@@ -566,8 +566,7 @@ class HandlersManager:
     @staticmethod
     async def admin_summary(bot, chat_id: int, user_data: dict[str, Any], message_id: int):
         from ..keyboards import KeyboardManager
-        needed, count, avg_bal, max_bal, min_bal = await bot.database_interface.get_needed(
-            bot.admin_ids, len(bot.phantom_usernames) + 10)
+        needed, count, avg_bal, max_bal, min_bal = await bot.database_interface.get_needed(bot.admin_ids)
         text = (
             f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_COUNT", user_data)}: {count}\n"
             f"{await bot.get_text(chat_id, "ADMIN_SUMMARY_NEEDED", user_data)}: ${int(needed)}\n"

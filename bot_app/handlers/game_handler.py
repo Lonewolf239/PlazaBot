@@ -76,10 +76,8 @@ class GameManager:
         self._session_cleanup_tasks[user_id] = task
 
     # noinspection PyAsyncCall
-    async def _cleanup_session_after_timeout(self, user_id: int) -> None:
-        """Удалить сессию спустя время ожидания"""
+    async def _cleanum_session(self, user_id: int):
         try:
-            await asyncio.sleep(self.SESSION_TIMEOUT)
             if user_id in self.active_sessions:
                 session = self.active_sessions[user_id]
                 await self.db_interface.log_info(f"Сессия пользователя {user_id} удалена по timeout")
@@ -91,6 +89,11 @@ class GameManager:
             pass
         finally:
             self._session_cleanup_tasks.pop(user_id, None)
+
+    async def _cleanup_session_after_timeout(self, user_id: int) -> None:
+        """Удалить сессию спустя время ожидания"""
+        await asyncio.sleep(self.SESSION_TIMEOUT)
+        await self._cleanum_session(user_id)
 
     async def start_game(self, bot, user_id: int, message_id: int, game_id: int, bet: float,
                          bet_data: str, promoter_data: list[bool | float | float],
@@ -114,6 +117,7 @@ class GameManager:
             await self._call_callbacks('on_game_start', session)
             if not isinstance(game, InteractiveGameBase):
                 result = await game.play(bot, user_id, message_id, bet, promoter_data, bet_data, send_frame)
+                await self._cleanum_session(user_id)
                 await self._call_callbacks('on_game_end', result, session)
                 await self.db_interface.log_info(f"Пользователь {user_id} завершил игру {game_id}")
             else:

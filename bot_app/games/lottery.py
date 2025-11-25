@@ -116,8 +116,8 @@ your entire bet is multiplied!
             "en": rules_en
         }
 
-    async def play(self, bot, user_id: int, message_id: int,  promoter_data: list[bool | float | float],
-                   bet: float, bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
+    async def play(self, bot, user_id: int, message_id: int, bet: float, promoter_data: list[bool | float | float],
+                   bet_data: Optional[str] = None, send_frame: Optional[Callable] = None) -> GameResult:
         """Запуск рулетки"""
         self.game_over = False
         self.current_status = GameStatus.RUNNING

