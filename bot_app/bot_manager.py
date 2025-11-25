@@ -780,7 +780,7 @@ class BotInterface:
     async def get_users_page(self, page: int):
         rows = await self.database_interface.get_users()
         last_page, page_rows, add_next_page = self.get_page(rows, page)
-        lines = [r['username'] for r in page_rows]
+        lines = [f"{r['username']}|{r['user_id']}" for r in page_rows]
         text = f"Пользователи [{page}/{last_page}]:\n\n"
         return text, lines, add_next_page
 

@@ -596,13 +596,15 @@ class KeyboardManager:
                            add_next_page: bool = True) -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         for i in range(0, len(lines), 2):
+            username, user_id = lines[i].split('|')
             if i + 1 < len(lines):
+                next_username, next_user_id = lines[i + 1].split('|')
                 kb.row(
-                    InlineKeyboardButton(text=lines[i], callback_data=f"admin-user:{lines[i]}"),
-                    InlineKeyboardButton(text=lines[i + 1], callback_data=f"admin-user:{lines[i + 1]}")
+                    InlineKeyboardButton(text=username, callback_data=f"admin-user:{user_id}"),
+                    InlineKeyboardButton(text=next_username, callback_data=f"admin-user:{next_user_id}")
                 )
             else:
-                kb.row(InlineKeyboardButton(text=lines[i], callback_data=f"admin-user:{lines[i]}"))
+                kb.row(InlineKeyboardButton(text=username, callback_data=f"admin-user:{user_id}"))
         nav_buttons = []
         if page > 1:
             nav_buttons.append(InlineKeyboardButton(text="◀️", callback_data=f"admin-list-players:{page - 1}"))

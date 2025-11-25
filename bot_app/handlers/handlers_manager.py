@@ -924,9 +924,9 @@ Every bet is calculated fairly and honestly.
 
     @staticmethod
     async def admin_user(bot, chat_id: int, command: str, user_data: dict[str, Any], message_id: int):
-        username = command[len("admin-user:"):]
+        user_id = int(command[len("admin-user:"):])
         await HandlersManager.send_userinfo(bot, chat_id,
-                                            await bot.database_interface.get_user_by_username(username), True)
+                                            await bot.database_interface.get_user(user_id), True)
         await HandlersManager.admin_panel(bot, chat_id, user_data, message_id)
 
     @staticmethod
