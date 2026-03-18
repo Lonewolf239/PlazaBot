@@ -1,7 +1,7 @@
 [![Plaza Casino](https://img.shields.io/badge/Plaza%20Casino-Demo%20Project-2D2D2D?style=for-the-badge&logo=telegram&logoColor=FFFFFF)](https://github.com/Lonewolf239/PlazaCasino)
 [![Python](https://img.shields.io/badge/Python-3.10+-2D2D2D?style=for-the-badge&logo=python&logoColor=FFFFFF)](https://python.org)
 [![aiogram](https://img.shields.io/badge/aiogram-3.x-2D2D2D?style=for-the-badge&logo=telegram&logoColor=FFFFFF)](https://docs.aiogram.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT%20%28Educational%29-2D2D2D?style=for-the-badge&logo=heart&logoColor=FFFFFF)](LICENSE)
+[![MIT](https://img.shields.io/badge/License-MIT-2D2D2D?style=for-the-badge&logo=heart&logoColor=FFFFFF)](LICENSE)
 
 [![EN](https://img.shields.io/badge/README-EN-2D2D2D?style=for-the-badge&logo=github&logoColor=FFFFFF)](README.md)
 [![RU](https://img.shields.io/badge/README-RU-2D2D2D?style=for-the-badge&logo=google-translate&logoColor=FFFFFF)](README-RU.md)
