@@ -6,6 +6,7 @@ import shutil
 import tarfile
 import io
 
+# dead server :P
 SSH_SERVER = "root@185.11.134.213"
 REMOTE_PATH = "~/PlazaBot"
 LOCAL_DIR = Path(__file__).parent.resolve()
